@@ -214,7 +214,7 @@ func _create_particle_burst(center: Vector2, count: int, color: Color) -> void:
 		var angle := randf() * TAU
 		var dist := randf_range(60, 200)
 		var target := center + Vector2(cos(angle), sin(angle)) * dist
-		var tw := create_tween().set_parallel(true)
+		var tw := p.create_tween().set_parallel(true)
 		tw.tween_property(p, "position", target, randf_range(0.6, 1.5)).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 		tw.tween_property(p, "modulate:a", 0.0, randf_range(0.8, 1.8))
 		tw.chain().tween_callback(p.queue_free)
@@ -236,13 +236,25 @@ func _show_crack_effect() -> void:
 func _trigger_screen_crack_glitch() -> void:
 	if not is_instance_valid(glitch_overlay) or glitch_overlay.material == null:
 		return
-	var mat: ShaderMaterial = glitch_overlay.material as ShaderMaterial
+	var overlay_ref: ColorRect = glitch_overlay
 	AudioManager.play_sfx_generated("glitch")
 	var tw := create_tween()
-	tw.tween_method(func(v: float): mat.set_shader_parameter("glitch_intensity", v), 0.0, 0.6, 0.15)
-	tw.tween_method(func(v: float): mat.set_shader_parameter("glitch_intensity", v), 0.6, 0.15, 0.4)
-	tw.tween_method(func(v: float): mat.set_shader_parameter("glitch_intensity", v), 0.15, 0.3, 0.2)
-	tw.tween_method(func(v: float): mat.set_shader_parameter("glitch_intensity", v), 0.3, 0.0, 0.5)
+	tw.tween_method(func(v: float):
+		if is_instance_valid(overlay_ref) and overlay_ref.material is ShaderMaterial:
+			(overlay_ref.material as ShaderMaterial).set_shader_parameter("glitch_intensity", v)
+	, 0.0, 0.6, 0.15)
+	tw.tween_method(func(v: float):
+		if is_instance_valid(overlay_ref) and overlay_ref.material is ShaderMaterial:
+			(overlay_ref.material as ShaderMaterial).set_shader_parameter("glitch_intensity", v)
+	, 0.6, 0.15, 0.4)
+	tw.tween_method(func(v: float):
+		if is_instance_valid(overlay_ref) and overlay_ref.material is ShaderMaterial:
+			(overlay_ref.material as ShaderMaterial).set_shader_parameter("glitch_intensity", v)
+	, 0.15, 0.3, 0.2)
+	tw.tween_method(func(v: float):
+		if is_instance_valid(overlay_ref) and overlay_ref.material is ShaderMaterial:
+			(overlay_ref.material as ShaderMaterial).set_shader_parameter("glitch_intensity", v)
+	, 0.3, 0.0, 0.5)
 
 func _show_achievements() -> void:
 	var ach_panel := Panel.new()

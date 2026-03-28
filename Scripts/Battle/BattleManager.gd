@@ -1828,8 +1828,10 @@ func _trigger_glitch(intensity: float) -> void:
 		mat.set_shader_parameter("glitch_intensity", intensity)
 		# Fade out the glitch intensity over time
 		var fade_tw := create_tween()
+		var rect_ref: ColorRect = glitch_rect
 		fade_tw.tween_method(func(val: float):
-			mat.set_shader_parameter("glitch_intensity", val)
+			if is_instance_valid(rect_ref) and rect_ref.material is ShaderMaterial:
+				(rect_ref.material as ShaderMaterial).set_shader_parameter("glitch_intensity", val)
 		, intensity, 0.0, 1.5)
 	else:
 		# Fallback: original color-based glitch
@@ -1936,14 +1938,10 @@ func _add_log(text: String) -> void:
 		_floating_log_container.remove_child(oldest)
 		oldest.queue_free()
 
-	# 3秒后自动淡出
-	var tw := create_tween()
+	# 3秒后自动淡出 (bind to lbl so tween dies when lbl is freed)
+	var tw := lbl.create_tween()
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.5).set_delay(2.5)
-	tw.tween_callback(func():
-		if is_instance_valid(lbl) and lbl.get_parent():
-			lbl.get_parent().remove_child(lbl)
-			lbl.queue_free()
-	)
+	tw.tween_callback(lbl.queue_free)
 
 ## 更新敌人状态图标
 func _update_enemy_status_icons() -> void:

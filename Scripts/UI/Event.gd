@@ -608,9 +608,9 @@ func _refresh_buy_buttons() -> void:
 			for sub in child.get_children():
 				if sub is Button and sub.text.begins_with("购买"):
 					# 从按钮文本中提取价格
-					var price_str := sub.text.replace("购买 (", "").replace("金)", "")
+					var price_str: String = sub.text.replace("购买 (", "").replace("金)", "")
 					if price_str.is_valid_int():
-						var price := price_str.to_int()
+						var price: int = price_str.to_int()
 						if GameState.player_gold < price:
 							sub.disabled = true
 
