@@ -9,11 +9,10 @@ const EffectResult := EffectSystem.EffectResult
 
 # --- AI资产辅助函数 ---
 static func _ai_sprite(char_type: String, frame: int = 0) -> ImageTexture:
-	if frame == 0:
-		var ai_tex := AssetLoader.get_character_sprite(char_type, frame)
-		if ai_tex:
-			return ai_tex
-	return _ai_sprite(char_type, frame)
+	var ai_tex := AssetLoader.get_character_sprite(char_type, frame)
+	if ai_tex:
+		return ai_tex
+	return null
 
 # --- 战斗状态枚举 ---
 enum BattleState {

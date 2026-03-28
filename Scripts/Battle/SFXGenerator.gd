@@ -827,94 +827,70 @@ static func generate_transition_sfx() -> AudioStreamWAV:
 	return _make_stream(data)
 
 # ============================================================
-# 19. OPENING BGM LOOP - Dreamy cyberpunk 8bit, Am, 80 BPM, 8s
-# Gentle triangle melody + sine pad chords + soft triangle bass
-# Atmospheric and pleasant, like a lo-fi chiptune intro
+# 19. OPENING BGM LOOP - Clean chiptune intro, C major, 90 BPM, 8s
+# Staccato square melody + plucky arpeggio + no bass drone
+# Light and pleasant like classic GB/NES menu music
 # ============================================================
 static func generate_opening_bgm_loop() -> AudioStreamWAV:
-	var bpm: float = 80.0
+	var bpm: float = 90.0
 	var duration: float = 8.0
 	var num_samples: int = int(duration * SR)
 	var data := PackedByteArray()
 	data.resize(num_samples)
 	var beat_len: float = 60.0 / bpm
-	var eighth: float = beat_len * 0.5
-	# Melody (triangle wave): eighth notes, Am pentatonic, gentle & flowing
-	# A4=440 C5=523.3 D5=587.3 E5=659.3 G5=784 A5=880
-	# Rest=0, pattern spans 2 bars (8 beats = 16 eighths)
+	var sixteenth: float = beat_len * 0.25
+	# Melody: 50% square, C major pentatonic in high range (C5-C6)
+	# Short staccato notes with rests, no drone feel
+	# C5=523 D5=587 E5=659 G5=784 A5=880 C6=1047
 	var mel: Array[float] = [
-		440.0, 0.0, 523.3, 0.0, 659.3, 523.3, 0.0, 440.0,
-		587.3, 0.0, 523.3, 440.0, 0.0, 392.0, 440.0, 0.0,
-		523.3, 0.0, 659.3, 0.0, 784.0, 659.3, 0.0, 523.3,
-		659.3, 0.0, 587.3, 523.3, 440.0, 0.0, 0.0, 0.0
+		659.3, 0.0, 784.0, 0.0, 880.0, 784.0, 659.3, 0.0,
+		523.3, 0.0, 587.3, 659.3, 0.0, 0.0, 0.0, 0.0,
+		784.0, 0.0, 880.0, 0.0, 1047.0, 880.0, 784.0, 0.0,
+		659.3, 0.0, 523.3, 587.3, 659.3, 0.0, 0.0, 0.0,
+		880.0, 0.0, 784.0, 0.0, 659.3, 0.0, 523.3, 0.0,
+		587.3, 0.0, 659.3, 784.0, 0.0, 0.0, 0.0, 0.0,
+		659.3, 0.0, 784.0, 0.0, 880.0, 1047.0, 880.0, 0.0,
+		784.0, 0.0, 659.3, 0.0, 0.0, 0.0, 0.0, 0.0
 	]
-	# Bass (triangle): half notes, Am-F-C-G progression
-	# A2=110 F2=87.3 C3=130.8 G2=98.0
-	var bass_notes: Array[float] = [110.0, 110.0, 87.3, 87.3, 130.8, 130.8, 98.0, 98.0,
-		110.0, 110.0, 87.3, 87.3, 130.8, 130.8, 98.0, 98.0]
-	# Pad chords (sine): whole notes, Am-Fmaj7-Cmaj7-G
-	# Am:  A3=220, C4=261.6, E4=329.6
-	# F:   F3=174.6, A3=220, C4=261.6 (Fmaj7 feel)
-	# C:   C4=261.6, E4=329.6, G4=392
-	# G:   G3=196, B3=246.9, D4=293.7
-	var pad_roots: Array[float] = [220.0, 174.6, 261.6, 196.0]
-	var pad_thirds: Array[float] = [261.6, 220.0, 329.6, 246.9]
-	var pad_fifths: Array[float] = [329.6, 261.6, 392.0, 293.7]
+	# Arpeggio: 25% pulse, broken chords on sixteenths
+	# C-Am-F-G progression arpeggiated (flat array, 4 notes per chord)
+	# C: C4=262 E4=330 G4=392 | Am: A3=220 C4=262 E4=330
+	# F: F3=175 A3=220 C4=262 | G: G3=196 B3=247 D4=294
+	var arp_flat: Array[float] = [
+		262.0, 330.0, 392.0, 330.0,  # C
+		220.0, 262.0, 330.0, 262.0,  # Am
+		175.0, 220.0, 262.0, 220.0,  # F
+		196.0, 247.0, 294.0, 247.0   # G
+	]
 	var phase_mel: float = 0.0
-	var phase_bass: float = 0.0
-	var phase_p1: float = 0.0
-	var phase_p2: float = 0.0
-	var phase_p3: float = 0.0
-	var prev_mel_freq: float = 0.0
+	var phase_arp: float = 0.0
 	for i in num_samples:
 		var t: float = float(i) / float(SR)
 		var beat_f: float = t / beat_len
-		# Eighth-note index for melody
-		var ei: float = t / eighth
-		var eidx: int = int(ei) % mel.size()
-		var epos: float = fmod(ei, 1.0)
-		# Half-note index for bass
-		var half_f: float = t / (beat_len)
-		var bidx: int = int(half_f) % bass_notes.size()
-		var bpos: float = fmod(half_f, 1.0)
-		# Whole-note index for pad (2 beats per chord)
-		var chord_idx: int = int(beat_f / 2.0) % pad_roots.size()
+		# Sixteenth-note index for melody
+		var si: float = t / sixteenth
+		var sidx: int = int(si) % mel.size()
+		var spos: float = fmod(si, 1.0)
+		# Arpeggio: cycles every 2 beats (one chord per 2 beats)
+		var chord_idx: int = int(beat_f / 2.0) % 4
+		var arp_note_idx: int = int(si) % 4
+		var arp_freq: float = arp_flat[chord_idx * 4 + arp_note_idx]
 		var mix: float = 0.0
-		# --- Triangle melody (warm, smooth) ---
-		var mf: float = mel[eidx]
+		# --- Square melody (50% duty, classic NES lead) ---
+		var mf: float = mel[sidx]
 		if mf > 0.0:
-			prev_mel_freq = mf
 			phase_mel += mf / float(SR)
-			# Soft envelope: slow attack, long sustain, gentle release
-			var mel_env: float = _adsr(epos * eighth, eighth, 0.02, 0.08, 0.6, 0.05)
-			mix += _tri(phase_mel) * mel_env * 0.14
-		elif prev_mel_freq > 0.0:
-			# Let note tail ring out briefly
-			phase_mel += prev_mel_freq / float(SR)
-			var tail: float = maxf(0.0, 1.0 - epos * 4.0) * 0.04
-			mix += _tri(phase_mel) * tail
-		# --- Triangle bass (deep, warm) ---
-		var bf: float = bass_notes[bidx]
-		phase_bass += bf / float(SR)
-		var bass_env: float = _adsr(bpos * beat_len, beat_len, 0.015, 0.1, 0.65, 0.08)
-		mix += _tri(phase_bass) * bass_env * 0.16
-		# --- Sine pad chords (ethereal, gentle) ---
-		phase_p1 += pad_roots[chord_idx] / float(SR)
-		phase_p2 += pad_thirds[chord_idx] / float(SR)
-		phase_p3 += pad_fifths[chord_idx] / float(SR)
-		# Slow breathing volume via LFO
-		var pad_vol: float = 0.04 + 0.015 * sin(t * 0.3 * TWO_PI)
-		mix += _sine(phase_p1) * pad_vol
-		mix += _sine(phase_p2) * pad_vol * 0.7
-		mix += _sine(phase_p3) * pad_vol * 0.5
-		# --- Subtle shimmer: high-freq sine arpeggio ---
-		var shimmer_idx: int = int(t / 0.375) % 4
-		var shimmer_freqs: Array[float] = [880.0, 1046.5, 1318.5, 1046.5]
-		var shimmer_phase: float = t * shimmer_freqs[shimmer_idx] / float(SR) * float(SR)
-		var shimmer_env: float = maxf(0.0, 1.0 - fmod(t / 0.375, 1.0) * 2.5)
-		mix += _sine(shimmer_phase / float(SR) * shimmer_freqs[shimmer_idx]) * shimmer_env * 0.018
-		# --- Clean output ---
-		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.5)
+			# Very short staccato: fast attack, fast decay, low sustain
+			var note_t: float = spos * sixteenth
+			var mel_env: float = _adsr(note_t, sixteenth, 0.003, 0.04, 0.25, 0.02)
+			mix += _square(phase_mel, 0.5) * mel_env * 0.11
+		# --- Pulse arpeggio (25% duty, softer accompaniment) ---
+		phase_arp += arp_freq / float(SR)
+		var arp_note_t: float = fmod(si, 1.0) * sixteenth
+		var arp_env: float = _adsr(arp_note_t, sixteenth, 0.002, 0.03, 0.15, 0.02)
+		mix += _pulse(phase_arp, 0.25) * arp_env * 0.06
+		# --- Output (moderate master volume) ---
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.55)
 	return _make_stream(data, true)
 
 # ============================================================
