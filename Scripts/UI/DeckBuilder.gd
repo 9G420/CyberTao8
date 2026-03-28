@@ -462,11 +462,11 @@ func _show_card_detail(cd: CardData) -> void:
 	var r_idx: int = clampi(cd.rarity, 0, 2)
 
 	var cost_str: String = "X(全算力)" if cd.cost == -1 else str(cd.cost)
-	var header := "[color=" + rarity_colors[r_idx] + "]【" + cd.card_name + "】[/color]"
+	var header: String = "[color=" + rarity_colors[r_idx] + "]【" + cd.card_name + "】[/color]"
 	header += " [color=gray]" + rarity_names[r_idx] + " " + cd.get_type_text() + " | "
 	header += cd.get_yinyang_text() + " | " + cost_str + "算力[/color]\n"
 
-	var desc := "[color=white]" + cd.description + "[/color]"
+	var desc: String = "[color=white]" + cd.description + "[/color]"
 
 	# 关键词
 	var kw := cd.get_keywords_text()

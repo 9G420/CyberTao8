@@ -144,7 +144,7 @@ static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 	elif variant == 1:
 		# === 雷符：道教雷法电击 ===
 		# 主雷（粗锯齿 Z 形，2px宽）
-		var thunder_pts := [Vector2i(22, 8), Vector2i(34, 20), Vector2i(26, 24),
+		var thunder_pts: Array[Vector2i] = [Vector2i(22, 8), Vector2i(34, 20), Vector2i(26, 24),
 							Vector2i(40, 40), Vector2i(32, 44), Vector2i(38, 54)]
 		for idx in range(thunder_pts.size() - 1):
 			_draw_pixel_line(img, thunder_pts[idx], thunder_pts[idx + 1], NEON_PINK)
@@ -448,7 +448,7 @@ static func _draw_spell_motif(img: Image, seed_val: int) -> void:
 			var a := float(i) * TAU / 5.0 - PI / 2.0
 			star_pts.append(Vector2i(cx + int(cos(a) * 20.0), cy + int(sin(a) * 20.0)))
 		# 画五角星（跳一个连）
-		var star_colors := [EVA_RED, NEON_GREEN, EVA_CYAN, EVA_ORANGE, EVA_PURPLE]
+		var star_colors: Array[Color] = [EVA_RED, NEON_GREEN, EVA_CYAN, EVA_ORANGE, EVA_PURPLE]
 		for i in range(5):
 			var next := (i + 2) % 5
 			_draw_pixel_line(img, star_pts[i], star_pts[next], star_colors[i])
@@ -546,10 +546,10 @@ static func _draw_power_motif(img: Image, seed_val: int) -> void:
 		_draw_circle(img, cx, cy, 3, Color(1.0, 0.85, 0.3))
 		_draw_circle(img, cx, cy, 1, Color(1.0, 0.95, 0.7))
 		# 四方位三爻卦符
-		var trigram_positions := [Vector2i(cx, cy - 20), Vector2i(cx, cy + 20),
+		var trigram_positions: Array[Vector2i] = [Vector2i(cx, cy - 20), Vector2i(cx, cy + 20),
 								  Vector2i(cx - 20, cy), Vector2i(cx + 20, cy)]
 		for ti in range(4):
-			var tp := trigram_positions[ti]
+			var tp: Vector2i = trigram_positions[ti]
 			for line_idx in range(3):
 				var ly := tp.y - 2 + line_idx * 2
 				var broken := (int(_hash_float(seed_val + ti * 3 + line_idx) * 2.0) == 0)
@@ -1565,7 +1565,7 @@ static func _draw_bg_tower_interior(img: Image) -> void:
 			_draw_line_v(img, col, row, row + 11, Color(0.04, 0.03, 0.06))
 
 	# Glowing runes on walls
-	var rune_positions := [Vector2i(40, 50), Vector2i(100, 30), Vector2i(180, 60),
+	var rune_positions: Array[Vector2i] = [Vector2i(40, 50), Vector2i(100, 30), Vector2i(180, 60),
 							Vector2i(250, 40), Vector2i(290, 55)]
 	for pos in rune_positions:
 		_draw_circle(img, pos.x, pos.y, 3, EVA_PURPLE)
