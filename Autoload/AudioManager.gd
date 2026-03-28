@@ -67,10 +67,20 @@ func _load_ai_bgm() -> void:
 		if ResourceLoader.exists(path):
 			var stream = load(path)
 			if stream is AudioStream:
+				# 确保MP3循环播放
+				if stream is AudioStreamMP3:
+					stream.loop = true
 				_ai_bgm_cache[bgm_id] = stream
 
 ## 预生成所有程序化音效和BGM（作为回退）
 func _generate_all_audio() -> void:
+	# BGM优先生成，确保背景音乐不受SFX错误影响
+	_bgm_cache["battle"] = SFXGenerator.generate_battle_bgm_loop()
+	_bgm_cache["title"] = SFXGenerator.generate_title_bgm_loop()
+	_bgm_cache["map"] = SFXGenerator.generate_map_bgm_loop()
+	_bgm_cache["boss"] = SFXGenerator.generate_boss_bgm_loop()
+	_bgm_cache["opening"] = SFXGenerator.generate_opening_bgm_loop()
+	# SFX生成
 	_sfx_cache["attack"] = SFXGenerator.generate_attack_sfx()
 	_sfx_cache["defense"] = SFXGenerator.generate_defense_sfx()
 	_sfx_cache["draw"] = SFXGenerator.generate_draw_sfx()
@@ -85,15 +95,10 @@ func _generate_all_audio() -> void:
 	_sfx_cache["heal"] = SFXGenerator.generate_heal_sfx()
 	_sfx_cache["card_hover"] = SFXGenerator.generate_card_hover_sfx()
 	_sfx_cache["transition"] = SFXGenerator.generate_transition_sfx()
-	_bgm_cache["battle"] = SFXGenerator.generate_battle_bgm_loop()
-	_bgm_cache["title"] = SFXGenerator.generate_title_bgm_loop()
-	_bgm_cache["map"] = SFXGenerator.generate_map_bgm_loop()
-	_bgm_cache["boss"] = SFXGenerator.generate_boss_bgm_loop()
 	_sfx_cache["typing"] = SFXGenerator.generate_typing_sfx()
 	_sfx_cache["spell"] = SFXGenerator.generate_spell_sfx()
 	_sfx_cache["boss_attack"] = SFXGenerator.generate_boss_attack_sfx()
 	_sfx_cache["boss_hurt"] = SFXGenerator.generate_boss_hurt_sfx()
-	_bgm_cache["opening"] = SFXGenerator.generate_opening_bgm_loop()
 
 ## 播放BGM — AI音频优先，程序化回退
 func play_bgm_generated(bgm_id: String, volume_db: float = -8.0) -> void:
