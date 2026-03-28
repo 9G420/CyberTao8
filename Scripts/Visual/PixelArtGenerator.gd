@@ -75,9 +75,9 @@ static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_va
 		4: _draw_power_motif(img, seed_val)
 
 	# === Seed-based unique color tint (makes same variant look different) ===
-	var tint_r: float = _hash_float(seed_val + 1111) * 0.25 - 0.125
-	var tint_g: float = _hash_float(seed_val + 2222) * 0.2 - 0.1
-	var tint_b: float = _hash_float(seed_val + 3333) * 0.25 - 0.125
+	var tint_r: float = _hash_float(seed_val + 1111) * 0.4 - 0.2
+	var tint_g: float = _hash_float(seed_val + 2222) * 0.3 - 0.15
+	var tint_b: float = _hash_float(seed_val + 3333) * 0.4 - 0.2
 	for ty in range(64):
 		for tx in range(64):
 			var c: Color = img.get_pixel(tx, ty)
@@ -149,22 +149,30 @@ static func _draw_border_glow(img: Image, w: int, h_val: int, color: Color, rari
 
 static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 	var variant := int(_hash_float(seed_val) * 3.0)
+	# Parametric: unique color tint per card
+	var sa1 := _hash_float(seed_val + 401)
+	var sa2 := _hash_float(seed_val + 402)
+	var sa3 := _hash_float(seed_val + 403)
+	var main_cyan := Color(sa1 * 0.3, 0.6 + sa2 * 0.4, 0.7 + sa3 * 0.3)
+	var main_pink := Color(0.8 + sa1 * 0.2, 0.1 + sa2 * 0.3, 0.3 + sa3 * 0.4)
+	var ox: int = int((sa1 - 0.5) * 4.0)  # slight position offset
+	var oy: int = int((sa2 - 0.5) * 4.0)
 	if variant == 0:
 		# === 道剑：赛博符文之刃 ===
 		# 剑身（3px宽，渐变青→白）
 		for i in range(28):
 			var t := float(i) / 28.0
-			var blade_col := EVA_CYAN.lerp(Color(0.8, 0.95, 1.0), t * 0.5)
-			_set_pixel_safe(img, 31, 6 + i, blade_col.darkened(0.2))
-			_set_pixel_safe(img, 32, 6 + i, blade_col)
-			_set_pixel_safe(img, 33, 6 + i, blade_col.darkened(0.2))
+			var blade_col := main_cyan.lerp(Color(0.8, 0.95, 1.0), t * 0.5)
+			_set_pixel_safe(img, 31 + ox, 6 + i + oy, blade_col.darkened(0.2))
+			_set_pixel_safe(img, 32 + ox, 6 + i + oy, blade_col)
+			_set_pixel_safe(img, 33 + ox, 6 + i + oy, blade_col.darkened(0.2))
 		# 剑尖（三角形）
-		_set_pixel_safe(img, 32, 4, Color(0.7, 1.0, 1.0))
-		_set_pixel_safe(img, 32, 5, EVA_CYAN)
-		_set_pixel_safe(img, 31, 5, EVA_CYAN.darkened(0.3))
-		_set_pixel_safe(img, 33, 5, EVA_CYAN.darkened(0.3))
+		_set_pixel_safe(img, 32 + ox, 4 + oy, Color(0.7, 1.0, 1.0))
+		_set_pixel_safe(img, 32 + ox, 5 + oy, main_cyan)
+		_set_pixel_safe(img, 31 + ox, 5 + oy, main_cyan.darkened(0.3))
+		_set_pixel_safe(img, 33 + ox, 5 + oy, main_cyan.darkened(0.3))
 		# 剑尖发光晕
-		_draw_circle(img, 32, 5, 3, Color(0.3, 0.8, 1.0, 0.25))
+		_draw_circle(img, 32 + ox, 5 + oy, 3, Color(main_cyan.r * 0.5, main_cyan.g, main_cyan.b, 0.25))
 		# 护手（道教八卦横条 + 橙色）
 		_draw_line_h(img, 25, 39, 34, EVA_ORANGE)
 		_draw_line_h(img, 25, 39, 35, EVA_ORANGE)
@@ -261,24 +269,34 @@ static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 
 static func _draw_defense_motif(img: Image, seed_val: int) -> void:
 	var variant := int(_hash_float(seed_val) * 3.0)
+	# Parametric: unique color & position per card
+	var sd1 := _hash_float(seed_val + 501)
+	var sd2 := _hash_float(seed_val + 502)
+	var sd3 := _hash_float(seed_val + 503)
+	var shield_col := Color(sd1 * 0.3, 0.5 + sd2 * 0.5, 0.6 + sd3 * 0.4)
+	var d_cx: int = 32 + int((sd1 - 0.5) * 4.0)
+	var d_cy: int = 30 + int((sd2 - 0.5) * 4.0)
+	var d_scale: float = 0.85 + sd3 * 0.3
 	if variant == 0:
 		# === 八卦盾：道教八卦阵防御 ===
 		# 外圈（双层环，粗实线）
+		var shield_r: int = int(18.0 * d_scale)
 		for a_step in range(48):
 			var a := float(a_step) * TAU / 48.0
-			for r in [16, 17, 18]:
-				var px := 32 + int(cos(a) * float(r))
-				var py := 30 + int(sin(a) * float(r))
-				_set_pixel_safe(img, px, py, EVA_CYAN.darkened(0.2))
+			for r in [shield_r - 2, shield_r - 1, shield_r]:
+				var px := d_cx + int(cos(a) * float(r))
+				var py := d_cy + int(sin(a) * float(r))
+				_set_pixel_safe(img, px, py, shield_col.darkened(0.2))
 		# 八卦线段（8条辐射线）
-		for i in range(8):
-			var a := float(i) * TAU / 8.0
-			for r in range(8, 16):
-				var px := 32 + int(cos(a) * float(r))
-				var py := 30 + int(sin(a) * float(r))
-				_set_pixel_safe(img, px, py, EVA_CYAN.darkened(0.5))
+		var n_lines: int = 6 + int(sd3 * 4.0)  # 6-10 lines
+		for i in range(n_lines):
+			var a := float(i) * TAU / float(n_lines) + sd1 * 0.5
+			for r in range(int(8.0 * d_scale), shield_r - 2):
+				var px := d_cx + int(cos(a) * float(r))
+				var py := d_cy + int(sin(a) * float(r))
+				_set_pixel_safe(img, px, py, shield_col.darkened(0.5))
 		# 中心太极圆
-		_draw_circle(img, 32, 30, 7, EVA_DARK_BLUE)
+		_draw_circle(img, d_cx, d_cy, int(7.0 * d_scale), EVA_DARK_BLUE)
 		# 太极 S 曲线
 		for s_step in range(20):
 			var t := float(s_step) / 20.0
@@ -359,8 +377,13 @@ static func _draw_defense_motif(img: Image, seed_val: int) -> void:
 
 static func _draw_summon_motif(img: Image, seed_val: int) -> void:
 	var creature := int(_hash_float(seed_val) * 4.0)
+	# Parametric: unique summoning circle colors
+	var ss1 := _hash_float(seed_val + 601)
+	var ss2 := _hash_float(seed_val + 602)
+	var ss3 := _hash_float(seed_val + 603)
+	var circle_col := Color(0.15 + ss1 * 0.3, 0.02 + ss2 * 0.15, 0.2 + ss3 * 0.3, 0.4)
 	# Summoning circle base
-	_draw_circle(img, 32, 40, 18, Color(0.2, 0.05, 0.3, 0.4))
+	_draw_circle(img, 32, 40, 18, circle_col)
 	_draw_circle(img, 32, 40, 17, Color(0.0, 0.0, 0.0, 0.0))
 	# Outer ring
 	for angle_step in range(36):
@@ -457,8 +480,13 @@ static func _draw_summon_motif(img: Image, seed_val: int) -> void:
 
 static func _draw_spell_motif(img: Image, seed_val: int) -> void:
 	var variant := int(_hash_float(seed_val) * 3.0)
-	var cx := 32
-	var cy := 30
+	# Parametric: unique spell colors and positions
+	var sp1 := _hash_float(seed_val + 701)
+	var sp2 := _hash_float(seed_val + 702)
+	var sp3 := _hash_float(seed_val + 703)
+	var cx: int = 32 + int((sp1 - 0.5) * 4.0)
+	var cy: int = 30 + int((sp2 - 0.5) * 4.0)
+	var spell_scale: float = 0.85 + sp3 * 0.3
 	if variant == 0:
 		# === 太极旋涡：阴阳双螺旋法阵 ===
 		# 外圈法阵环
@@ -562,102 +590,215 @@ static func _draw_spell_motif(img: Image, seed_val: int) -> void:
 		_draw_rect_area(img, 28, 24, 8, 8, Color(0.5, 0.2, 0.8, 0.15))
 
 static func _draw_power_motif(img: Image, seed_val: int) -> void:
-	# === 金丹曼荼罗：道教修炼核心 ===
-	var cx := 32
-	var cy := 30
-	var variant := int(_hash_float(seed_val) * 2.0)
+	# 6 variants with parametric variation per seed
+	var variant := int(_hash_float(seed_val) * 6.0)
+	# Parametric values unique per card
+	var s1 := _hash_float(seed_val + 301)
+	var s2 := _hash_float(seed_val + 302)
+	var s3 := _hash_float(seed_val + 303)
+	var s4 := _hash_float(seed_val + 304)
+	var s5 := _hash_float(seed_val + 305)
+	var cx: int = 32 + int((s1 - 0.5) * 6.0)
+	var cy: int = 30 + int((s2 - 0.5) * 6.0)
+	# Unique primary color for this card (warm tones for power)
+	var pri_col := Color(
+		0.7 + s3 * 0.3,
+		0.4 + s4 * 0.45,
+		0.05 + s5 * 0.25)
+
 	if variant == 0:
-		# === 金丹放射：层层金光曼荼罗 ===
-		# 最外层光环（24 颗金点）
-		for i in range(24):
-			var a := float(i) * TAU / 24.0
-			var px := cx + int(cos(a) * 24.0)
-			var py := cy + int(sin(a) * 24.0)
-			_set_pixel_safe(img, px, py, EVA_ORANGE)
-		# 外圈辐射线（12条，粗）
-		for i in range(12):
-			var a := float(i) * TAU / 12.0
-			for r in range(10, 22):
+		# === 金丹放射 (parametric) ===
+		var n_outer: int = 16 + int(s3 * 12.0)  # 16-28 outer dots
+		var n_rays: int = 8 + int(s4 * 8.0)     # 8-16 rays
+		var outer_r: float = 20.0 + s5 * 6.0
+		for i in range(n_outer):
+			var a := float(i) * TAU / float(n_outer)
+			var px := cx + int(cos(a) * outer_r)
+			var py := cy + int(sin(a) * outer_r)
+			_set_pixel_safe(img, px, py, pri_col)
+		for i in range(n_rays):
+			var a := float(i) * TAU / float(n_rays) + s1 * 0.5
+			for r in range(8, int(outer_r) - 2):
 				var px := cx + int(cos(a) * float(r))
 				var py := cy + int(sin(a) * float(r))
-				var col := EVA_ORANGE.lerp(Color(1.0, 0.85, 0.3), float(r - 10) / 12.0)
-				col.a = 0.6 + 0.3 * (1.0 - float(r - 10) / 12.0)
-				_set_pixel_safe(img, px, py, col)
-		# 中层六芒星
-		for i in range(6):
-			var a1 := float(i) * TAU / 6.0
-			var a2 := float(i + 2) * TAU / 6.0
-			var p1 := Vector2i(cx + int(cos(a1) * 14.0), cy + int(sin(a1) * 14.0))
-			var p2 := Vector2i(cx + int(cos(a2) * 14.0), cy + int(sin(a2) * 14.0))
-			_draw_pixel_line(img, p1, p2, Color(1.0, 0.75, 0.2, 0.7))
-		# 内层圆环
-		for a_step in range(36):
-			var a := float(a_step) * TAU / 36.0
-			var px := cx + int(cos(a) * 8.0)
-			var py := cy + int(sin(a) * 8.0)
-			_set_pixel_safe(img, px, py, Color(1.0, 0.85, 0.3))
-		# 金丹核心（多层发光）
-		_draw_circle(img, cx, cy, 5, Color(0.8, 0.6, 0.1))
-		_draw_circle(img, cx, cy, 3, Color(1.0, 0.85, 0.3))
-		_draw_circle(img, cx, cy, 1, Color(1.0, 0.95, 0.7))
-		# 四方位三爻卦符
-		var trigram_positions: Array[Vector2i] = [Vector2i(cx, cy - 20), Vector2i(cx, cy + 20),
-								  Vector2i(cx - 20, cy), Vector2i(cx + 20, cy)]
-		for ti in range(4):
-			var tp: Vector2i = trigram_positions[ti]
-			for line_idx in range(3):
-				var ly := tp.y - 2 + line_idx * 2
-				var broken := (int(_hash_float(seed_val + ti * 3 + line_idx) * 2.0) == 0)
-				if broken:
-					_draw_line_h(img, tp.x - 3, tp.x - 1, ly, EVA_ORANGE)
-					_draw_line_h(img, tp.x + 1, tp.x + 3, ly, EVA_ORANGE)
-				else:
-					_draw_line_h(img, tp.x - 3, tp.x + 3, ly, EVA_ORANGE)
-	else:
-		# === 天眼觉醒：竖瞳 + 灵能爆发 ===
-		# 外层散射能量线
-		for i in range(16):
-			var a := float(i) * TAU / 16.0
-			for r in range(18, 26):
+				var t := float(r - 8) / (outer_r - 10.0)
+				_set_pixel_safe(img, px, py, Color(pri_col.r, pri_col.g, pri_col.b, 0.7 - t * 0.4))
+		# Star shape (variable points)
+		var star_n: int = 4 + int(s2 * 4.0)  # 4-8 pointed star
+		for i in range(star_n):
+			var a1 := float(i) * TAU / float(star_n)
+			var a2 := float(i + 2) * TAU / float(star_n)
+			var p1 := Vector2i(cx + int(cos(a1) * 12.0), cy + int(sin(a1) * 12.0))
+			var p2 := Vector2i(cx + int(cos(a2) * 12.0), cy + int(sin(a2) * 12.0))
+			_draw_pixel_line(img, p1, p2, Color(pri_col.r, pri_col.g * 0.8, pri_col.b, 0.7))
+		_draw_circle(img, cx, cy, 4 + int(s1 * 2.0), Color(pri_col.r * 0.8, pri_col.g * 0.6, 0.1))
+		_draw_circle(img, cx, cy, 2, Color(1.0, 0.95, 0.7))
+
+	elif variant == 1:
+		# === 天眼觉醒 (parametric) ===
+		var eye_rx: float = 14.0 + s3 * 8.0  # 14-22 horizontal radius
+		var eye_ry: float = 6.0 + s4 * 8.0   # 6-14 vertical radius
+		var n_lashes: int = 12 + int(s5 * 8.0)
+		# Iris color unique per card
+		var iris_col := Color(0.3 + s1 * 0.5, 0.1 + s2 * 0.3, 0.5 + s3 * 0.4)
+		# Energy lines
+		for i in range(n_lashes):
+			var a := float(i) * TAU / float(n_lashes)
+			for r in range(int(eye_rx) + 2, int(eye_rx) + 8):
 				var px := cx + int(cos(a) * float(r))
-				var py := cy + int(sin(a) * float(r))
-				var intensity := 1.0 - float(r - 18) / 8.0
-				_set_pixel_safe(img, px, py, Color(1.0, 0.8, 0.2, intensity * 0.5))
-		# 眼眶（椭圆形，水平长）
+				var py := cy + int(sin(a) * float(r) * (eye_ry / eye_rx))
+				_set_pixel_safe(img, px, py, Color(pri_col.r, pri_col.g, pri_col.b, 0.5 - float(r - int(eye_rx)) * 0.06))
+		# Eye outline
 		for a_step in range(48):
 			var a := float(a_step) * TAU / 48.0
-			var px := cx + int(cos(a) * 18.0)
-			var py := cy + int(sin(a) * 10.0)
-			_set_pixel_safe(img, px, py, Color(1.0, 0.85, 0.3))
-			# 内层
-			var px2 := cx + int(cos(a) * 16.0)
-			var py2 := cy + int(sin(a) * 8.0)
-			_set_pixel_safe(img, px2, py2, EVA_ORANGE)
-		# 虹膜
-		_draw_circle(img, cx, cy, 6, EVA_PURPLE)
-		_draw_circle(img, cx, cy, 4, Color(0.6, 0.2, 0.8))
-		# 竖瞳
-		for i in range(8):
-			_set_pixel_safe(img, cx, cy - 4 + i, Color(0.1, 0.05, 0.15))
-			_set_pixel_safe(img, cx + 1, cy - 3 + i, Color(0.1, 0.05, 0.15, 0.5))
-		# 瞳孔高光
+			_set_pixel_safe(img, cx + int(cos(a) * eye_rx), cy + int(sin(a) * eye_ry), pri_col)
+			_set_pixel_safe(img, cx + int(cos(a) * (eye_rx - 2.0)), cy + int(sin(a) * (eye_ry - 2.0)), Color(pri_col.r * 0.8, pri_col.g * 0.7, pri_col.b * 0.6))
+		# Iris
+		var iris_r: int = 4 + int(s5 * 3.0)
+		_draw_circle(img, cx, cy, iris_r, iris_col)
+		_draw_circle(img, cx, cy, iris_r - 2, iris_col.darkened(0.3))
+		# Pupil (vertical or horizontal or round)
+		var pupil_type: int = int(s1 * 3.0)
+		if pupil_type == 0:  # vertical
+			for i in range(iris_r * 2 - 2):
+				_set_pixel_safe(img, cx, cy - iris_r + 1 + i, Color(0.05, 0.02, 0.1))
+		elif pupil_type == 1:  # horizontal
+			for i in range(iris_r - 1):
+				_set_pixel_safe(img, cx - i, cy, Color(0.05, 0.02, 0.1))
+				_set_pixel_safe(img, cx + i, cy, Color(0.05, 0.02, 0.1))
+		else:  # round
+			_draw_circle(img, cx, cy, 1, Color(0.05, 0.02, 0.1))
 		_set_pixel_safe(img, cx - 1, cy - 2, Color(1.0, 1.0, 0.9))
-		_set_pixel_safe(img, cx + 2, cy + 1, Color(1.0, 0.9, 0.7, 0.6))
-		# 眼角道纹延伸
+
+	elif variant == 2:
+		# === 道之螺旋：旋转能量涡 ===
+		var n_arms: int = 2 + int(s3 * 3.0)  # 2-5 spiral arms
+		var max_r: float = 22.0 + s4 * 6.0
+		var spin := s1 * TAU  # unique rotation offset
+		for arm in range(n_arms):
+			var arm_offset := float(arm) * TAU / float(n_arms) + spin
+			for t in range(40):
+				var angle := arm_offset + float(t) * 0.18
+				var r := 3.0 + float(t) * (max_r / 40.0)
+				var px := cx + int(cos(angle) * r)
+				var py := cy + int(sin(angle) * r)
+				var fade := 1.0 - float(t) / 40.0
+				_set_pixel_safe(img, px, py, Color(pri_col.r, pri_col.g, pri_col.b, fade * 0.8))
+				if t % 3 == 0:
+					_set_pixel_safe(img, px + 1, py, Color(pri_col.r, pri_col.g, pri_col.b, fade * 0.3))
+		_draw_circle(img, cx, cy, 3 + int(s2 * 2.0), pri_col)
+		_draw_circle(img, cx, cy, 1, Color(1.0, 0.95, 0.8))
+		# Outer ring dots
+		for i in range(8):
+			var a := float(i) * TAU / 8.0 + spin
+			var px := cx + int(cos(a) * (max_r + 2.0))
+			var py := cy + int(sin(a) * (max_r + 2.0))
+			_set_pixel_safe(img, px, py, pri_col)
+
+	elif variant == 3:
+		# === 符咒回路：连接节点网络 ===
+		var n_nodes: int = 5 + int(s3 * 4.0)  # 5-9 nodes
+		var nodes: Array[Vector2i] = []
+		for i in range(n_nodes):
+			var nx: int = 8 + int(_hash_float(seed_val + i * 23 + 400) * 48.0)
+			var ny: int = 8 + int(_hash_float(seed_val + i * 37 + 500) * 44.0)
+			nodes.append(Vector2i(nx, ny))
+			var node_r: int = 2 + int(_hash_float(seed_val + i * 41 + 600) * 2.0)
+			_draw_circle(img, nx, ny, node_r, pri_col)
+			_set_pixel_safe(img, nx, ny, Color(1.0, 0.95, 0.8))
+		# Connect nearby nodes with lines
+		for i in range(n_nodes):
+			for j in range(i + 1, n_nodes):
+				var dist := Vector2(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y).length()
+				if dist < 28.0:
+					_draw_pixel_line(img, nodes[i], nodes[j], Color(pri_col.r, pri_col.g, pri_col.b, 0.4))
+		# Central glow
+		_draw_circle(img, cx, cy, 2, Color(pri_col.r, pri_col.g, pri_col.b, 0.3))
+
+	elif variant == 4:
+		# === 阴阳漩涡：大太极 ===
+		var r_main: int = 16 + int(s3 * 6.0)
+		var rotation := s1 * TAU
+		# Main circle outline
+		for a_step in range(64):
+			var a := float(a_step) * TAU / 64.0
+			var px := cx + int(cos(a) * float(r_main))
+			var py := cy + int(sin(a) * float(r_main))
+			_set_pixel_safe(img, px, py, pri_col)
+		# Fill yin/yang halves
+		for dy in range(-r_main, r_main + 1):
+			for dx in range(-r_main, r_main + 1):
+				if dx * dx + dy * dy <= r_main * r_main:
+					var angle := atan2(float(dy), float(dx)) + rotation
+					var half_r := float(r_main) * 0.5
+					var is_yin: bool
+					var dist_to_center := sqrt(float(dx * dx + dy * dy))
+					# S-curve division
+					if dist_to_center < half_r:
+						var sub_a := atan2(float(dy), float(dx)) + rotation
+						is_yin = sin(sub_a) > 0
+					else:
+						is_yin = cos(angle) > 0
+					var base_col: Color
+					if is_yin:
+						base_col = Color(0.08, 0.05, 0.18, 0.6)
+					else:
+						base_col = Color(pri_col.r * 0.4, pri_col.g * 0.4, pri_col.b * 0.3, 0.6)
+					_set_pixel_safe(img, cx + dx, cy + dy, base_col)
+		# Yin-yang eyes
+		var eye_off := int(float(r_main) * 0.4)
+		var eye_a := rotation + PI * 0.5
+		var eye1x := cx + int(cos(eye_a) * float(eye_off))
+		var eye1y := cy + int(sin(eye_a) * float(eye_off))
+		var eye2x := cx - int(cos(eye_a) * float(eye_off))
+		var eye2y := cy - int(sin(eye_a) * float(eye_off))
+		_draw_circle(img, eye1x, eye1y, 2, Color(0.9, 0.85, 0.7))
+		_draw_circle(img, eye2x, eye2y, 2, Color(0.15, 0.1, 0.25))
+		# Outer energy ring
+		for a_step in range(48):
+			var a := float(a_step) * TAU / 48.0
+			var px := cx + int(cos(a) * float(r_main + 4))
+			var py := cy + int(sin(a) * float(r_main + 4))
+			if a_step % 3 != 0:
+				_set_pixel_safe(img, px, py, Color(pri_col.r, pri_col.g, pri_col.b, 0.5))
+
+	else:
+		# === 结晶体：能量晶体 ===
+		var crystal_h: int = 16 + int(s3 * 10.0)
+		var crystal_w: int = 8 + int(s4 * 8.0)
+		var n_facets: int = 4 + int(s5 * 4.0)  # 4-8 facets
+		# Draw crystal shape (diamond-like)
+		for dy in range(-crystal_h, crystal_h + 1):
+			var progress: float = 1.0 - absf(float(dy)) / float(crystal_h)
+			var half_w: int = int(float(crystal_w) * progress)
+			for dx in range(-half_w, half_w + 1):
+				var edge_dist: float = float(half_w - absi(dx)) / float(maxi(half_w, 1))
+				var c := Color(
+					pri_col.r * (0.3 + edge_dist * 0.5),
+					pri_col.g * (0.3 + edge_dist * 0.5),
+					pri_col.b * (0.3 + edge_dist * 0.5),
+					0.6 + edge_dist * 0.3)
+				_set_pixel_safe(img, cx + dx, cy + dy, c)
+		# Facet lines
+		for i in range(n_facets):
+			var fy: int = cy - crystal_h + int(float(i + 1) * float(crystal_h * 2) / float(n_facets + 1))
+			var progress: float = 1.0 - absf(float(fy - cy)) / float(crystal_h)
+			var half_w: int = int(float(crystal_w) * progress)
+			_draw_line_h(img, cx - half_w, cx + half_w, fy, Color(1.0, 1.0, 1.0, 0.3))
+		# Core highlight
+		_set_pixel_safe(img, cx - 1, cy - int(float(crystal_h) * 0.3), Color(1.0, 1.0, 0.95, 0.9))
+		_set_pixel_safe(img, cx, cy - int(float(crystal_h) * 0.3), Color(1.0, 1.0, 0.95, 0.7))
+		# Glow around crystal
 		for i in range(6):
-			_set_pixel_safe(img, cx - 19 - i, cy, Color(1.0, 0.7, 0.2, 0.6 - float(i) * 0.1))
-			_set_pixel_safe(img, cx + 19 + i, cy, Color(1.0, 0.7, 0.2, 0.6 - float(i) * 0.1))
-		# 上下三角道印
-		for i in range(4):
-			_set_pixel_safe(img, cx - i, cy - 12 - i, EVA_ORANGE.darkened(0.2))
-			_set_pixel_safe(img, cx + i, cy - 12 - i, EVA_ORANGE.darkened(0.2))
-			_set_pixel_safe(img, cx - i, cy + 12 + i, EVA_ORANGE.darkened(0.2))
-			_set_pixel_safe(img, cx + i, cy + 12 + i, EVA_ORANGE.darkened(0.2))
-		# 能量粒子
-		for s in range(8):
-			var px := int(_hash_float(seed_val + s * 7) * 50.0) + 7
-			var py := int(_hash_float(seed_val + s * 13) * 50.0) + 7
-			_set_pixel_safe(img, px, py, Color(1.0, 0.9, 0.5, 0.8))
+			var a := float(i) * TAU / 6.0 + s1 * TAU
+			var gx := cx + int(cos(a) * float(crystal_w + 5))
+			var gy := cy + int(sin(a) * float(crystal_h * 0.6 + 3.0))
+			_set_pixel_safe(img, gx, gy, Color(pri_col.r, pri_col.g, pri_col.b, 0.6))
+	# Shared: energy particles (all power variants)
+	for s in range(6 + int(s5 * 6.0)):
+		var px := int(_hash_float(seed_val + s * 7 + 700) * 50.0) + 7
+		var py := int(_hash_float(seed_val + s * 13 + 800) * 50.0) + 7
+		_set_pixel_safe(img, px, py, Color(pri_col.r, pri_col.g, pri_col.b, 0.6))
 
 static func _draw_pixel_line(img: Image, from: Vector2i, to: Vector2i, color: Color) -> void:
 	var dx := absi(to.x - from.x)
