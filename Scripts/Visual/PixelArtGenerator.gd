@@ -1,14 +1,19 @@
 class_name PixelArtGenerator
 extends RefCounted
 
-# === EVA Color Palette ===
-const EVA_PURPLE := Color(0.4, 0.1, 0.6)
-const EVA_ORANGE := Color(0.9, 0.5, 0.1)
-const EVA_RED := Color(0.7, 0.1, 0.15)
-const EVA_CYAN := Color(0.0, 0.8, 0.9)
-const EVA_DARK_BLUE := Color(0.05, 0.05, 0.2)
-const NEON_PINK := Color(1.0, 0.2, 0.5)
-const NEON_GREEN := Color(0.2, 1.0, 0.4)
+# === Enhanced Color Palette (vibrant cyberpunk×Taoist) ===
+const EVA_PURPLE := Color(0.45, 0.12, 0.65)
+const EVA_ORANGE := Color(0.95, 0.55, 0.12)
+const EVA_RED := Color(0.75, 0.12, 0.18)
+const EVA_CYAN := Color(0.05, 0.85, 0.95)
+const EVA_DARK_BLUE := Color(0.06, 0.06, 0.22)
+const NEON_PINK := Color(1.0, 0.25, 0.55)
+const NEON_GREEN := Color(0.25, 1.0, 0.45)
+const GOLD := Color(0.95, 0.82, 0.35)
+const SOFT_WHITE := Color(0.92, 0.92, 0.96)
+
+# Output resolution for card art (drawn at 64, upscaled to this)
+const CARD_ART_SIZE := 128
 
 # === Helpers ===
 
@@ -46,27 +51,42 @@ static func _draw_line_v(img: Image, x: int, y1: int, y2: int, color: Color) -> 
 	for py in range(start, end + 1):
 		_set_pixel_safe(img, x, py, color)
 
-# === Card Art Generator (64x64) ===
+# === Card Art Generator (64→128 upscaled with bloom) ===
 
 static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_val: int) -> ImageTexture:
 	var img := _create_image(64, 64)
-	# Background fill based on yin/yang alignment
-	var bg_color: Color
+
+	# --- Gradient background based on yin/yang ---
+	var bg_top: Color
+	var bg_bot: Color
 	match yinyang:
-		0: bg_color = Color(0.15, 0.05, 0.25) # yin - deep purple
-		1: bg_color = Color(0.2, 0.15, 0.05)  # yang - dark gold
-		_: bg_color = Color(0.1, 0.1, 0.12)   # neutral gray
+		0:
+			bg_top = Color(0.18, 0.06, 0.30)
+			bg_bot = Color(0.08, 0.03, 0.16)
+		1:
+			bg_top = Color(0.24, 0.18, 0.06)
+			bg_bot = Color(0.12, 0.08, 0.03)
+		_:
+			bg_top = Color(0.12, 0.12, 0.16)
+			bg_bot = Color(0.06, 0.06, 0.09)
+	# Seed-based tint shift
+	var bg_sr: float = _hash_float(seed_val + 777) * 0.08 - 0.04
+	var bg_sg: float = _hash_float(seed_val + 888) * 0.06 - 0.03
+	var bg_sb: float = _hash_float(seed_val + 999) * 0.08 - 0.04
+	bg_top.r = clampf(bg_top.r + bg_sr, 0.03, 0.35)
+	bg_top.g = clampf(bg_top.g + bg_sg, 0.02, 0.30)
+	bg_top.b = clampf(bg_top.b + bg_sb, 0.03, 0.40)
+	bg_bot.r = clampf(bg_bot.r + bg_sr * 0.5, 0.02, 0.20)
+	bg_bot.g = clampf(bg_bot.g + bg_sg * 0.5, 0.01, 0.15)
+	bg_bot.b = clampf(bg_bot.b + bg_sb * 0.5, 0.02, 0.25)
+	# Draw vertical gradient
+	for y in range(64):
+		var t: float = float(y) / 63.0
+		var row_col := bg_top.lerp(bg_bot, t)
+		for x in range(64):
+			img.set_pixel(x, y, row_col)
 
-	# Seed-based background tint shift (unique per card)
-	var bg_shift_r: float = _hash_float(seed_val + 777) * 0.1 - 0.05
-	var bg_shift_g: float = _hash_float(seed_val + 888) * 0.08 - 0.04
-	var bg_shift_b: float = _hash_float(seed_val + 999) * 0.1 - 0.05
-	bg_color.r = clampf(bg_color.r + bg_shift_r, 0.02, 0.35)
-	bg_color.g = clampf(bg_color.g + bg_shift_g, 0.02, 0.3)
-	bg_color.b = clampf(bg_color.b + bg_shift_b, 0.02, 0.35)
-	_draw_rect_area(img, 0, 0, 64, 64, bg_color)
-
-	# Card-type-specific motif
+	# --- Card-type motif ---
 	match card_type:
 		0: _draw_attack_motif(img, seed_val)
 		1: _draw_defense_motif(img, seed_val)
@@ -74,10 +94,10 @@ static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_va
 		3: _draw_spell_motif(img, seed_val)
 		4: _draw_power_motif(img, seed_val)
 
-	# === Seed-based unique color tint (makes same variant look different) ===
-	var tint_r: float = _hash_float(seed_val + 1111) * 0.4 - 0.2
-	var tint_g: float = _hash_float(seed_val + 2222) * 0.3 - 0.15
-	var tint_b: float = _hash_float(seed_val + 3333) * 0.4 - 0.2
+	# --- Subtle per-card color tint (preserves uniqueness) ---
+	var tint_r: float = _hash_float(seed_val + 1111) * 0.24 - 0.12
+	var tint_g: float = _hash_float(seed_val + 2222) * 0.18 - 0.09
+	var tint_b: float = _hash_float(seed_val + 3333) * 0.24 - 0.12
 	for ty in range(64):
 		for tx in range(64):
 			var c: Color = img.get_pixel(tx, ty)
@@ -87,65 +107,98 @@ static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_va
 				c.b = clampf(c.b + tint_b, 0.0, 1.0)
 				img.set_pixel(tx, ty, c)
 
-	# === Seed-based unique accent marks ===
-	var mark_col := Color(
-		_hash_float(seed_val + 4444) * 0.5 + 0.4,
-		_hash_float(seed_val + 5555) * 0.5 + 0.3,
-		_hash_float(seed_val + 6666) * 0.5 + 0.4, 0.55)
-	# Unique decorative pixels at hash-determined positions
-	for mi in range(8):
-		var mx: int = int(_hash_float(seed_val + mi * 17 + 100) * 52.0) + 6
-		var my: int = int(_hash_float(seed_val + mi * 31 + 200) * 52.0) + 6
-		_set_pixel_safe(img, mx, my, mark_col)
-		if mi < 4:
-			_set_pixel_safe(img, mx + 1, my, Color(mark_col.r, mark_col.g, mark_col.b, 0.3))
-	# Unique accent line (horizontal or vertical based on seed)
-	var line_orient: float = _hash_float(seed_val + 7777)
-	var line_pos: int = int(_hash_float(seed_val + 8888) * 44.0) + 10
-	var line_start: int = int(_hash_float(seed_val + 9999) * 20.0) + 6
-	var line_len: int = int(_hash_float(seed_val + 1010) * 18.0) + 10
-	var line_col := Color(mark_col.r, mark_col.g, mark_col.b, 0.3)
-	if line_orient < 0.5:
-		_draw_line_h(img, line_start, line_start + line_len, line_pos, line_col)
-	else:
-		_draw_line_v(img, line_pos, line_start, line_start + line_len, line_col)
-	# Corner accent (unique position)
-	var corner_type: int = int(_hash_float(seed_val + 1212) * 4.0)
-	var cx_corner: int = 6 if corner_type < 2 else 54
-	var cy_corner: int = 6 if (corner_type % 2 == 0) else 54
-	_set_pixel_safe(img, cx_corner, cy_corner, mark_col)
-	_set_pixel_safe(img, cx_corner + 1, cy_corner, mark_col)
-	_set_pixel_safe(img, cx_corner, cy_corner + 1, mark_col)
+	# --- Upscale to 128×128 (crisp pixel art) ---
+	img.resize(CARD_ART_SIZE, CARD_ART_SIZE, Image.INTERPOLATE_NEAREST)
 
-	# Scanlines for retro feel (every other row dimmed)
-	for y in range(0, 64, 2):
-		for x in range(64):
-			var c := img.get_pixel(x, y)
-			img.set_pixel(x, y, c.darkened(0.15))
+	# --- Bloom / soft glow pass at high res ---
+	_apply_bloom(img)
 
-	# Rarity border glow
+	# --- Rarity border glow (at 128 res — wider & softer) ---
 	var glow_color: Color
 	match rarity:
-		0: glow_color = Color(0.4, 0.4, 0.4, 0.6)
-		1: glow_color = Color(0.2, 0.4, 1.0, 0.7)
-		_: glow_color = Color(0.6, 0.15, 0.9, 0.8)
-	# Tint the glow color slightly per-card too
-	glow_color.r = clampf(glow_color.r + tint_r * 0.5, 0.0, 1.0)
-	glow_color.g = clampf(glow_color.g + tint_g * 0.5, 0.0, 1.0)
-	glow_color.b = clampf(glow_color.b + tint_b * 0.5, 0.0, 1.0)
-	_draw_border_glow(img, 64, 64, glow_color, rarity)
+		0: glow_color = Color(0.45, 0.45, 0.50, 0.55)
+		1: glow_color = Color(0.25, 0.50, 1.0, 0.70)
+		_: glow_color = Color(0.65, 0.20, 0.95, 0.80)
+	glow_color.r = clampf(glow_color.r + tint_r * 0.3, 0.0, 1.0)
+	glow_color.g = clampf(glow_color.g + tint_g * 0.3, 0.0, 1.0)
+	glow_color.b = clampf(glow_color.b + tint_b * 0.3, 0.0, 1.0)
+	_draw_border_glow_hires(img, glow_color, rarity)
+
+	# --- Subtle vignette (darken corners) ---
+	_apply_vignette(img)
 
 	return ImageTexture.create_from_image(img)
 
-static func _draw_border_glow(img: Image, w: int, h_val: int, color: Color, rarity: int) -> void:
-	var thickness := 1 + rarity
+static func _draw_border_glow_hires(img: Image, color: Color, rarity: int) -> void:
+	var sz: int = img.get_width()
+	var thickness: int = 3 + rarity * 2  # 3/5/7 pixels at 128 res
 	for t in range(thickness):
-		var alpha_mult := 1.0 - float(t) / float(thickness + 1)
+		var progress: float = float(t) / float(thickness)
+		var alpha_mult: float = 1.0 - progress * progress  # quadratic falloff
 		var c := Color(color.r, color.g, color.b, color.a * alpha_mult)
-		_draw_line_h(img, t, w - 1 - t, t, c)
-		_draw_line_h(img, t, w - 1 - t, h_val - 1 - t, c)
-		_draw_line_v(img, t, t, h_val - 1 - t, c)
-		_draw_line_v(img, w - 1 - t, t, h_val - 1 - t, c)
+		_draw_line_h(img, t, sz - 1 - t, t, c)
+		_draw_line_h(img, t, sz - 1 - t, sz - 1 - t, c)
+		_draw_line_v(img, t, t, sz - 1 - t, c)
+		_draw_line_v(img, sz - 1 - t, t, sz - 1 - t, c)
+	# Inner highlight line (1px inside border)
+	var hi := Color(color.r * 0.6 + 0.4, color.g * 0.6 + 0.4, color.b * 0.6 + 0.4, 0.2)
+	var inn: int = thickness
+	_draw_line_h(img, inn, sz - 1 - inn, inn, hi)
+	_draw_line_h(img, inn, sz - 1 - inn, sz - 1 - inn, hi)
+
+static func _apply_bloom(img: Image) -> void:
+	# Collect bright pixels and add soft glow around them
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var bloom_threshold: float = 0.55
+	var bloom_radius: int = 3
+	# Collect bright pixel positions (sample every 2nd pixel for performance)
+	var bright_spots: Array[Vector2i] = []
+	for y in range(0, h, 2):
+		for x in range(0, w, 2):
+			var c: Color = img.get_pixel(x, y)
+			var lum: float = c.r * 0.299 + c.g * 0.587 + c.b * 0.114
+			if lum > bloom_threshold and c.a > 0.3:
+				bright_spots.append(Vector2i(x, y))
+	# Apply soft glow
+	for spot in bright_spots:
+		var src: Color = img.get_pixel(spot.x, spot.y)
+		for dy in range(-bloom_radius, bloom_radius + 1):
+			for dx in range(-bloom_radius, bloom_radius + 1):
+				if dx == 0 and dy == 0:
+					continue
+				var nx: int = spot.x + dx
+				var ny: int = spot.y + dy
+				if nx >= 0 and nx < w and ny >= 0 and ny < h:
+					var dist: float = sqrt(float(dx * dx + dy * dy))
+					if dist <= float(bloom_radius):
+						var intensity: float = (1.0 - dist / float(bloom_radius)) * 0.15
+						var existing: Color = img.get_pixel(nx, ny)
+						existing.r = clampf(existing.r + src.r * intensity, 0.0, 1.0)
+						existing.g = clampf(existing.g + src.g * intensity, 0.0, 1.0)
+						existing.b = clampf(existing.b + src.b * intensity, 0.0, 1.0)
+						img.set_pixel(nx, ny, existing)
+
+static func _apply_vignette(img: Image) -> void:
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var cx: float = float(w) * 0.5
+	var cy: float = float(h) * 0.5
+	var max_dist: float = sqrt(cx * cx + cy * cy)
+	# Only process edge region (inner 60% is untouched)
+	for y in range(h):
+		for x in range(w):
+			var dx: float = float(x) - cx
+			var dy: float = float(y) - cy
+			var dist: float = sqrt(dx * dx + dy * dy)
+			var norm: float = dist / max_dist
+			if norm > 0.6:
+				var darken: float = (norm - 0.6) * 0.5  # up to 0.2 darkening at corners
+				var c: Color = img.get_pixel(x, y)
+				c.r = clampf(c.r - darken * c.r, 0.0, 1.0)
+				c.g = clampf(c.g - darken * c.g, 0.0, 1.0)
+				c.b = clampf(c.b - darken * c.b, 0.0, 1.0)
+				img.set_pixel(x, y, c)
 
 static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 	var variant := int(_hash_float(seed_val) * 3.0)
@@ -819,7 +872,7 @@ static func _draw_pixel_line(img: Image, from: Vector2i, to: Vector2i, color: Co
 		if e2 < dx:
 			err += dx
 			cy += sy
-# === Character Sprite Generator (48x64) ===
+# === Character Sprite Generator (48x64 → 96x128 upscaled) ===
 
 static func generate_character_sprite(char_type: String, frame: int) -> ImageTexture:
 	var img := _create_image(48, 64)
@@ -844,6 +897,8 @@ static func generate_character_sprite(char_type: String, frame: int) -> ImageTex
 
 	# 16bit后处理: 自动描边 + 边缘高光 + 阴影
 	_enhance_16bit(img)
+	# Upscale to 96×128 for crisp high-res pixel art
+	img.resize(96, 128, Image.INTERPOLATE_NEAREST)
 	return ImageTexture.create_from_image(img)
 
 ## 16bit风格后处理: 描边 + 顶部高光 + 底部阴影
@@ -1601,6 +1656,8 @@ static func generate_battle_background(stage: int) -> ImageTexture:
 		3: _draw_bg_boss_arena(img)
 		_: _draw_bg_neon_city(img)
 
+	# Upscale for crisp pixel art display
+	img.resize(640, 360, Image.INTERPOLATE_NEAREST)
 	return ImageTexture.create_from_image(img)
 
 static func _draw_bg_neon_city(img: Image) -> void:

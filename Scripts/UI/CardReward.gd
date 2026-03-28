@@ -250,13 +250,13 @@ func _create_reward_card(cd: CardData, card_path: String, _idx: int) -> Panel:
 			_: accent = Color(0.5, 0.5, 0.5)
 
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(accent.r * 0.12 + 0.03, accent.g * 0.12 + 0.02, accent.b * 0.12 + 0.05, 0.92)
-	sb.border_color = accent
+	sb.bg_color = Color(accent.r * 0.15 + 0.04, accent.g * 0.15 + 0.03, accent.b * 0.15 + 0.06, 0.94)
+	sb.border_color = Color(accent.r * 0.8 + 0.2, accent.g * 0.8 + 0.2, accent.b * 0.8 + 0.2)
 	sb.set_border_width_all(3)
-	sb.border_width_top = 4
-	sb.set_corner_radius_all(6)
-	sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.3)
-	sb.shadow_size = 6
+	sb.border_width_top = 5
+	sb.set_corner_radius_all(8)
+	sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.35)
+	sb.shadow_size = 8
 	panel.add_theme_stylebox_override("panel", sb)
 
 	# 费用宝珠 (左上角)
@@ -287,8 +287,8 @@ func _create_reward_card(cd: CardData, card_path: String, _idx: int) -> Panel:
 	card_art.texture = _ai_art if _ai_art else PixelArtGenerator.generate_card_art(
 		cd.card_type, cd.yinyang, cd.rarity, art_seed
 	)
-	card_art.position = Vector2(50, 40)
-	card_art.size = Vector2(120, 120)
+	card_art.position = Vector2(40, 38)
+	card_art.size = Vector2(140, 125)
 	card_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	panel.add_child(card_art)
 

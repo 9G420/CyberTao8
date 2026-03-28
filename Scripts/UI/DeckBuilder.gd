@@ -515,8 +515,8 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	card_art.texture = _ai_db_card if _ai_db_card else PixelArtGenerator.generate_card_art(
 		card_data.card_type, card_data.yinyang, card_data.rarity, cid.hash()
 	)
-	card_art.position = Vector2(30, 5)
-	card_art.size = Vector2(180, 100)
+	card_art.position = Vector2(20, 5)
+	card_art.size = Vector2(200, 100)
 	card_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	card_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_container.add_child(card_art)
