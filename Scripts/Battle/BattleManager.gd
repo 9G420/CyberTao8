@@ -317,10 +317,10 @@ func _setup_ui() -> void:
 	_floating_log_container.add_theme_constant_override("separation", 2)
 	play_zone.add_child(_floating_log_container)
 
-	# --- 手牌区域 ---
+	# --- 手牌区域（扇形布局，覆盖下半屏幕） ---
 	hand_node = Hand.new()
-	hand_node.position = Vector2(100, 585)
-	hand_node.size = Vector2(1080, 240)
+	hand_node.position = Vector2(0, 0)
+	hand_node.size = Vector2(1280, 720)
 	hand_node.play_zone_rect = Rect2(0, 0, 1280, 420)
 	hand_node.card_played_from_hand.connect(_on_card_played)
 	add_child(hand_node)
@@ -1126,9 +1126,9 @@ func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: 
 				_add_log("[color=red]  → 造成 " + str(result.damage_dealt) + "x" + str(hits) + "=" + str(total_damage) + " 伤害[/color]")
 			else:
 				_add_log("[color=red]  → 造成 " + str(total_damage) + " 伤害[/color]")
-			_flash_enemy_hit()
+			_flash_enemy_hit(total_damage)
 			_play_player_attack_anim()
-			AudioManager.play_sfx_generated("attack")
+			AudioManager.play_sfx_generated("attack", randf_range(-5.0, -1.0))
 
 	if result.shield_gained > 0:
 		if target.begins_with("summon_"):
@@ -1138,11 +1138,15 @@ func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: 
 				_add_log("[color=blue]  → " + player_summons[sidx]["name"] + " 获得 " + str(result.shield_gained) + " 护盾[/color]")
 			else:
 				player_shield += result.shield_gained
+				if player_sprite:
+					_spawn_damage_popup(result.shield_gained, player_sprite, "shield")
 				_add_log("[color=blue]  → 获得 " + str(result.shield_gained) + " 护盾[/color]")
 		else:
 			player_shield += result.shield_gained
+			if player_sprite:
+				_spawn_damage_popup(result.shield_gained, player_sprite, "shield")
 			_add_log("[color=blue]  → 获得 " + str(result.shield_gained) + " 护盾[/color]")
-		AudioManager.play_sfx_generated("defense")
+		AudioManager.play_sfx_generated("defense", randf_range(-5.0, -1.0))
 
 	if result.healing_done > 0:
 		if target.begins_with("summon_"):
@@ -1153,9 +1157,13 @@ func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: 
 				_add_log("[color=green]  → " + s["name"] + " 恢复 " + str(result.healing_done) + " 生命[/color]")
 			else:
 				player_hp = min(player_max_hp, player_hp + result.healing_done)
+				if player_sprite:
+					_spawn_damage_popup(result.healing_done, player_sprite, "heal")
 				_add_log("[color=green]  → 恢复 " + str(result.healing_done) + " 生命[/color]")
 		else:
 			player_hp = min(player_max_hp, player_hp + result.healing_done)
+			if player_sprite:
+				_spawn_damage_popup(result.healing_done, player_sprite, "heal")
 			_add_log("[color=green]  → 恢复 " + str(result.healing_done) + " 生命[/color]")
 
 	if result.cards_drawn > 0 and not no_draw_mode:
@@ -1415,14 +1423,14 @@ func _start_enemy_turn() -> void:
 			if enemy_hits <= 1:
 				var actual_dmg: int = _apply_damage_to_player(total_enemy_dmg)
 				if actual_dmg > 0:
-					_flash_player_hit()
+					_flash_player_hit(actual_dmg)
 					_play_player_hurt_anim()
 			else:
 				var per_hit: int = total_enemy_dmg
 				for _i in range(enemy_hits):
 					var actual_dmg: int = _apply_damage_to_player(per_hit)
 					if actual_dmg > 0:
-						_flash_player_hit()
+						_flash_player_hit(actual_dmg)
 						_play_player_hurt_anim()
 			_play_enemy_attack_anim()
 			if enemy_type_key == "boss":
@@ -2049,21 +2057,31 @@ func _play_enemy_attack_anim() -> void:
 # ============================================================
 # 视觉效果
 # ============================================================
-func _flash_enemy_hit() -> void:
+func _flash_enemy_hit(damage_amount: int = 0) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(enemy_hp_bar, "modulate", Color(1, 0, 0), 0.1)
 	tween.tween_property(enemy_hp_bar, "modulate", Color.WHITE, 0.2)
+	# 飘字伤害数字
+	if damage_amount > 0 and enemy_sprite:
+		var popup_type: String = "crit" if damage_amount >= 15 else "damage"
+		_spawn_damage_popup(damage_amount, enemy_sprite, popup_type)
+	# 屏幕震动（伤害越高震动越强）
+	var shake_intensity: float = clampf(float(damage_amount) * 0.5, 3.0, 12.0)
+	screen_shake(0.15, shake_intensity)
 	# Shake enemy sprite and briefly change frame
 	if enemy_sprite:
 		var orig_pos := enemy_sprite.position
 		var shake_amp: float = 16.0 if enemy_type_key == "boss" else 8.0
 		var shake_amp_half: float = shake_amp / 2.0
 		enemy_sprite.texture = _ai_sprite(enemy_type_key, 2)
-		var shake_tw := create_tween()
+		# 红色闪烁
+		var shake_tw := enemy_sprite.create_tween()
+		shake_tw.tween_property(enemy_sprite, "modulate", Color(1.5, 0.3, 0.3), 0.05)
 		shake_tw.tween_property(enemy_sprite, "position:x", orig_pos.x - shake_amp, 0.04)
 		shake_tw.tween_property(enemy_sprite, "position:x", orig_pos.x + shake_amp, 0.04)
 		shake_tw.tween_property(enemy_sprite, "position:x", orig_pos.x - shake_amp_half, 0.04)
 		shake_tw.tween_property(enemy_sprite, "position:x", orig_pos.x, 0.04)
+		shake_tw.tween_property(enemy_sprite, "modulate", Color.WHITE, 0.12)
 		shake_tw.tween_callback(func():
 			if is_instance_valid(enemy_sprite):
 				enemy_sprite.texture = _ai_sprite(enemy_type_key, 0)
@@ -2071,17 +2089,20 @@ func _flash_enemy_hit() -> void:
 		if enemy_type_key == "boss":
 			AudioManager.play_sfx_generated("boss_hurt")
 
-func _flash_player_hit() -> void:
+func _flash_player_hit(damage_amount: int = 0) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(hp_bar, "modulate", Color(1, 0, 0), 0.1)
 	tween.tween_property(hp_bar, "modulate", Color.WHITE, 0.2)
+	# 飘字伤害数字
+	if damage_amount > 0 and player_sprite:
+		_spawn_damage_popup(damage_amount, player_sprite, "damage")
 	# Shake player sprite and briefly flash red
 	if player_sprite:
 		var orig_pos := player_sprite.position
-		var shake_tw := create_tween()
-		shake_tw.tween_property(player_sprite, "modulate", Color(1, 0.2, 0.2), 0.06)
-		shake_tw.tween_property(player_sprite, "position:x", orig_pos.x - 6.0, 0.03)
-		shake_tw.tween_property(player_sprite, "position:x", orig_pos.x + 6.0, 0.03)
+		var shake_tw := player_sprite.create_tween()
+		shake_tw.tween_property(player_sprite, "modulate", Color(1.5, 0.2, 0.2), 0.06)
+		shake_tw.tween_property(player_sprite, "position:x", orig_pos.x - 8.0, 0.03)
+		shake_tw.tween_property(player_sprite, "position:x", orig_pos.x + 8.0, 0.03)
 		shake_tw.tween_property(player_sprite, "position:x", orig_pos.x, 0.04)
 		shake_tw.tween_property(player_sprite, "modulate", Color.WHITE, 0.15)
 
@@ -2116,6 +2137,74 @@ func _trigger_glitch(intensity: float) -> void:
 		position = original_pos + Vector2(randf_range(-3, 3) * intensity, randf_range(-2, 2) * intensity)
 		await get_tree().create_timer(0.05).timeout
 	position = original_pos
+
+## 屏幕震动效果
+func screen_shake(duration: float = 0.3, intensity: float = 6.0) -> void:
+	var orig_pos := position
+	var elapsed: float = 0.0
+	while elapsed < duration:
+		var decay: float = 1.0 - (elapsed / duration)
+		position = orig_pos + Vector2(
+			randf_range(-intensity, intensity) * decay,
+			randf_range(-intensity, intensity) * decay
+		)
+		await get_tree().create_timer(0.03).timeout
+		elapsed += 0.03
+	position = orig_pos
+
+## 生成飘字伤害/治疗/护盾数字（在目标精灵位置上方弹出）
+func _spawn_damage_popup(value: int, target_node: Control, popup_type: String = "damage") -> void:
+	if not target_node or not is_instance_valid(target_node):
+		return
+	var lbl := Label.new()
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.z_index = 100
+
+	match popup_type:
+		"damage":
+			lbl.text = "-" + str(value)
+			lbl.add_theme_font_size_override("font_size", 28)
+			lbl.add_theme_color_override("font_color", Color(1, 0.25, 0.15))
+			lbl.add_theme_color_override("font_outline_color", Color(0.2, 0, 0))
+			lbl.add_theme_constant_override("outline_size", 3)
+		"heal":
+			lbl.text = "+" + str(value)
+			lbl.add_theme_font_size_override("font_size", 24)
+			lbl.add_theme_color_override("font_color", Color(0.2, 1, 0.4))
+			lbl.add_theme_color_override("font_outline_color", Color(0, 0.15, 0))
+			lbl.add_theme_constant_override("outline_size", 2)
+		"shield":
+			lbl.text = "+" + str(value) + " 🛡"
+			lbl.add_theme_font_size_override("font_size", 22)
+			lbl.add_theme_color_override("font_color", Color(0.3, 0.7, 1))
+			lbl.add_theme_color_override("font_outline_color", Color(0, 0.05, 0.15))
+			lbl.add_theme_constant_override("outline_size", 2)
+		"crit":
+			lbl.text = "-" + str(value) + " !"
+			lbl.add_theme_font_size_override("font_size", 34)
+			lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.1))
+			lbl.add_theme_color_override("font_outline_color", Color(0.3, 0.15, 0))
+			lbl.add_theme_constant_override("outline_size", 4)
+
+	# 定位在目标精灵上方，加随机偏移避免重叠
+	var spawn_pos := target_node.global_position + Vector2(
+		target_node.size.x * target_node.scale.x * 0.5 + randf_range(-20, 20) - 30.0,
+		-10.0 + randf_range(-10, 5)
+	)
+	lbl.global_position = spawn_pos
+	add_child(lbl)
+
+	# 弹出动画：先快速上升后减速，同时缩放弹跳
+	var tw := lbl.create_tween().set_parallel(true)
+	tw.tween_property(lbl, "global_position:y", spawn_pos.y - 60.0, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.3).set_delay(0.4)
+	# 缩放弹跳
+	lbl.pivot_offset = lbl.size / 2.0
+	lbl.scale = Vector2(0.5, 0.5)
+	tw.tween_property(lbl, "scale", Vector2(1.1, 1.1), 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	var tw2 := lbl.create_tween()
+	tw2.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.1).set_delay(0.12)
+	tw2.tween_callback(lbl.queue_free).set_delay(0.6)
 
 # ============================================================
 # UI更新

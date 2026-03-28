@@ -124,19 +124,22 @@ func play_bgm_generated(bgm_id: String, volume_db: float = -8.0) -> void:
 	bgm_player.volume_db = volume_db
 	bgm_player.play()
 
-## 播放预生成的音效
+## 播放预生成的音效（带随机音高变化避免机械感）
 func play_sfx_generated(sfx_id: String, volume_db: float = -3.0) -> void:
 	if sfx_id not in _sfx_cache:
 		return
 	var stream: AudioStreamWAV = _sfx_cache[sfx_id]
+	var pitch: float = randf_range(0.92, 1.08)
 	for p in sfx_players:
 		if not p.playing:
 			p.stream = stream
 			p.volume_db = volume_db
+			p.pitch_scale = pitch
 			p.play()
 			return
 	sfx_players[0].stream = stream
 	sfx_players[0].volume_db = volume_db
+	sfx_players[0].pitch_scale = pitch
 	sfx_players[0].play()
 
 ## 停止BGM（淡出）

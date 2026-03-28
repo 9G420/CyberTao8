@@ -362,7 +362,16 @@ func _gui_input(event: InputEvent) -> void:
 				end_tween.tween_property(self, "scale", Vector2.ONE, 0.12)
 				card_drag_ended.emit(self)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-			card_clicked.emit(self)
+			if is_dragging:
+				# 右键取消拖拽
+				is_dragging = false
+				z_index = original_z_index
+				_drag_target_pos = Vector2.ZERO
+				var cancel_tween: Tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+				cancel_tween.tween_property(self, "scale", Vector2.ONE, 0.12)
+				card_drag_ended.emit(self)
+			else:
+				card_clicked.emit(self)
 
 	elif event is InputEventMouseMotion:
 		if is_dragging:
