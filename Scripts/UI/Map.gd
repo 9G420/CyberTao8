@@ -283,15 +283,26 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	var base_color: Color = TYPE_COLORS.get(ntype, Color(0.5, 0.5, 0.5))
 	var icon_text: String = TYPE_ICONS.get(ntype, "?")
 
-	# 节点按钮
+	# ── 外圈光晕 (reachable/current 才显示) ──
+	var outer_glow: ColorRect = null
+	if is_reachable or is_current:
+		outer_glow = ColorRect.new()
+		var glow_r: int = NODE_RADIUS + 8
+		outer_glow.position = Vector2(pos.x - glow_r, pos.y - glow_r)
+		outer_glow.size = Vector2(glow_r * 2, glow_r * 2)
+		var glow_col: Color = base_color if is_reachable else Color(1, 0.85, 0.3)
+		outer_glow.color = Color(glow_col.r, glow_col.g, glow_col.b, 0.15)
+		outer_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map_canvas.add_child(outer_glow)
+
+	# ── 节点按钮 (flat=false, 让 StyleBoxFlat 实际渲染) ──
 	var btn := Button.new()
 	btn.position = Vector2(pos.x - NODE_RADIUS, pos.y - NODE_RADIUS)
 	btn.size = Vector2(NODE_RADIUS * 2, NODE_RADIUS * 2)
 	btn.text = ""
-	btn.flat = true
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# 节点背景 (圆形样式)
+	# ── 节点背景 (圆形样式) ──
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(NODE_RADIUS)
 	sb.content_margin_left = 0
@@ -300,47 +311,64 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	sb.content_margin_bottom = 0
 
 	if is_completed:
-		sb.bg_color = Color(base_color.r * 0.3, base_color.g * 0.3, base_color.b * 0.3, 0.5)
-		sb.border_color = Color(0.3, 0.3, 0.35, 0.4)
+		sb.bg_color = Color(base_color.r * 0.25, base_color.g * 0.25, base_color.b * 0.25, 0.6)
+		sb.border_color = Color(0.3, 0.3, 0.35, 0.5)
 		sb.set_border_width_all(2)
 		btn.disabled = true
 	elif is_current:
-		sb.bg_color = Color(base_color.r * 0.6, base_color.g * 0.6, base_color.b * 0.6, 0.9)
-		sb.border_color = Color(1, 0.9, 0.4, 0.9)
-		sb.set_border_width_all(3)
-		sb.shadow_color = Color(1, 0.8, 0.3, 0.4)
-		sb.shadow_size = 6
+		sb.bg_color = Color(base_color.r * 0.55, base_color.g * 0.55, base_color.b * 0.55, 0.95)
+		sb.border_color = Color(1, 0.9, 0.3, 1.0)
+		sb.set_border_width_all(4)
+		sb.shadow_color = Color(1, 0.8, 0.2, 0.5)
+		sb.shadow_size = 10
 		btn.disabled = true
 	elif is_reachable:
-		sb.bg_color = Color(base_color.r * 0.5, base_color.g * 0.5, base_color.b * 0.5, 0.85)
-		sb.border_color = Color(base_color.r, base_color.g, base_color.b, 0.85)
+		sb.bg_color = Color(base_color.r * 0.45, base_color.g * 0.45, base_color.b * 0.45, 0.9)
+		sb.border_color = Color(base_color.r, base_color.g, base_color.b, 0.95)
 		sb.set_border_width_all(3)
-		sb.shadow_color = Color(base_color.r, base_color.g, base_color.b, 0.3)
-		sb.shadow_size = 4
+		sb.shadow_color = Color(base_color.r, base_color.g, base_color.b, 0.4)
+		sb.shadow_size = 6
 	else:
-		sb.bg_color = Color(0.08, 0.06, 0.12, 0.5)
-		sb.border_color = Color(0.2, 0.15, 0.25, 0.3)
+		sb.bg_color = Color(0.07, 0.05, 0.11, 0.55)
+		sb.border_color = Color(0.2, 0.15, 0.25, 0.35)
 		sb.set_border_width_all(1)
 		btn.disabled = true
 
+	# ── 所有状态的 stylebox ──
 	btn.add_theme_stylebox_override("normal", sb)
-	btn.add_theme_stylebox_override("hover", sb)
 	btn.add_theme_stylebox_override("disabled", sb)
-	btn.add_theme_stylebox_override("pressed", sb)
 
+	# ── pressed 样式 (reachable 才有意义) ──
+	var pressed_sb := sb.duplicate() as StyleBoxFlat
+	if is_reachable:
+		pressed_sb.bg_color = Color(base_color.r * 0.7, base_color.g * 0.7, base_color.b * 0.7, 1.0)
+		pressed_sb.border_color = Color(1, 1, 1, 1.0)
+		pressed_sb.shadow_size = 12
+		pressed_sb.shadow_color = Color(base_color.r, base_color.g, base_color.b, 0.6)
+	btn.add_theme_stylebox_override("pressed", pressed_sb)
+
+	# ── hover 样式 — 强烈高亮反馈 ──
 	if is_reachable:
 		var hover_sb := sb.duplicate() as StyleBoxFlat
-		hover_sb.border_color = Color(1, 1, 1, 0.9)
-		hover_sb.shadow_size = 8
-		hover_sb.shadow_color = Color(base_color.r, base_color.g, base_color.b, 0.5)
+		hover_sb.bg_color = Color(base_color.r * 0.65, base_color.g * 0.65, base_color.b * 0.65, 1.0)
+		hover_sb.border_color = Color(1, 1, 1, 0.95)
+		hover_sb.set_border_width_all(4)
+		hover_sb.shadow_size = 14
+		hover_sb.shadow_color = Color(base_color.r, base_color.g, base_color.b, 0.6)
 		btn.add_theme_stylebox_override("hover", hover_sb)
+	else:
+		btn.add_theme_stylebox_override("hover", sb)
+
+	# ── Focus 样式 (去掉默认虚线框) ──
+	var focus_sb := StyleBoxEmpty.new()
+	btn.add_theme_stylebox_override("focus", focus_sb)
 
 	var f_idx := floor_idx
 	var n_idx := node_idx
 	btn.pressed.connect(_on_map_node_pressed.bind(f_idx, n_idx))
 	map_canvas.add_child(btn)
 
-	# 图标文字 (在按钮上方叠加)
+	# ── 图标文字 (在按钮上方叠加) ──
 	var icon_lbl := Label.new()
 	icon_lbl.text = icon_text
 	icon_lbl.position = Vector2(pos.x - NODE_RADIUS, pos.y - NODE_RADIUS)
@@ -348,37 +376,86 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	icon_lbl.add_theme_font_size_override("font_size", 24)
-	var icon_alpha: float = 0.3 if (not is_reachable and not is_current and not is_completed) else 0.9
+	var icon_alpha: float = 0.3 if (not is_reachable and not is_current and not is_completed) else 1.0
 	if is_completed:
-		icon_alpha = 0.4
+		icon_alpha = 0.45
 	icon_lbl.add_theme_color_override("font_color", Color(1, 1, 1, icon_alpha))
 	icon_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_canvas.add_child(icon_lbl)
 
-	# 节点类型标签 (在节点下方)
+	# ── 节点类型标签 (在节点下方) ──
+	var type_lbl := Label.new()
+	type_lbl.text = TYPE_NAMES.get(ntype, "")
+	type_lbl.position = Vector2(pos.x - 40, pos.y + NODE_RADIUS + 4)
+	type_lbl.size = Vector2(80, 20)
+	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	type_lbl.add_theme_font_size_override("font_size", 13)
+	type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if is_reachable or is_current:
-		var type_lbl := Label.new()
-		type_lbl.text = TYPE_NAMES.get(ntype, "")
-		type_lbl.position = Vector2(pos.x - 40, pos.y + NODE_RADIUS + 4)
-		type_lbl.size = Vector2(80, 20)
-		type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		type_lbl.add_theme_font_size_override("font_size", 13)
-		type_lbl.add_theme_color_override("font_color", Color(base_color.r, base_color.g, base_color.b, 0.8))
-		type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		map_canvas.add_child(type_lbl)
+		type_lbl.add_theme_color_override("font_color", Color(base_color.r, base_color.g, base_color.b, 0.9))
+	else:
+		type_lbl.add_theme_color_override("font_color", Color(base_color.r * 0.5, base_color.g * 0.5, base_color.b * 0.5, 0.4))
+	map_canvas.add_child(type_lbl)
 
-	# 呼吸动画 (可达节点)
+	# ── Hover 交互反馈: 放大 + 图标亮度 + 外圈光晕增强 + 信息提示 ──
+	if is_reachable:
+		var orig_btn_pos := btn.position
+		var orig_btn_size := btn.size
+		var orig_icon_pos := icon_lbl.position
+		var orig_icon_size := icon_lbl.size
+		var orig_type_color := Color(base_color.r, base_color.g, base_color.b, 0.9)
+		btn.mouse_entered.connect(func():
+			if not is_instance_valid(btn):
+				return
+			# 放大按钮 (scale effect via position/size)
+			btn.position = orig_btn_pos - Vector2(4, 4)
+			btn.size = orig_btn_size + Vector2(8, 8)
+			# 放大图标
+			icon_lbl.position = orig_icon_pos - Vector2(4, 4)
+			icon_lbl.size = orig_icon_size + Vector2(8, 8)
+			icon_lbl.add_theme_font_size_override("font_size", 28)
+			# 类型标签高亮
+			type_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1.0))
+			type_lbl.add_theme_font_size_override("font_size", 14)
+			# 外圈光晕增强
+			if outer_glow and is_instance_valid(outer_glow):
+				outer_glow.color.a = 0.35
+			# 更新信息文字
+			if info_label and is_instance_valid(info_label):
+				info_label.text = TYPE_NAMES.get(ntype, "") + " — 点击进入"
+		)
+		btn.mouse_exited.connect(func():
+			if not is_instance_valid(btn):
+				return
+			# 恢复原始大小
+			btn.position = orig_btn_pos
+			btn.size = orig_btn_size
+			icon_lbl.position = orig_icon_pos
+			icon_lbl.size = orig_icon_size
+			icon_lbl.add_theme_font_size_override("font_size", 24)
+			# 恢复类型标签
+			type_lbl.add_theme_color_override("font_color", orig_type_color)
+			type_lbl.add_theme_font_size_override("font_size", 13)
+			# 外圈光晕恢复
+			if outer_glow and is_instance_valid(outer_glow):
+				outer_glow.color.a = 0.15
+			# 恢复信息文字
+			if info_label and is_instance_valid(info_label):
+				info_label.text = "选择下一个节点继续探索..."
+		)
+
+	# ── 呼吸动画 (可达节点) ──
 	if is_reachable:
 		var glow_tween: Tween = btn.create_tween().set_loops()
 		glow_tween.tween_method(func(v: float):
 			if is_instance_valid(btn):
 				sb.shadow_size = int(6 + v * 8)
-				sb.shadow_color.a = 0.3 + v * 0.4
+				sb.shadow_color.a = 0.4 + v * 0.4
 		, 0.0, 1.0, 0.8)
 		glow_tween.tween_method(func(v: float):
 			if is_instance_valid(btn):
 				sb.shadow_size = int(6 + v * 8)
-				sb.shadow_color.a = 0.3 + v * 0.4
+				sb.shadow_color.a = 0.4 + v * 0.4
 		, 1.0, 0.0, 0.8)
 
 	node_buttons.append({"btn": btn, "floor": floor_idx, "node": node_idx, "pos": pos})
