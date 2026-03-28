@@ -25,6 +25,9 @@ const HAND_CENTER_X: float = 640.0    # 手牌中心X（屏幕中央）
 const HAND_CENTER_Y: float = 780.0    # 扇形圆心Y（屏幕下方偏外）
 const CARD_Y_BASE: float = 520.0      # 卡牌基线Y
 
+## Hover spread distance (px) for adjacent cards
+const HOVER_SPREAD_PX: float = 30.0
+
 func _ready() -> void:
 	# 设置为全屏覆盖的Control（不再是HBoxContainer）
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -41,6 +44,11 @@ func add_card(card: Card) -> void:
 		card.card_drag_ended.connect(_on_card_drag_ended)
 	if not card.card_drag_started.is_connected(_on_card_drag_started):
 		card.card_drag_started.connect(_on_card_drag_started)
+	# Connect hover signals for card spread
+	if not card.card_hovered.is_connected(_on_card_hover_spread):
+		card.card_hovered.connect(_on_card_hover_spread)
+	if not card.card_unhovered.is_connected(_on_card_unhover_spread):
+		card.card_unhovered.connect(_on_card_unhover_spread)
 	# 重新排列
 	_arrange_hand(true)
 
@@ -146,3 +154,25 @@ func discard_random() -> Card:
 ## 获取手牌数量
 func hand_size() -> int:
 	return cards.size()
+
+## Spread adjacent cards apart when a card is hovered (STS-style)
+func _on_card_hover_spread(hovered_card: Card) -> void:
+	var idx: int = hovered_card.hand_index
+	for i in cards.size():
+		var card: Card = cards[i]
+		if card == hovered_card or card.is_dragging:
+			continue
+		if not card.is_inside_tree():
+			continue
+		var offset_x: float = 0.0
+		if i < idx:
+			offset_x = -HOVER_SPREAD_PX
+		elif i > idx:
+			offset_x = HOVER_SPREAD_PX
+		var target_pos: Vector2 = card.original_position + Vector2(offset_x, 0.0)
+		var tw: Tween = card.create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(card, "position", target_pos, 0.15)
+
+## Restore hand positions when hover ends
+func _on_card_unhover_spread(_card: Card) -> void:
+	_arrange_hand(true)

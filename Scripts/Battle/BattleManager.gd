@@ -120,6 +120,15 @@ var _drag_arrow_head: Polygon2D = null  # 箭头头部三角
 var _highlight_rect: ColorRect = null   # 目标高亮框
 var _last_hover_target: String = ""     # 上次悬停的目标
 
+# --- STS-style field HP bars ---
+var _player_field_hp_bar: ProgressBar
+var _player_field_hp_label: Label
+var _enemy_field_hp_bar: ProgressBar
+var _enemy_field_hp_label: Label
+
+# --- STS energy orb ---
+var _energy_orb_rect: ColorRect = null
+
 func _ready() -> void:
 	_setup_ui()
 	_init_battle()
@@ -292,6 +301,59 @@ void fragment() {
 	enemy_shadow.material = eshadow_mat
 	play_zone.add_child(enemy_shadow)
 
+	# --- STS-style field HP bars (below sprites) ---
+	_player_field_hp_bar = ProgressBar.new()
+	_player_field_hp_bar.position = Vector2(30, 392)
+	_player_field_hp_bar.size = Vector2(192, 14)
+	_player_field_hp_bar.show_percentage = false
+	var pfhp_fill := StyleBoxFlat.new()
+	pfhp_fill.bg_color = Color(0.85, 0.12, 0.12)
+	pfhp_fill.set_corner_radius_all(2)
+	_player_field_hp_bar.add_theme_stylebox_override("fill", pfhp_fill)
+	var pfhp_bg := StyleBoxFlat.new()
+	pfhp_bg.bg_color = Color(0.15, 0.05, 0.05, 0.8)
+	pfhp_bg.set_corner_radius_all(2)
+	_player_field_hp_bar.add_theme_stylebox_override("background", pfhp_bg)
+	play_zone.add_child(_player_field_hp_bar)
+
+	_player_field_hp_label = Label.new()
+	_player_field_hp_label.position = Vector2(30, 390)
+	_player_field_hp_label.size = Vector2(192, 18)
+	_player_field_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_player_field_hp_label.add_theme_font_size_override("font_size", 12)
+	_player_field_hp_label.add_theme_color_override("font_color", Color.WHITE)
+	_player_field_hp_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_player_field_hp_label.add_theme_constant_override("shadow_offset_x", 1)
+	_player_field_hp_label.add_theme_constant_override("shadow_offset_y", 1)
+	_player_field_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play_zone.add_child(_player_field_hp_label)
+
+	_enemy_field_hp_bar = ProgressBar.new()
+	_enemy_field_hp_bar.position = Vector2(500, 322)
+	_enemy_field_hp_bar.size = Vector2(192, 14)
+	_enemy_field_hp_bar.show_percentage = false
+	var efhp_fill := StyleBoxFlat.new()
+	efhp_fill.bg_color = Color(0.85, 0.12, 0.12)
+	efhp_fill.set_corner_radius_all(2)
+	_enemy_field_hp_bar.add_theme_stylebox_override("fill", efhp_fill)
+	var efhp_bg := StyleBoxFlat.new()
+	efhp_bg.bg_color = Color(0.15, 0.05, 0.05, 0.8)
+	efhp_bg.set_corner_radius_all(2)
+	_enemy_field_hp_bar.add_theme_stylebox_override("background", efhp_bg)
+	play_zone.add_child(_enemy_field_hp_bar)
+
+	_enemy_field_hp_label = Label.new()
+	_enemy_field_hp_label.position = Vector2(500, 320)
+	_enemy_field_hp_label.size = Vector2(192, 18)
+	_enemy_field_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_enemy_field_hp_label.add_theme_font_size_override("font_size", 12)
+	_enemy_field_hp_label.add_theme_color_override("font_color", Color.WHITE)
+	_enemy_field_hp_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_enemy_field_hp_label.add_theme_constant_override("shadow_offset_x", 1)
+	_enemy_field_hp_label.add_theme_constant_override("shadow_offset_y", 1)
+	_enemy_field_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play_zone.add_child(_enemy_field_hp_label)
+
 	# --- 地面分割线（战场底部平台边缘）---
 	var ground_line := ColorRect.new()
 	ground_line.size = Vector2(1280, 2)
@@ -345,23 +407,33 @@ void fragment() {
 	player_status_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	player_panel.add_child(player_status_container)
 
-	# --- 7. Enhanced energy display with neon panel ---
-	energy_panel = Panel.new()
-	energy_panel.position = Vector2(8, 68)
-	energy_panel.size = Vector2(264, 30)
-	var ep_sb := StyleBoxFlat.new()
-	ep_sb.bg_color = Color(0.02, 0.04, 0.12, 0.9)
-	ep_sb.border_color = Color(0, 0.9, 1, 0.6)
-	ep_sb.set_border_width_all(1)
-	ep_sb.corner_radius_top_left = 3
-	ep_sb.corner_radius_top_right = 3
-	ep_sb.corner_radius_bottom_left = 3
-	ep_sb.corner_radius_bottom_right = 3
-	energy_panel.add_theme_stylebox_override("panel", ep_sb)
-	player_panel.add_child(energy_panel)
+	# --- 7. Enhanced energy orb display (STS-style glowing orb) ---
+	_energy_orb_rect = ColorRect.new()
+	_energy_orb_rect.position = Vector2(15, 580)
+	_energy_orb_rect.size = Vector2(60, 60)
+	_energy_orb_rect.color = Color(1, 1, 1, 1)
+	_energy_orb_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var orb_shader := Shader.new()
+	orb_shader.code = "shader_type canvas_item;\nuniform vec4 energy_color : source_color = vec4(0.0, 0.8, 1.0, 1.0);\nuniform float pulse_speed = 2.0;\nvoid fragment() {\n\tfloat dist = distance(UV, vec2(0.5));\n\tfloat circle = 1.0 - smoothstep(0.35, 0.5, dist);\n\tfloat inner = 1.0 - smoothstep(0.0, 0.35, dist);\n\tfloat pulse = 0.8 + 0.2 * sin(TIME * pulse_speed);\n\tvec3 col = mix(energy_color.rgb * 0.5, energy_color.rgb, inner) * pulse;\n\tfloat glow = (1.0 - smoothstep(0.35, 0.6, dist)) * 0.3;\n\tCOLOR = vec4(col + glow, circle * 0.9 + glow);\n}\n"
+	var orb_mat := ShaderMaterial.new()
+	orb_mat.shader = orb_shader
+	_energy_orb_rect.material = orb_mat
+	add_child(_energy_orb_rect)
 
-	energy_label = _make_label(Vector2(4, 3), 256, 22, Color(0, 0.9, 1))
+	energy_panel = Panel.new()
+	energy_panel.position = Vector2(15, 580)
+	energy_panel.size = Vector2(60, 60)
+	var ep_sb := StyleBoxFlat.new()
+	ep_sb.bg_color = Color(0, 0, 0, 0)
+	energy_panel.add_theme_stylebox_override("panel", ep_sb)
+	energy_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(energy_panel)
+
+	energy_label = _make_label(Vector2(0, 12), 60, 28, Color(0, 0.9, 1))
 	energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	energy_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	energy_label.add_theme_constant_override("shadow_offset_x", 1)
+	energy_label.add_theme_constant_override("shadow_offset_y", 1)
 	energy_panel.add_child(energy_label)
 
 	# 阴阳显示
@@ -404,14 +476,34 @@ void fragment() {
 	discard_count_label = _make_label(Vector2(10, 51), 260, 16, Color(0.8, 0.5, 0.5))
 	info_panel.add_child(discard_count_label)
 
-	# 结束回合按钮
+	# 结束回合按钮 (STS-style prominent button)
 	end_turn_btn = Button.new()
 	end_turn_btn.text = "结束回合"
-	end_turn_btn.position = Vector2(50, 85)
-	end_turn_btn.size = Vector2(180, 44)
-	end_turn_btn.add_theme_font_size_override("font_size", 18)
+	end_turn_btn.position = Vector2(1100, 440)
+	end_turn_btn.size = Vector2(160, 50)
+	end_turn_btn.add_theme_font_size_override("font_size", 22)
+	var etb_normal := StyleBoxFlat.new()
+	etb_normal.bg_color = Color(0.06, 0.08, 0.14, 0.95)
+	etb_normal.border_color = Color(0, 0.85, 1, 0.7)
+	etb_normal.set_border_width_all(2)
+	etb_normal.set_corner_radius_all(6)
+	end_turn_btn.add_theme_stylebox_override("normal", etb_normal)
+	var etb_hover := StyleBoxFlat.new()
+	etb_hover.bg_color = Color(0.1, 0.14, 0.22, 0.95)
+	etb_hover.border_color = Color(0, 1, 1, 0.9)
+	etb_hover.set_border_width_all(3)
+	etb_hover.set_corner_radius_all(6)
+	end_turn_btn.add_theme_stylebox_override("hover", etb_hover)
+	var etb_pressed := StyleBoxFlat.new()
+	etb_pressed.bg_color = Color(0.02, 0.04, 0.1, 0.95)
+	etb_pressed.border_color = Color(0, 0.6, 0.8, 0.8)
+	etb_pressed.set_border_width_all(2)
+	etb_pressed.set_corner_radius_all(6)
+	end_turn_btn.add_theme_stylebox_override("pressed", etb_pressed)
+	end_turn_btn.add_theme_color_override("font_color", Color(0, 0.9, 1))
+	end_turn_btn.add_theme_color_override("font_hover_color", Color(0.5, 1, 1))
 	end_turn_btn.pressed.connect(_on_end_turn_pressed)
-	info_panel.add_child(end_turn_btn)
+	add_child(end_turn_btn)
 
 	# --- 战斗日志 (浮动文字容器，位于战场底部) ---
 	_floating_log_container = VBoxContainer.new()
@@ -2662,28 +2754,28 @@ func _spawn_damage_popup(value: int, target_node: Control, popup_type: String = 
 	match popup_type:
 		"damage":
 			lbl.text = "-" + str(value)
-			lbl.add_theme_font_size_override("font_size", 28)
-			lbl.add_theme_color_override("font_color", Color(1, 0.25, 0.15))
+			lbl.add_theme_font_size_override("font_size", 32)
+			lbl.add_theme_color_override("font_color", Color(1, 0.2, 0.1))
 			lbl.add_theme_color_override("font_outline_color", Color(0.2, 0, 0))
-			lbl.add_theme_constant_override("outline_size", 3)
+			lbl.add_theme_constant_override("outline_size", 4)
 		"heal":
 			lbl.text = "+" + str(value)
-			lbl.add_theme_font_size_override("font_size", 24)
-			lbl.add_theme_color_override("font_color", Color(0.2, 1, 0.4))
+			lbl.add_theme_font_size_override("font_size", 28)
+			lbl.add_theme_color_override("font_color", Color(0.2, 1, 0.3))
 			lbl.add_theme_color_override("font_outline_color", Color(0, 0.15, 0))
-			lbl.add_theme_constant_override("outline_size", 2)
+			lbl.add_theme_constant_override("outline_size", 3)
 		"shield":
 			lbl.text = "+" + str(value) + " 🛡"
-			lbl.add_theme_font_size_override("font_size", 22)
+			lbl.add_theme_font_size_override("font_size", 26)
 			lbl.add_theme_color_override("font_color", Color(0.3, 0.7, 1))
 			lbl.add_theme_color_override("font_outline_color", Color(0, 0.05, 0.15))
-			lbl.add_theme_constant_override("outline_size", 2)
+			lbl.add_theme_constant_override("outline_size", 3)
 		"crit":
-			lbl.text = "-" + str(value) + " !"
-			lbl.add_theme_font_size_override("font_size", 34)
-			lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.1))
+			lbl.text = "暴击! -" + str(value)
+			lbl.add_theme_font_size_override("font_size", 44)
+			lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.1))
 			lbl.add_theme_color_override("font_outline_color", Color(0.3, 0.15, 0))
-			lbl.add_theme_constant_override("outline_size", 4)
+			lbl.add_theme_constant_override("outline_size", 5)
 
 	# 定位在目标精灵上方，加随机偏移避免重叠
 	var spawn_pos := target_node.global_position + Vector2(
@@ -2693,17 +2785,16 @@ func _spawn_damage_popup(value: int, target_node: Control, popup_type: String = 
 	lbl.global_position = spawn_pos
 	add_child(lbl)
 
-	# 弹出动画：先快速上升后减速，同时缩放弹跳
+	# 弹出动画：飞更高 + 先放大再缩小（STS风格）
 	var tw := lbl.create_tween().set_parallel(true)
-	tw.tween_property(lbl, "global_position:y", spawn_pos.y - 60.0, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(lbl, "modulate:a", 0.0, 0.3).set_delay(0.4)
-	# 缩放弹跳
+	tw.tween_property(lbl, "global_position:y", spawn_pos.y - 80.0, 0.7).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.3).set_delay(0.5)
+	# 缩放：从1.5倍开始，缩到0.8倍
 	lbl.pivot_offset = lbl.size / 2.0
-	lbl.scale = Vector2(0.5, 0.5)
-	tw.tween_property(lbl, "scale", Vector2(1.1, 1.1), 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	lbl.scale = Vector2(1.5, 1.5)
+	tw.tween_property(lbl, "scale", Vector2(0.8, 0.8), 0.7).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 	var tw2 := lbl.create_tween()
-	tw2.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.1).set_delay(0.12)
-	tw2.tween_callback(lbl.queue_free).set_delay(0.6)
+	tw2.tween_callback(lbl.queue_free).set_delay(0.8)
 
 # ============================================================
 # UI更新
@@ -2713,7 +2804,14 @@ func _update_all_ui() -> void:
 	hp_bar.value = player_hp
 	hp_label.text = str(player_hp) + "/" + str(player_max_hp)
 	player_shield_label.text = "护盾: " + str(player_shield) if player_shield > 0 else ""
-	energy_label.text = "算力: " + str(energy) + "/" + str(max_energy)
+	energy_label.text = str(energy) + "/" + str(max_energy)
+
+	# --- Update STS-style field HP bars ---
+	if _player_field_hp_bar:
+		_player_field_hp_bar.max_value = player_max_hp
+		_player_field_hp_bar.value = player_hp
+	if _player_field_hp_label:
+		_player_field_hp_label.text = str(player_hp) + "/" + str(player_max_hp)
 
 	if enemy:
 		enemy_hp_bar.max_value = enemy.max_hp
@@ -2726,6 +2824,13 @@ func _update_all_ui() -> void:
 		# Enemy status icons (replace text display)
 		var enemy_status_text := ""
 		_update_enemy_status_icons()
+
+		# --- Update STS-style enemy field HP bar ---
+		if _enemy_field_hp_bar:
+			_enemy_field_hp_bar.max_value = enemy.max_hp
+			_enemy_field_hp_bar.value = enemy.hp
+		if _enemy_field_hp_label:
+			_enemy_field_hp_label.text = str(enemy.hp) + "/" + str(enemy.max_hp)
 
 	yin_label.text = "阴: " + str(yin_count)
 	yang_label.text = "阳: " + str(yang_count)

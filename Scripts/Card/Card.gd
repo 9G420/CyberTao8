@@ -49,13 +49,25 @@ var _drag_target_pos: Vector2 = Vector2.ZERO
 ## 卡牌尺寸常量
 const CARD_WIDTH: int = 160
 const CARD_HEIGHT: int = 220
-const HOVER_SCALE: float = 1.25
-const HOVER_Y_OFFSET: float = -40.0
+const HOVER_SCALE: float = 1.35
+const HOVER_Y_OFFSET: float = -60.0
 
 ## EVA color constants
 const EVA_ORANGE := Color(1.0, 0.5, 0.0)
 const EVA_PURPLE := Color(0.5, 0.1, 0.8)
 const EVA_DARK_BG := Color(0.06, 0.04, 0.1, 0.95)
+
+## Card type frame colors (STS-style)
+const TYPE_COLOR_ATTACK: Color = Color(0.85, 0.15, 0.1)
+const TYPE_COLOR_DEFENSE: Color = Color(0.15, 0.4, 0.85)
+const TYPE_COLOR_SPELL: Color = Color(0.6, 0.2, 0.85)
+const TYPE_COLOR_POWER: Color = Color(0.85, 0.7, 0.15)
+const TYPE_COLOR_SUMMON: Color = Color(0.15, 0.75, 0.35)
+
+## Shadow node for hover effect
+var _hover_shadow: ColorRect = null
+## Stored cost_bg reference for shader coloring
+var _cost_bg: ColorRect = null
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(CARD_WIDTH, CARD_HEIGHT)
@@ -139,13 +151,28 @@ void fragment() {
 	_art_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_art_texture_rect)
 
-	# 费用标签（左上角，圆形底色）
-	var cost_bg := ColorRect.new()
-	cost_bg.size = Vector2(26, 26)
-	cost_bg.position = Vector2(5, 3)
-	cost_bg.color = Color(0.0, 0.15, 0.25, 0.9)
-	cost_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(cost_bg)
+	# 费用标签（左上角，能量球效果）
+	_cost_bg = ColorRect.new()
+	_cost_bg.size = Vector2(26, 26)
+	_cost_bg.position = Vector2(5, 3)
+	_cost_bg.color = Color.WHITE
+	_cost_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var orb_shader := Shader.new()
+	orb_shader.code = "
+shader_type canvas_item;
+uniform vec4 orb_color : source_color = vec4(0.0, 0.6, 1.0, 1.0);
+void fragment() {
+	float dist = distance(UV, vec2(0.5));
+	float circle = 1.0 - smoothstep(0.3, 0.5, dist);
+	float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+	vec3 col = orb_color.rgb * (0.6 + 0.4 * glow);
+	COLOR = vec4(col, circle * 0.95);
+}
+"
+	var orb_mat := ShaderMaterial.new()
+	orb_mat.shader = orb_shader
+	_cost_bg.material = orb_mat
+	add_child(_cost_bg)
 
 	_cost_label = Label.new()
 	_cost_label.position = Vector2(5, 1)
@@ -225,11 +252,33 @@ void fragment() {
 	# Start the EVA frame color pulse
 	_start_frame_pulse()
 
-## Start pulsing the card frame border between EVA orange and purple
+## Get the frame color for the current card type
+func _get_type_frame_color() -> Color:
+	if not card_data:
+		return EVA_ORANGE
+	match card_data.card_type:
+		CardData.CardType.ATTACK:
+			return TYPE_COLOR_ATTACK
+		CardData.CardType.DEFENSE:
+			return TYPE_COLOR_DEFENSE
+		CardData.CardType.SPELL:
+			return TYPE_COLOR_SPELL
+		CardData.CardType.POWER:
+			return TYPE_COLOR_POWER
+		CardData.CardType.SUMMON:
+			return TYPE_COLOR_SUMMON
+	return EVA_ORANGE
+
+## Start pulsing the card frame border between type color and a lighter variant
 func _start_frame_pulse() -> void:
+	if _frame_pulse_tween and _frame_pulse_tween.is_valid():
+		_frame_pulse_tween.kill()
+	var base_color: Color = _get_type_frame_color()
+	var light_color: Color = base_color.lightened(0.35)
+	_card_frame.color = base_color
 	_frame_pulse_tween = create_tween().set_loops()
-	_frame_pulse_tween.tween_property(_card_frame, "color", EVA_PURPLE, 1.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
-	_frame_pulse_tween.tween_property(_card_frame, "color", EVA_ORANGE, 1.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	_frame_pulse_tween.tween_property(_card_frame, "color", light_color, 1.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	_frame_pulse_tween.tween_property(_card_frame, "color", base_color, 1.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 
 ## 设置卡牌数据并刷新显示
 func setup(data: CardData) -> void:
@@ -247,6 +296,10 @@ func _update_display() -> void:
 	_type_label.text = card_data.get_type_text()
 	_desc_label.text = card_data.description
 	_yinyang_label.text = card_data.get_yinyang_text()
+
+	# Set frame color based on card type (STS-style)
+	_card_frame.color = _get_type_frame_color()
+	_start_frame_pulse()
 
 	# 阴阳颜色
 	match card_data.yinyang:
@@ -306,7 +359,7 @@ func _update_display() -> void:
 
 	# 可用性视觉 + glow
 	if not is_playable:
-		modulate = Color(0.5, 0.5, 0.5, 0.8)
+		modulate = Color(0.4, 0.4, 0.5, 0.7)
 		_stop_playable_glow()
 	else:
 		modulate = Color.WHITE
@@ -389,10 +442,12 @@ func _on_mouse_entered() -> void:
 		return
 	is_hovered = true
 	_highlight.visible = true
-	# 悬停放大效果
+	# Add drop shadow behind card
+	_show_hover_shadow()
+	# 悬停放大效果（snappier 0.12s）
 	var tween: Tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tween.tween_property(self, "scale", Vector2(HOVER_SCALE, HOVER_SCALE), 0.15)
-	tween.parallel().tween_property(self, "position:y", position.y + HOVER_Y_OFFSET, 0.15)
+	tween.tween_property(self, "scale", Vector2(HOVER_SCALE, HOVER_SCALE), 0.12)
+	tween.parallel().tween_property(self, "position:y", position.y + HOVER_Y_OFFSET, 0.12)
 	card_hovered.emit(self)
 	# Play hover sound
 	AudioManager.play_sfx_generated("card_hover", -12.0)
@@ -404,12 +459,32 @@ func _on_mouse_exited() -> void:
 		return
 	is_hovered = false
 	_highlight.visible = false
+	# Remove drop shadow
+	_hide_hover_shadow()
 	var tween: Tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tween.tween_property(self, "scale", Vector2.ONE, 0.15)
-	tween.parallel().tween_property(self, "position:y", original_position.y, 0.15)
+	tween.tween_property(self, "scale", Vector2.ONE, 0.12)
+	tween.parallel().tween_property(self, "position:y", original_position.y, 0.12)
 	card_unhovered.emit(self)
 	# 移除悬浮提示
 	_hide_hover_tooltip()
+
+## Show a dark shadow ColorRect behind the card when hovered
+func _show_hover_shadow() -> void:
+	_hide_hover_shadow()
+	_hover_shadow = ColorRect.new()
+	_hover_shadow.size = Vector2(CARD_WIDTH + 12, CARD_HEIGHT + 12)
+	_hover_shadow.position = Vector2(-6, 4)
+	_hover_shadow.color = Color(0.0, 0.0, 0.0, 0.45)
+	_hover_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hover_shadow.z_index = -1
+	add_child(_hover_shadow)
+	move_child(_hover_shadow, 0)
+
+## Hide the hover shadow
+func _hide_hover_shadow() -> void:
+	if _hover_shadow and is_instance_valid(_hover_shadow):
+		_hover_shadow.queue_free()
+		_hover_shadow = null
 
 ## 显示简洁悬浮提示（仅显示卡牌描述，紧凑小气泡）
 func _show_hover_tooltip() -> void:
