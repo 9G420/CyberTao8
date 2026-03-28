@@ -107,6 +107,9 @@ var _taiji_frame: int = 0
 var _taiji_timer: float = 0.0
 var _resonance_pulse_time: float = 0.0
 var _player_bob_tween: Tween = null
+var _energy_field_rect: ColorRect = null   # 战场能量场 shader 层
+var _ink_flow_rect: ColorRect = null       # 墨迹流动 shader 层
+var _enemy_aura_rect: ColorRect = null     # 敌人气场光圈
 var _taiji_rot_tween: Tween = null
 var _floating_log_container: VBoxContainer = null
 var _front_shield_texture: ImageTexture = null  # cached
@@ -147,6 +150,40 @@ func _setup_ui() -> void:
 	bg_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg_overlay)
 
+	# --- 能量场 shader 层（电路符文 + 太极暗纹 + 雾气）---
+	_energy_field_rect = ColorRect.new()
+	_energy_field_rect.set_anchors_preset(PRESET_FULL_RECT)
+	_energy_field_rect.color = Color(1, 1, 1, 1)
+	_energy_field_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_energy_field_rect.z_index = 1
+	var ef_shader := load("res://Shaders/energy_field.gdshader") as Shader
+	if ef_shader:
+		var ef_mat := ShaderMaterial.new()
+		ef_mat.shader = ef_shader
+		ef_mat.set_shader_parameter("field_intensity", 0.25)
+		ef_mat.set_shader_parameter("circuit_speed", 0.4)
+		ef_mat.set_shader_parameter("fog_density", 0.2)
+		ef_mat.set_shader_parameter("battle_state", 0)
+		_energy_field_rect.material = ef_mat
+	add_child(_energy_field_rect)
+
+	# --- 墨迹流动层（持续微弱底纹）---
+	_ink_flow_rect = ColorRect.new()
+	_ink_flow_rect.set_anchors_preset(PRESET_FULL_RECT)
+	_ink_flow_rect.color = Color(1, 1, 1, 1)
+	_ink_flow_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ink_flow_rect.z_index = 2
+	var ink_shader := load("res://Shaders/ink_flow.gdshader") as Shader
+	if ink_shader:
+		var ink_mat := ShaderMaterial.new()
+		ink_mat.shader = ink_shader
+		ink_mat.set_shader_parameter("ink_intensity", 0.12)
+		ink_mat.set_shader_parameter("flow_speed", 0.3)
+		ink_mat.set_shader_parameter("ink_color_mode", 0)
+		ink_mat.set_shader_parameter("spread_radius", 0.0)
+		_ink_flow_rect.material = ink_mat
+	add_child(_ink_flow_rect)
+
 	# --- 战场区域（敌人+释放区） ---
 	play_zone = Panel.new()
 	play_zone.position = Vector2(0, 0)
@@ -183,6 +220,28 @@ func _setup_ui() -> void:
 	play_zone.add_child(enemy_intent_label)
 
 	# --- 3. Enemy character sprite (RIGHT side) ---
+	# 敌人气场光圈（精灵下方）
+	_enemy_aura_rect = ColorRect.new()
+	_enemy_aura_rect.size = Vector2(180, 230)
+	_enemy_aura_rect.position = Vector2(522, 92)
+	_enemy_aura_rect.color = Color(1, 1, 1, 0.6)
+	_enemy_aura_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var enemy_aura_shader := load("res://Shaders/summon_aura.gdshader") as Shader
+	if enemy_aura_shader:
+		var ea_mat := ShaderMaterial.new()
+		ea_mat.shader = enemy_aura_shader
+		# Boss 用紫色，精英用橙色，普通用青色
+		var enemy_color_mode: int = 3
+		match enemy_type_key:
+			"boss": enemy_color_mode = 2
+			"elite", "elite2": enemy_color_mode = 1
+		ea_mat.set_shader_parameter("color_mode", enemy_color_mode)
+		ea_mat.set_shader_parameter("pulse_speed", 1.5)
+		ea_mat.set_shader_parameter("glow_intensity", 0.6)
+		ea_mat.set_shader_parameter("rune_visibility", 0.2)
+		_enemy_aura_rect.material = ea_mat
+	play_zone.add_child(_enemy_aura_rect)
+
 	enemy_sprite = TextureRect.new()
 	enemy_sprite.position = Vector2(540, 110)
 	enemy_sprite.size = Vector2(144, 192)
@@ -689,20 +748,26 @@ func _start_player_turn() -> void:
 		resonance_turns += 1
 		_add_log("[color=gold]☯ 道境共鸣！算力+1，伤害+1[/color]")
 		AudioManager.play_sfx_generated("resonance")
+		_update_energy_field_state(1)  # 共鸣态
 		if resonance_turns >= 5:
 			GameState.achievements["yinyang_master"] = true
 	else:
 		resonance_turns = 0
+		_update_energy_field_state(0)  # 常态
 
 	if bonus["is_backlash"]:
 		_add_log("[color=purple]⚠ 心魔反噬！伤害-2，随机弃牌[/color]")
 		AudioManager.play_sfx_generated("backlash")
 		_trigger_glitch(0.4)
+		_update_energy_field_state(2)  # 反噬态
 		# 随机弃一张牌
 		var discarded: Card = hand_node.discard_random()
 		if discarded:
 			deck.discard(discarded.card_data.resource_path if discarded.card_data else "")
 			discarded.queue_free()
+
+	# 回合开始墨迹扩散特效
+	_play_turn_start_ink_burst()
 
 	# 护盾重置（每回合开始清除）
 	player_shield = 0
@@ -1623,11 +1688,52 @@ func _apply_damage_to_player(amount: int) -> int:
 ## 召唤物死亡处理
 func _on_summon_died(summon: Dictionary) -> void:
 	_add_log("[color=red]  " + summon["name"] + "被消灭了！[/color]")
+	# 死亡消散特效（在召唤物位置播放碎片散射）
+	_play_summon_death_vfx(summon)
 	if summon.get("passive", "") == "draw_1_on_death":
 		var drawn: Array[String] = deck.draw_cards(1)
 		for p in drawn:
 			_add_card_to_hand(p)
 		_add_log("[color=cyan]  " + summon["name"] + "死亡触发：抽1张牌[/color]")
+
+## 召唤物死亡消散特效
+func _play_summon_death_vfx(summon: Dictionary) -> void:
+	# 找到对应的战场节点位置
+	var summon_idx: int = player_summons.find(summon)
+	if summon_idx < 0:
+		return
+	var summon_node: Node = play_zone.get_node_or_null("summon_" + str(summon_idx))
+	if not summon_node or not summon_node is Control:
+		return
+	var center: Vector2 = (summon_node as Control).position + Vector2(36, 48)
+	# 像素碎片散射 + 淡出
+	for i in range(14):
+		var frag := ColorRect.new()
+		var fsize: float = randf_range(3.0, 8.0)
+		frag.size = Vector2(fsize, fsize)
+		frag.position = play_zone.position + center + Vector2(randf_range(-15, 15), randf_range(-20, 20))
+		# 根据召唤物类型选色
+		var color_mode: int = _get_summon_aura_color_mode(summon.get("card_id", ""))
+		match color_mode:
+			0: frag.color = Color(0.2, 1.0, 0.1, 0.9)
+			1: frag.color = Color(1.0, 0.5, 0.0, 0.9)
+			2: frag.color = Color(0.5, 0.1, 0.8, 0.9)
+			3: frag.color = Color(0.0, 0.9, 1.0, 0.9)
+			4: frag.color = Color(0.9, 0.88, 0.8, 0.9)
+			_: frag.color = Color(1.0, 0.84, 0.2, 0.9)
+		frag.rotation = randf_range(0, TAU)
+		frag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frag.z_index = 55
+		add_child(frag)
+		var scatter_dir: float = randf_range(0, TAU)
+		var scatter_dist: float = randf_range(40.0, 100.0)
+		var target_pos: Vector2 = frag.position + Vector2(cos(scatter_dir), sin(scatter_dir)) * scatter_dist
+		var ftw := frag.create_tween().set_parallel(true)
+		ftw.tween_property(frag, "position", target_pos, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		ftw.tween_property(frag, "color:a", 0.0, 0.3).set_delay(0.25)
+		ftw.tween_property(frag, "rotation", frag.rotation + randf_range(-4.0, 4.0), 0.5)
+		ftw.chain().tween_callback(frag.queue_free)
+	AudioManager.play_sfx_generated("glitch", -8.0)
 
 ## 施加玩家状态效果
 func _apply_player_status(status_type: String, value: int, turns: int) -> void:
@@ -1754,7 +1860,7 @@ func _update_summon_display() -> void:
 		var sy: int = ground_y - sprite_h
 		_create_summon_battlefield_node(s, sx, sy, sprite_w, sprite_h, front_indices[i], true)
 
-## 创建单个召唤物战场节点
+## 创建单个召唤物战场节点（v6：光环shader + idle呼吸 + 符文装饰）
 func _create_summon_battlefield_node(s: Dictionary, sx: int, sy: int, sw: int, sh: int, idx: int, is_front: bool) -> void:
 	var container := Control.new()
 	container.name = "summon_" + str(idx)
@@ -1762,6 +1868,25 @@ func _create_summon_battlefield_node(s: Dictionary, sx: int, sy: int, sw: int, s
 	container.size = Vector2(sw, sh + 30)
 	container.mouse_filter = Control.MOUSE_FILTER_PASS
 	container.set_meta("_summon_node", true)
+	container.pivot_offset = Vector2(sw / 2.0, sh / 2.0)
+
+	# --- 光环 Shader 层（底层，精灵下方）---
+	var aura_rect := ColorRect.new()
+	var aura_pad: int = 16
+	aura_rect.size = Vector2(sw + aura_pad * 2, sh + aura_pad * 2)
+	aura_rect.position = Vector2(-aura_pad, -aura_pad)
+	aura_rect.color = Color(1, 1, 1, 0.7)
+	aura_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var aura_shader := load("res://Shaders/summon_aura.gdshader") as Shader
+	if aura_shader:
+		var aura_mat := ShaderMaterial.new()
+		aura_mat.shader = aura_shader
+		aura_mat.set_shader_parameter("color_mode", _get_summon_aura_color_mode(s.get("card_id", "")))
+		aura_mat.set_shader_parameter("pulse_speed", 2.0)
+		aura_mat.set_shader_parameter("glow_intensity", 0.8)
+		aura_mat.set_shader_parameter("rune_visibility", 0.35)
+		aura_rect.material = aura_mat
+	container.add_child(aura_rect)
 
 	# Sprite
 	var sprite := TextureRect.new()
@@ -1774,6 +1899,27 @@ func _create_summon_battlefield_node(s: Dictionary, sx: int, sy: int, sw: int, s
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	container.add_child(sprite)
 
+	# --- Idle 呼吸动画（轻微上下浮动 + 缩放脉冲）---
+	var bob_tw := container.create_tween().set_loops()
+	bob_tw.tween_property(container, "position:y", float(sy) - 3.0, 0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	bob_tw.tween_property(container, "position:y", float(sy) + 1.0, 0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	# 轻微缩放呼吸
+	var scale_tw := container.create_tween().set_loops()
+	scale_tw.tween_property(container, "scale", Vector2(1.02, 0.98), 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	scale_tw.tween_property(container, "scale", Vector2(0.98, 1.02), 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+
+	# 精灵帧动画（交替 frame 0 和 frame 1）
+	var frame_tw := sprite.create_tween().set_loops()
+	var summon_type_captured := summon_type
+	frame_tw.tween_callback(func():
+		if is_instance_valid(sprite):
+			sprite.texture = _ai_sprite(summon_type_captured, 1)
+	).set_delay(0.6)
+	frame_tw.tween_callback(func():
+		if is_instance_valid(sprite):
+			sprite.texture = _ai_sprite(summon_type_captured, 0)
+	).set_delay(0.6)
+
 	# 前排蓝色盾牌图标
 	if is_front and _front_shield_texture:
 		var shield_icon := TextureRect.new()
@@ -1785,28 +1931,36 @@ func _create_summon_battlefield_node(s: Dictionary, sx: int, sy: int, sw: int, s
 		shield_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		container.add_child(shield_icon)
 
-	# HP条背景
+	# HP条背景（道教风格：暗色+微弱边框）
 	var hp_bg := ColorRect.new()
-	hp_bg.position = Vector2(4, sh + 2)
-	hp_bg.size = Vector2(sw - 8, 6)
-	hp_bg.color = Color(0.2, 0.1, 0.1, 0.8)
+	hp_bg.position = Vector2(2, sh + 2)
+	hp_bg.size = Vector2(sw - 4, 7)
+	hp_bg.color = Color(0.12, 0.06, 0.08, 0.9)
 	hp_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	container.add_child(hp_bg)
+	# HP条边框
+	var hp_border := ColorRect.new()
+	hp_border.position = Vector2(1, sh + 1)
+	hp_border.size = Vector2(sw - 2, 9)
+	hp_border.color = Color(0.4, 0.2, 0.1, 0.5)
+	hp_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hp_border.z_index = -1
+	container.add_child(hp_border)
 
 	# HP条填充
 	var hp_fill := ColorRect.new()
 	var hp_ratio: float = float(s["hp"]) / float(maxi(s["max_hp"], 1))
-	hp_fill.position = Vector2(4, sh + 2)
-	hp_fill.size = Vector2(int((sw - 8) * hp_ratio), 6)
+	hp_fill.position = Vector2(2, sh + 2)
+	hp_fill.size = Vector2(int((sw - 4) * hp_ratio), 7)
 	hp_fill.color = Color(0.2, 0.85, 0.3) if hp_ratio > 0.5 else Color(0.9, 0.4, 0.1)
 	hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	container.add_child(hp_fill)
 
 	# 名字 + 位置标签
 	var name_lbl := Label.new()
-	var pos_tag := "[前]" if is_front else "[后]"
+	var pos_tag := "☰" if is_front else "☷"
 	name_lbl.text = pos_tag + s["name"]
-	name_lbl.position = Vector2(0, sh + 8)
+	name_lbl.position = Vector2(-2, sh + 10)
 	name_lbl.size = Vector2(sw + 20, 16)
 	name_lbl.add_theme_font_size_override("font_size", 10)
 	name_lbl.add_theme_color_override("font_color", Color(0.3, 1, 0.5) if is_front else Color(0.5, 0.8, 0.6))
@@ -1837,6 +1991,24 @@ func _create_summon_battlefield_node(s: Dictionary, sx: int, sy: int, sw: int, s
 	container.add_child(click_area)
 
 	play_zone.add_child(container)
+
+	# --- 入场动画（从下方弹入 + 淡入）---
+	container.modulate.a = 0.0
+	container.position.y += 30.0
+	var enter_tw := container.create_tween().set_parallel(true)
+	enter_tw.tween_property(container, "modulate:a", 1.0, 0.3).set_ease(Tween.EASE_OUT)
+	enter_tw.tween_property(container, "position:y", float(sy), 0.35).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+
+## 获取召唤物光环颜色模式（对应 summon_aura.gdshader 的 color_mode）
+func _get_summon_aura_color_mode(card_id: String) -> int:
+	match card_id:
+		"sum_pixel_sprite": return 0  # 霓虹绿
+		"sum_cyber_fox", "sum_beast": return 1  # EVA橙
+		"sum_spirit_dragon", "sum_shadow_clone": return 2  # 电紫
+		"sum_neon_golem", "sum_byte_familiar": return 3  # 赛博青
+		"sum_dao_crane": return 4  # 符纸白
+		"sum_swarm": return 5  # 金
+		_: return 0
 
 ## 获取召唤物sprite类型
 func _get_summon_sprite_type(card_id: String) -> String:
@@ -2070,11 +2242,37 @@ void fragment() {
 	ptw.parallel().tween_property(pulse, "color:a", 0.0, 0.2).set_delay(0.15)
 	ptw.tween_callback(pulse.queue_free)
 
-## Rift-tear summon effect: vertical crack splits open with green energy pouring out
+## Rift-tear summon effect: rune ring + vertical crack splits open with green energy pouring out
 func _play_summon_card_vfx() -> void:
 	var pillar_x: float = play_zone.position.x + 340.0
 	var pillar_y: float = play_zone.position.y + 110.0
 	var rift_center: Vector2 = Vector2(pillar_x + 20.0, pillar_y + 140.0)
+
+	# --- Phase 0: Dao rune ring (8 rune dots spinning then fading) ---
+	var rune_container := Control.new()
+	rune_container.position = rift_center
+	rune_container.pivot_offset = Vector2.ZERO
+	rune_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rune_container.z_index = 52
+	add_child(rune_container)
+	var rune_chars: Array[String] = ["☰", "☱", "☲", "☳", "☴", "☵", "☶", "☷"]
+	for i in range(8):
+		var angle: float = float(i) * TAU / 8.0
+		var rune_lbl := Label.new()
+		rune_lbl.text = rune_chars[i]
+		rune_lbl.add_theme_font_size_override("font_size", 14)
+		rune_lbl.add_theme_color_override("font_color", Color(0.1, 1.0, 0.4, 0.0))
+		rune_lbl.position = Vector2(cos(angle) * 55.0 - 7.0, sin(angle) * 55.0 - 9.0)
+		rune_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rune_container.add_child(rune_lbl)
+		# Staggered fade in
+		var rtw := rune_lbl.create_tween()
+		rtw.tween_property(rune_lbl, "theme_override_colors/font_color:a", 0.9, 0.08).set_delay(float(i) * 0.03)
+	# Spin the rune ring
+	var rune_tw := rune_container.create_tween()
+	rune_tw.tween_property(rune_container, "rotation", TAU * 0.5, 0.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	rune_tw.tween_property(rune_container, "modulate:a", 0.0, 0.2)
+	rune_tw.tween_callback(rune_container.queue_free)
 
 	# --- Phase 1: Dark rift line splits open vertically ---
 	var rift_left := ColorRect.new()
@@ -2586,3 +2784,57 @@ func _update_player_status_icons() -> void:
 			val_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			icon_box.add_child(val_lbl)
 			player_status_container.add_child(icon_box)
+
+# ============================================================
+# 赛博道教氛围系统
+# ============================================================
+
+## 更新能量场 shader 状态（0=常态, 1=共鸣, 2=反噬）
+func _update_energy_field_state(battle_state_val: int) -> void:
+	if _energy_field_rect and _energy_field_rect.material is ShaderMaterial:
+		var mat := _energy_field_rect.material as ShaderMaterial
+		mat.set_shader_parameter("battle_state", battle_state_val)
+		# 共鸣时加强能量场强度
+		if battle_state_val == 1:
+			var tw := create_tween()
+			tw.tween_method(func(v: float):
+				if is_instance_valid(_energy_field_rect) and _energy_field_rect.material is ShaderMaterial:
+					(_energy_field_rect.material as ShaderMaterial).set_shader_parameter("field_intensity", v)
+			, 0.25, 0.5, 0.5)
+			tw.tween_method(func(v: float):
+				if is_instance_valid(_energy_field_rect) and _energy_field_rect.material is ShaderMaterial:
+					(_energy_field_rect.material as ShaderMaterial).set_shader_parameter("field_intensity", v)
+			, 0.5, 0.25, 1.5)
+		elif battle_state_val == 2:
+			var tw := create_tween()
+			tw.tween_method(func(v: float):
+				if is_instance_valid(_energy_field_rect) and _energy_field_rect.material is ShaderMaterial:
+					(_energy_field_rect.material as ShaderMaterial).set_shader_parameter("field_intensity", v)
+			, 0.25, 0.6, 0.3)
+			tw.tween_method(func(v: float):
+				if is_instance_valid(_energy_field_rect) and _energy_field_rect.material is ShaderMaterial:
+					(_energy_field_rect.material as ShaderMaterial).set_shader_parameter("field_intensity", v)
+			, 0.6, 0.25, 2.0)
+
+## 回合开始墨迹扩散特效
+func _play_turn_start_ink_burst() -> void:
+	if not _ink_flow_rect or not _ink_flow_rect.material is ShaderMaterial:
+		return
+	var mat := _ink_flow_rect.material as ShaderMaterial
+	# 触发墨迹从屏幕中心向外扩散
+	mat.set_shader_parameter("ink_intensity", 0.4)
+	mat.set_shader_parameter("spread_radius", 0.0)
+	var ink_ref: ColorRect = _ink_flow_rect
+	var tw := create_tween()
+	tw.tween_method(func(v: float):
+		if is_instance_valid(ink_ref) and ink_ref.material is ShaderMaterial:
+			(ink_ref.material as ShaderMaterial).set_shader_parameter("spread_radius", v)
+	, 0.0, 1.2, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_method(func(v: float):
+		if is_instance_valid(ink_ref) and ink_ref.material is ShaderMaterial:
+			(ink_ref.material as ShaderMaterial).set_shader_parameter("ink_intensity", v)
+	, 0.4, 0.12, 0.8)
+	tw.tween_method(func(v: float):
+		if is_instance_valid(ink_ref) and ink_ref.material is ShaderMaterial:
+			(ink_ref.material as ShaderMaterial).set_shader_parameter("spread_radius", v)
+	, 1.2, 0.0, 0.3)
