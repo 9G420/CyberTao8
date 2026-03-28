@@ -41,8 +41,10 @@ var _card_frame: ColorRect
 var _inner_panel: ColorRect
 var _art_texture_rect: TextureRect
 var _preview_panel: PanelContainer = null
+var _hover_tooltip: PanelContainer = null
 var _glow_tween: Tween = null
 var _frame_pulse_tween: Tween = null
+var _drag_target_pos: Vector2 = Vector2.ZERO
 
 ## 卡牌尺寸常量
 const CARD_WIDTH: int = 160
@@ -64,77 +66,118 @@ func _ready() -> void:
 	if card_data:
 		_update_display()
 
-## 构建卡牌UI布局
+## 平滑拖拽跟随
+func _process(delta: float) -> void:
+	if is_dragging and _drag_target_pos != Vector2.ZERO:
+		global_position = global_position.lerp(_drag_target_pos, minf(delta * 22.0, 1.0))
+
+## 构建卡牌UI布局（精致卡牌风格）
 func _build_card_ui() -> void:
 	# 高亮边框（悬停时显示）
 	_highlight = ColorRect.new()
-	_highlight.size = Vector2(CARD_WIDTH + 12, CARD_HEIGHT + 12)
-	_highlight.position = Vector2(-6, -6)
-	_highlight.color = Color(1, 0.8, 0, 0.6)
+	_highlight.size = Vector2(CARD_WIDTH + 8, CARD_HEIGHT + 8)
+	_highlight.position = Vector2(-4, -4)
+	_highlight.color = Color(1, 0.8, 0, 0.0)
 	_highlight.visible = false
 	_highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 悬停高亮shader（柔和外发光）
+	var hl_shader := Shader.new()
+	hl_shader.code = "
+shader_type canvas_item;
+uniform vec4 glow_color : source_color = vec4(1.0, 0.85, 0.2, 1.0);
+void fragment() {
+	vec2 uv = UV;
+	float dx = min(uv.x, 1.0 - uv.x);
+	float dy = min(uv.y, 1.0 - uv.y);
+	float edge = min(dx, dy);
+	float glow = 1.0 - smoothstep(0.0, 0.22, edge);
+	float pulse = 0.75 + 0.25 * sin(TIME * 2.5);
+	COLOR = vec4(glow_color.rgb, glow * pulse * 0.65);
+}
+"
+	var hl_mat := ShaderMaterial.new()
+	hl_mat.shader = hl_shader
+	_highlight.material = hl_mat
 	add_child(_highlight)
 
-	# Outer metallic EVA frame (2px border effect)
+	# Outer metallic frame (rounded border effect)
 	_card_frame = ColorRect.new()
 	_card_frame.size = Vector2(CARD_WIDTH, CARD_HEIGHT)
 	_card_frame.color = EVA_ORANGE
 	_card_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_card_frame)
 
-	# Inner gradient panel (inset by 2px for border effect)
+	# Inner panel (inset by 2px)
 	_inner_panel = ColorRect.new()
 	_inner_panel.size = Vector2(CARD_WIDTH - 4, CARD_HEIGHT - 4)
 	_inner_panel.position = Vector2(2, 2)
-	_inner_panel.color = Color(0.08, 0.05, 0.14, 0.97)
+	_inner_panel.color = Color(0.06, 0.04, 0.12, 0.97)
 	_inner_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_inner_panel)
 
-	# 背景 (sits inside the inner panel for layered look)
+	# 背景
 	_bg_rect = ColorRect.new()
 	_bg_rect.size = Vector2(CARD_WIDTH - 8, CARD_HEIGHT - 8)
 	_bg_rect.position = Vector2(4, 4)
-	_bg_rect.color = Color(0.1, 0.08, 0.15, 0.95)
+	_bg_rect.color = Color(0.09, 0.06, 0.14, 0.95)
 	_bg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bg_rect)
 
-	# 卡面艺术区域 - TextureRect for procedural art, with ColorRect fallback behind it
+	# 卡面艺术区域
 	_art_rect = ColorRect.new()
-	_art_rect.size = Vector2(CARD_WIDTH - 12, 90)
-	_art_rect.position = Vector2(6, 30)
-	_art_rect.color = Color(0.2, 0.15, 0.3)
+	_art_rect.size = Vector2(CARD_WIDTH - 14, 88)
+	_art_rect.position = Vector2(7, 28)
+	_art_rect.color = Color(0.18, 0.12, 0.28)
 	_art_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_art_rect)
 
 	_art_texture_rect = TextureRect.new()
-	_art_texture_rect.size = Vector2(CARD_WIDTH - 12, 90)
-	_art_texture_rect.position = Vector2(6, 30)
+	_art_texture_rect.size = Vector2(CARD_WIDTH - 14, 88)
+	_art_texture_rect.position = Vector2(7, 28)
 	_art_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_art_texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	_art_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_art_texture_rect)
 
-	# 费用标签（左上角）
+	# 费用标签（左上角，圆形底色）
+	var cost_bg := ColorRect.new()
+	cost_bg.size = Vector2(26, 26)
+	cost_bg.position = Vector2(5, 3)
+	cost_bg.color = Color(0.0, 0.15, 0.25, 0.9)
+	cost_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(cost_bg)
+
 	_cost_label = Label.new()
-	_cost_label.position = Vector2(6, 2)
-	_cost_label.add_theme_font_size_override("font_size", 22)
+	_cost_label.position = Vector2(5, 1)
+	_cost_label.size = Vector2(26, 26)
+	_cost_label.add_theme_font_size_override("font_size", 20)
 	_cost_label.add_theme_color_override("font_color", Color(0, 0.9, 1))
+	_cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_cost_label)
 
 	# 阴阳标签（右上角）
 	_yinyang_label = Label.new()
-	_yinyang_label.position = Vector2(CARD_WIDTH - 36, 2)
-	_yinyang_label.add_theme_font_size_override("font_size", 18)
+	_yinyang_label.position = Vector2(CARD_WIDTH - 32, 3)
+	_yinyang_label.add_theme_font_size_override("font_size", 16)
 	_yinyang_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_yinyang_label)
 
+	# 分割线
+	var sep_line := ColorRect.new()
+	sep_line.size = Vector2(CARD_WIDTH - 16, 1)
+	sep_line.position = Vector2(8, 117)
+	sep_line.color = Color(1.0, 0.5, 0.0, 0.35)
+	sep_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep_line)
+
 	# 卡名
 	_name_label = Label.new()
-	_name_label.position = Vector2(6, 115)
-	_name_label.size = Vector2(CARD_WIDTH - 12, 24)
-	_name_label.add_theme_font_size_override("font_size", 18)
-	_name_label.add_theme_color_override("font_color", Color.WHITE)
+	_name_label.position = Vector2(6, 118)
+	_name_label.size = Vector2(CARD_WIDTH - 12, 22)
+	_name_label.add_theme_font_size_override("font_size", 16)
+	_name_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.85))
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name_label.clip_text = true
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -142,20 +185,20 @@ func _build_card_ui() -> void:
 
 	# 类型标签
 	_type_label = Label.new()
-	_type_label.position = Vector2(6, 140)
-	_type_label.size = Vector2(CARD_WIDTH - 12, 18)
-	_type_label.add_theme_font_size_override("font_size", 14)
-	_type_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
+	_type_label.position = Vector2(6, 139)
+	_type_label.size = Vector2(CARD_WIDTH - 12, 16)
+	_type_label.add_theme_font_size_override("font_size", 11)
+	_type_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.65))
 	_type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_type_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_type_label)
 
 	# 描述
 	_desc_label = Label.new()
-	_desc_label.position = Vector2(6, 158)
-	_desc_label.size = Vector2(CARD_WIDTH - 12, 35)
-	_desc_label.add_theme_font_size_override("font_size", 13)
-	_desc_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	_desc_label.position = Vector2(8, 156)
+	_desc_label.size = Vector2(CARD_WIDTH - 16, 36)
+	_desc_label.add_theme_font_size_override("font_size", 11)
+	_desc_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.85))
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_desc_label.clip_text = true
 	_desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -163,13 +206,21 @@ func _build_card_ui() -> void:
 
 	# 攻/防数值
 	_stats_label = Label.new()
-	_stats_label.position = Vector2(6, CARD_HEIGHT - 28)
-	_stats_label.size = Vector2(CARD_WIDTH - 12, 24)
-	_stats_label.add_theme_font_size_override("font_size", 20)
+	_stats_label.position = Vector2(6, CARD_HEIGHT - 26)
+	_stats_label.size = Vector2(CARD_WIDTH - 12, 22)
+	_stats_label.add_theme_font_size_override("font_size", 18)
 	_stats_label.add_theme_color_override("font_color", Color(1, 0.6, 0.3))
 	_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_stats_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_stats_label)
+
+	# 底部分割线
+	var bottom_sep := ColorRect.new()
+	bottom_sep.size = Vector2(CARD_WIDTH - 16, 1)
+	bottom_sep.position = Vector2(8, CARD_HEIGHT - 29)
+	bottom_sep.color = Color(1.0, 0.5, 0.0, 0.25)
+	bottom_sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bottom_sep)
 
 	# Start the EVA frame color pulse
 	_start_frame_pulse()
@@ -295,19 +346,28 @@ func _gui_input(event: InputEvent) -> void:
 				original_position = position
 				original_z_index = z_index
 				z_index = 50
+				_drag_target_pos = global_position
+				_hide_hover_tooltip()
+				# 拖拽开始动效：轻微缩放
+				var drag_tween: Tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+				drag_tween.tween_property(self, "scale", Vector2(1.08, 1.08), 0.1)
 				card_drag_started.emit(self)
 			elif not mb.pressed and is_dragging:
 				# 结束拖拽
 				is_dragging = false
 				z_index = original_z_index
+				_drag_target_pos = Vector2.ZERO
+				# 恢复缩放
+				var end_tween: Tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+				end_tween.tween_property(self, "scale", Vector2.ONE, 0.12)
 				card_drag_ended.emit(self)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			card_clicked.emit(self)
 
 	elif event is InputEventMouseMotion:
 		if is_dragging:
-			# 跟随鼠标
-			global_position = (event as InputEventMouseMotion).global_position - drag_offset
+			# 跟随鼠标（平滑跟随）
+			_drag_target_pos = (event as InputEventMouseMotion).global_position - drag_offset
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_MOUSE_ENTER:
@@ -327,8 +387,8 @@ func _on_mouse_entered() -> void:
 	card_hovered.emit(self)
 	# Play hover sound
 	AudioManager.play_sfx_generated("card_hover", -12.0)
-	# Show preview panel
-	_create_preview_panel()
+	# 显示简洁的悬浮提示（卡牌描述）
+	_show_hover_tooltip()
 
 func _on_mouse_exited() -> void:
 	if is_dragging:
@@ -339,132 +399,60 @@ func _on_mouse_exited() -> void:
 	tween.tween_property(self, "scale", Vector2.ONE, 0.15)
 	tween.parallel().tween_property(self, "position:y", original_position.y, 0.15)
 	card_unhovered.emit(self)
-	# Remove preview panel and its CanvasLayer parent
-	if _preview_panel and is_instance_valid(_preview_panel):
-		var layer := _preview_panel.get_parent()
+	# 移除悬浮提示
+	_hide_hover_tooltip()
+
+## 显示简洁悬浮提示（仅显示卡牌描述，紧凑小气泡）
+func _show_hover_tooltip() -> void:
+	if not card_data:
+		return
+	_hide_hover_tooltip()
+
+	_hover_tooltip = PanelContainer.new()
+	_hover_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.05, 0.14, 0.92)
+	style.border_color = Color(1.0, 0.6, 0.15, 0.7)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	style.set_content_margin_all(8)
+	_hover_tooltip.add_theme_stylebox_override("panel", style)
+
+	var desc_lbl := Label.new()
+	desc_lbl.text = card_data.description
+	desc_lbl.add_theme_font_size_override("font_size", 13)
+	desc_lbl.add_theme_color_override("font_color", Color(0.9, 0.88, 0.95))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.custom_minimum_size = Vector2(180, 0)
+	desc_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hover_tooltip.add_child(desc_lbl)
+
+	# 使用CanvasLayer使tooltip不受卡牌缩放影响
+	var canvas_layer: CanvasLayer = CanvasLayer.new()
+	canvas_layer.layer = 100
+	canvas_layer.name = "CardTooltipLayer"
+	add_child(canvas_layer)
+	canvas_layer.add_child(_hover_tooltip)
+
+	# 定位：卡牌正上方偏小
+	var card_global_center: Vector2 = global_position + (size * scale) / 2.0
+	var tip_x: float = card_global_center.x - 90.0
+	var tip_y: float = global_position.y - 55.0
+	var screen_size: Vector2 = get_viewport_rect().size
+	tip_x = clampf(tip_x, 4.0, screen_size.x - 194.0)
+	tip_y = clampf(tip_y, 4.0, screen_size.y - 60.0)
+	_hover_tooltip.position = Vector2(tip_x, tip_y)
+
+## 隐藏悬浮提示
+func _hide_hover_tooltip() -> void:
+	if _hover_tooltip and is_instance_valid(_hover_tooltip):
+		var layer := _hover_tooltip.get_parent()
 		if layer and layer is CanvasLayer:
 			layer.queue_free()
 		else:
-			_preview_panel.queue_free()
-		_preview_panel = null
-
-## Create and show a large hover preview popup above the card
-func _create_preview_panel() -> void:
-	if not card_data:
-		return
-	if _preview_panel and is_instance_valid(_preview_panel):
-		_preview_panel.queue_free()
-		_preview_panel = null
-
-	_preview_panel = PanelContainer.new()
-	_preview_panel.custom_minimum_size = Vector2(400, 300)
-	_preview_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	# Style: semi-transparent dark purple EVA background
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.05, 0.2, 0.92)
-	style.border_color = EVA_ORANGE
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(12)
-	_preview_panel.add_theme_stylebox_override("panel", style)
-
-	var vbox := VBoxContainer.new()
-	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_preview_panel.add_child(vbox)
-
-	# Card name (large)
-	var name_lbl := Label.new()
-	name_lbl.text = card_data.card_name
-	name_lbl.add_theme_font_size_override("font_size", 24)
-	name_lbl.add_theme_color_override("font_color", Color.WHITE)
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(name_lbl)
-
-	# Large card art (128x128)
-	var art_container := CenterContainer.new()
-	art_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(art_container)
-	var art_preview := TextureRect.new()
-	art_preview.custom_minimum_size = Vector2(128, 128)
-	art_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art_preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-	art_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if _art_texture_rect and _art_texture_rect.texture:
-		art_preview.texture = _art_texture_rect.texture
-	art_container.add_child(art_preview)
-
-	# Full description (no clipping)
-	var desc_lbl := Label.new()
-	desc_lbl.text = card_data.description
-	desc_lbl.add_theme_font_size_override("font_size", 15)
-	desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.custom_minimum_size.x = 370
-	desc_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(desc_lbl)
-
-	# Stats display
-	var stats_lbl := Label.new()
-	stats_lbl.add_theme_font_size_override("font_size", 18)
-	stats_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stats_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	match card_data.card_type:
-		CardData.CardType.ATTACK:
-			stats_lbl.text = "攻击力: " + str(card_data.attack_power)
-			stats_lbl.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
-		CardData.CardType.DEFENSE:
-			stats_lbl.text = "防御力: " + str(card_data.defense_power)
-			stats_lbl.add_theme_color_override("font_color", Color(0.3, 0.7, 1))
-		CardData.CardType.SUMMON:
-			stats_lbl.text = "攻:" + str(card_data.attack_power) + "  血:" + str(card_data.summon_hp)
-			stats_lbl.add_theme_color_override("font_color", Color(0.3, 1, 0.5))
-		CardData.CardType.SPELL:
-			stats_lbl.text = "术法效果"
-			stats_lbl.add_theme_color_override("font_color", Color(0.8, 0.5, 1))
-	vbox.add_child(stats_lbl)
-
-	# Yin/Yang indicator with color
-	var yy_lbl := Label.new()
-	yy_lbl.text = card_data.get_yinyang_text()
-	yy_lbl.add_theme_font_size_override("font_size", 16)
-	yy_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	yy_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	match card_data.yinyang:
-		CardData.YinYang.YIN:
-			yy_lbl.add_theme_color_override("font_color", Color(0.5, 0.3, 1.0))
-		CardData.YinYang.YANG:
-			yy_lbl.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
-		_:
-			yy_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-	vbox.add_child(yy_lbl)
-
-	# Rarity indicator
-	var rarity_lbl := Label.new()
-	rarity_lbl.text = "算力: " + str(card_data.cost) + "  |  " + card_data.get_type_text()
-	rarity_lbl.add_theme_font_size_override("font_size", 14)
-	rarity_lbl.add_theme_color_override("font_color", card_data.get_rarity_color())
-	rarity_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	rarity_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(rarity_lbl)
-
-	# Add to tree as top-level so it isn't affected by card transforms
-	var canvas_layer: CanvasLayer = CanvasLayer.new()
-	canvas_layer.layer = 100
-	canvas_layer.name = "CardPreviewLayer"
-	add_child(canvas_layer)
-	canvas_layer.add_child(_preview_panel)
-
-	# Position above the card, centered, clamped to screen bounds
-	var card_global_center: Vector2 = global_position + (size * scale) / 2.0
-	var preview_x: float = card_global_center.x - 200.0  # half of 400
-	var preview_y: float = global_position.y - 310.0  # above card
-	# Clamp to screen
-	var screen_size: Vector2 = get_viewport_rect().size
-	preview_x = clampf(preview_x, 4.0, screen_size.x - 404.0)
-	preview_y = clampf(preview_y, 4.0, screen_size.y - 304.0)
-	_preview_panel.position = Vector2(preview_x, preview_y)
+			_hover_tooltip.queue_free()
+		_hover_tooltip = null
 
 ## 播放打出动画
 func play_cast_animation(target_pos: Vector2) -> void:

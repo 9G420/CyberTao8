@@ -878,44 +878,58 @@ func _is_pos_over_node(pos: Vector2, node: Control) -> bool:
 	rect = rect.grow(12.0)
 	return rect.has_point(pos)
 
-## 显示拖拽箭头（贝塞尔曲线）
+## 显示拖拽箭头（贝塞尔曲线，流畅渐变）
 func _show_drag_arrow(from: Vector2, to: Vector2) -> void:
 	if not _drag_arrow:
 		_drag_arrow = Line2D.new()
-		_drag_arrow.width = 4.0
+		_drag_arrow.width = 5.0
 		_drag_arrow.default_color = Color(1, 0.85, 0.2, 0.9)
 		_drag_arrow.z_index = 90
 		_drag_arrow.begin_cap_mode = Line2D.LINE_CAP_ROUND
 		_drag_arrow.end_cap_mode = Line2D.LINE_CAP_ROUND
+		_drag_arrow.joint_mode = Line2D.LINE_JOINT_ROUND
+		_drag_arrow.antialiased = true
+		# 渐变宽度曲线：从细到粗
+		var width_curve := Curve.new()
+		width_curve.add_point(Vector2(0.0, 0.4))
+		width_curve.add_point(Vector2(0.5, 0.7))
+		width_curve.add_point(Vector2(1.0, 1.0))
+		_drag_arrow.width_curve = width_curve
+		# 渐变颜色
+		var gradient := Gradient.new()
+		gradient.set_color(0, Color(1, 0.85, 0.2, 0.3))
+		gradient.set_color(1, Color(1, 0.7, 0.1, 0.95))
+		_drag_arrow.gradient = gradient
 		add_child(_drag_arrow)
 	if not _drag_arrow_head:
 		_drag_arrow_head = Polygon2D.new()
-		_drag_arrow_head.color = Color(1, 0.85, 0.2, 0.9)
+		_drag_arrow_head.color = Color(1, 0.7, 0.1, 0.95)
 		_drag_arrow_head.z_index = 91
+		_drag_arrow_head.antialiased = true
 		add_child(_drag_arrow_head)
 
 	_drag_arrow.visible = true
 	_drag_arrow_head.visible = true
 
 	# 贝塞尔曲线：从卡牌到鼠标，中间控制点在上方
-	var mid_y: float = minf(from.y, to.y) - 40.0
+	var mid_y: float = minf(from.y, to.y) - 60.0
 	var ctrl: Vector2 = Vector2((from.x + to.x) * 0.5, mid_y)
 	_drag_arrow.clear_points()
-	var segments: int = 16
+	var segments: int = 24
 	for i in range(segments + 1):
 		var t: float = float(i) / float(segments)
 		var p: Vector2 = from.lerp(ctrl, t).lerp(ctrl.lerp(to, t), t)
 		_drag_arrow.add_point(p)
 
-	# 箭头三角形
+	# 箭头三角形（稍大一些更美观）
 	var dir: Vector2 = (to - ctrl).normalized()
 	var perp: Vector2 = Vector2(-dir.y, dir.x)
 	var tip: Vector2 = to
-	var arrow_size: float = 10.0
+	var arrow_size: float = 14.0
 	_drag_arrow_head.polygon = PackedVector2Array([
 		tip,
-		tip - dir * arrow_size + perp * arrow_size * 0.5,
-		tip - dir * arrow_size - perp * arrow_size * 0.5
+		tip - dir * arrow_size + perp * arrow_size * 0.55,
+		tip - dir * arrow_size - perp * arrow_size * 0.55
 	])
 
 ## 隐藏拖拽箭头
@@ -925,7 +939,7 @@ func _hide_drag_arrow() -> void:
 	if _drag_arrow_head:
 		_drag_arrow_head.visible = false
 
-## 更新目标高亮
+## 更新目标高亮（边缘发光效果）
 func _update_target_highlight(target: String) -> void:
 	# 清除旧高亮
 	if _highlight_rect:
@@ -934,38 +948,86 @@ func _update_target_highlight(target: String) -> void:
 	# 重置所有精灵调制
 	if enemy_sprite:
 		enemy_sprite.modulate = Color.WHITE
+		enemy_sprite.material = null
 	if player_sprite:
 		player_sprite.modulate = Color.WHITE
+		player_sprite.material = null
+	if play_zone:
+		for child in play_zone.get_children():
+			if child is Control:
+				child.modulate = Color.WHITE
+				child.material = null
 
 	if target == "":
 		return
 
 	var target_node: Control = null
-	var highlight_color := Color(1, 1, 0.3, 0.25)
+	var glow_color := Color(1, 1, 0.3)
 
 	if target == "enemy" and enemy_sprite:
 		target_node = enemy_sprite
-		highlight_color = Color(1, 0.3, 0.2, 0.3)
-		enemy_sprite.modulate = Color(1.3, 1.1, 1.1)
+		glow_color = Color(1.0, 0.25, 0.15)
 	elif target == "self" and player_sprite:
 		target_node = player_sprite
-		highlight_color = Color(0.2, 0.8, 1, 0.3)
-		player_sprite.modulate = Color(1.1, 1.2, 1.3)
+		glow_color = Color(0.2, 0.7, 1.0)
 	elif target.begins_with("summon_") and play_zone:
 		var idx_str: String = target.replace("summon_", "")
 		var summon_node: Node = play_zone.get_node_or_null("summon_" + idx_str)
 		if summon_node and summon_node is Control:
 			target_node = summon_node as Control
-			highlight_color = Color(0.2, 1, 0.5, 0.3)
+			glow_color = Color(0.2, 1, 0.5)
 
 	if target_node:
-		_highlight_rect = ColorRect.new()
-		_highlight_rect.global_position = target_node.global_position - Vector2(4, 4)
-		_highlight_rect.size = target_node.size * target_node.scale + Vector2(8, 8)
-		_highlight_rect.color = highlight_color
-		_highlight_rect.z_index = 50
-		_highlight_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(_highlight_rect)
+		# 应用边缘发光着色器
+		_apply_edge_glow(target_node, glow_color)
+
+## 给目标节点应用边缘发光shader
+func _apply_edge_glow(node: Control, glow_color: Color) -> void:
+	# 使用ColorRect叠加层模拟发光边缘（兼容所有节点类型）
+	_highlight_rect = ColorRect.new()
+	_highlight_rect.color = Color(0, 0, 0, 0)
+	_highlight_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_highlight_rect.z_index = 50
+
+	var glow_expand: float = 6.0
+	_highlight_rect.global_position = node.global_position - Vector2(glow_expand, glow_expand)
+	_highlight_rect.size = node.size * node.scale + Vector2(glow_expand * 2, glow_expand * 2)
+
+	# 边缘发光shader
+	var shader := Shader.new()
+	shader.code = "
+shader_type canvas_item;
+uniform vec4 glow_color : source_color = vec4(1.0, 0.3, 0.2, 1.0);
+uniform float time_offset = 0.0;
+void fragment() {
+	vec2 uv = UV;
+	// 到边缘的最小距离
+	float dx = min(uv.x, 1.0 - uv.x);
+	float dy = min(uv.y, 1.0 - uv.y);
+	float edge_dist = min(dx, dy);
+	// 外发光带 - 边缘渐变
+	float glow_width = 0.12;
+	float glow = smoothstep(0.0, glow_width, edge_dist);
+	float edge_glow = (1.0 - glow) * 0.85;
+	// 脉冲动画
+	float pulse = 0.7 + 0.3 * sin(TIME * 3.0 + time_offset);
+	edge_glow *= pulse;
+	// 角落额外亮度
+	float corner = (1.0 - smoothstep(0.0, 0.18, dx)) * (1.0 - smoothstep(0.0, 0.18, dy));
+	edge_glow += corner * 0.3 * pulse;
+	COLOR = vec4(glow_color.rgb, edge_glow * glow_color.a);
+}
+"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("glow_color", Color(glow_color.r, glow_color.g, glow_color.b, 1.0))
+	mat.set_shader_parameter("time_offset", randf() * 6.28)
+	_highlight_rect.material = mat
+
+	add_child(_highlight_rect)
+
+	# 同时轻微提亮目标精灵
+	node.modulate = Color(1.2, 1.2, 1.2)
 
 ## 执行卡牌效果（target: "enemy", "self", "summon_0", "summon_1" 等）
 func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: String) -> void:
