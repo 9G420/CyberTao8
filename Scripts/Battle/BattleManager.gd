@@ -243,8 +243,8 @@ func _setup_ui() -> void:
 	play_zone.add_child(_enemy_aura_rect)
 
 	enemy_sprite = TextureRect.new()
-	enemy_sprite.position = Vector2(540, 110)
-	enemy_sprite.size = Vector2(144, 192)
+	enemy_sprite.position = Vector2(500, 60)
+	enemy_sprite.size = Vector2(192, 256)
 	enemy_sprite.stretch_mode = TextureRect.STRETCH_SCALE
 	enemy_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	enemy_sprite.texture = _ai_sprite("grunt", 0)
@@ -252,8 +252,8 @@ func _setup_ui() -> void:
 
 	# --- 2. Player character sprite (LEFT side) ---
 	player_sprite = TextureRect.new()
-	player_sprite.position = Vector2(40, 180)
-	player_sprite.size = Vector2(144, 192)
+	player_sprite.position = Vector2(30, 130)
+	player_sprite.size = Vector2(192, 256)
 	player_sprite.stretch_mode = TextureRect.STRETCH_SCALE
 	player_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	player_sprite.texture = _ai_sprite("player", 0)
@@ -263,8 +263,8 @@ func _setup_ui() -> void:
 
 	# --- 角色脚下阴影（消除漂浮感）---
 	var player_shadow := ColorRect.new()
-	player_shadow.size = Vector2(120, 16)
-	player_shadow.position = Vector2(52, 370)
+	player_shadow.size = Vector2(150, 18)
+	player_shadow.position = Vector2(50, 384)
 	player_shadow.color = Color(0, 0, 0, 0)
 	player_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var shadow_shader := Shader.new()
@@ -283,8 +283,8 @@ void fragment() {
 	play_zone.add_child(player_shadow)
 
 	var enemy_shadow := ColorRect.new()
-	enemy_shadow.size = Vector2(130, 18)
-	enemy_shadow.position = Vector2(547, 300)
+	enemy_shadow.size = Vector2(160, 20)
+	enemy_shadow.position = Vector2(510, 314)
 	enemy_shadow.color = Color(0, 0, 0, 0)
 	enemy_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var eshadow_mat := ShaderMaterial.new()
@@ -547,6 +547,16 @@ func _start_player_idle_bob() -> void:
 	var breath_tw := create_tween().set_loops()
 	breath_tw.tween_property(player_sprite, "scale", Vector2(1.02, 0.98), 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	breath_tw.tween_property(player_sprite, "scale", Vector2(0.98, 1.02), 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	# 玩家idle帧循环（frame 0 ↔ frame 3 special pose）
+	var player_frame_tw := create_tween().set_loops()
+	player_frame_tw.tween_callback(func():
+		if is_instance_valid(player_sprite):
+			player_sprite.texture = _ai_sprite("player", 3)
+	).set_delay(1.5)
+	player_frame_tw.tween_callback(func():
+		if is_instance_valid(player_sprite):
+			player_sprite.texture = _ai_sprite("player", 0)
+	).set_delay(1.5)
 
 ## 敌人待机浮动动画
 func _start_enemy_idle_bob() -> void:
@@ -560,6 +570,16 @@ func _start_enemy_idle_bob() -> void:
 	var breath_tw := create_tween().set_loops()
 	breath_tw.tween_property(enemy_sprite, "scale", Vector2(1.01, 0.99), 1.2).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	breath_tw.tween_property(enemy_sprite, "scale", Vector2(0.99, 1.01), 1.2).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	# 敌人idle帧循环（frame 0 ↔ frame 1 attack pose，营造威胁感）
+	var enemy_frame_tw := create_tween().set_loops()
+	enemy_frame_tw.tween_callback(func():
+		if is_instance_valid(enemy_sprite):
+			enemy_sprite.texture = _ai_sprite(enemy_type_key, 1)
+	).set_delay(2.0)
+	enemy_frame_tw.tween_callback(func():
+		if is_instance_valid(enemy_sprite):
+			enemy_sprite.texture = _ai_sprite(enemy_type_key, 0)
+	).set_delay(0.4)
 
 ## Start taiji rotation tween (visual rotation of the TextureRect node)
 func _start_taiji_rotation() -> void:
@@ -1901,22 +1921,22 @@ func _update_summon_display() -> void:
 			back_list.append(s)
 			back_indices.append(idx)
 
-	# 地面线 y 坐标（sprite底部对齐）
-	var ground_y: int = 310
-	var sprite_h: int = 96
-	var sprite_w: int = 72
+	# 地面线 y 坐标（sprite底部对齐）— 增大召唤物尺寸
+	var ground_y: int = 320
+	var sprite_h: int = 160
+	var sprite_w: int = 120
 
-	# 后排：靠近玩家（x: 190起）
+	# 后排：靠近玩家（x: 170起，间距加大）
 	for i in range(back_list.size()):
 		var s: Dictionary = back_list[i]
-		var sx: int = 190 + i * 78
+		var sx: int = 170 + i * 130
 		var sy: int = ground_y - sprite_h
 		_create_summon_battlefield_node(s, sx, sy, sprite_w, sprite_h, back_indices[i], false)
 
-	# 前排：玩家和敌人之间（x: 320起）
+	# 前排：玩家和敌人之间（x: 300起，间距加大）
 	for i in range(front_list.size()):
 		var s: Dictionary = front_list[i]
-		var sx: int = 320 + i * 78
+		var sx: int = 300 + i * 130
 		var sy: int = ground_y - sprite_h
 		_create_summon_battlefield_node(s, sx, sy, sprite_w, sprite_h, front_indices[i], true)
 
@@ -2136,13 +2156,45 @@ func _on_player_defeated() -> void:
 	AudioManager.play_sfx_generated("defeat")
 	AudioManager.stop_bgm(0.5)
 
-	# Defeat transition
+	# Defeat transition (红色覆盖 + 文字)
 	await _play_defeat_transition()
 
-	await get_tree().create_timer(1.5).timeout
+	await get_tree().create_timer(1.0).timeout
 	# Direct scene change - bypass Global.change_scene to avoid transition lock
 	Global.is_transitioning = false
 	get_tree().change_scene_to_file(Global.SCENE_DEFEAT)
+
+## 战败过渡动画（红色覆盖 + "战败" 文字淡入）
+func _play_defeat_transition() -> void:
+	var overlay := ColorRect.new()
+	overlay.set_anchors_preset(PRESET_FULL_RECT)
+	overlay.color = Color(0.4, 0.02, 0.02, 0)
+	overlay.z_index = 100
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(overlay)
+
+	var def_label := Label.new()
+	def_label.text = "意 识 崩 溃"
+	def_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	def_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	def_label.set_anchors_preset(PRESET_FULL_RECT)
+	def_label.add_theme_font_size_override("font_size", 52)
+	def_label.add_theme_color_override("font_color", Color(0.9, 0.1, 0.1))
+	def_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	def_label.add_theme_constant_override("shadow_offset_x", 3)
+	def_label.add_theme_constant_override("shadow_offset_y", 3)
+	def_label.modulate.a = 0.0
+	def_label.z_index = 101
+	add_child(def_label)
+
+	_screen_shake(12.0, 0.5)
+
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(overlay, "color:a", 0.65, 0.8)
+	tw.tween_property(def_label, "modulate:a", 1.0, 0.5).set_delay(0.3)
+	await tw.finished
+	await get_tree().create_timer(0.5).timeout
 
 # ============================================================
 # 卡牌类型视觉效果
