@@ -345,14 +345,6 @@ static func _hash_f(seed_str: String, salt: int) -> float:
 		h = -h
 	return float(h % 10000) / 10000.0
 
-## 从 hash 生成独特色调 (HSV hue shift)
-static func _card_unique_hue(card_id: String) -> float:
-	return _hash_f(card_id, 7) * 360.0
-
-## 从 hash 生成独特亮度偏移
-static func _card_bright_offset(card_id: String) -> float:
-	return _hash_f(card_id, 13) * 0.12 - 0.06  # [-0.06, +0.06]
-
 func _create_card_display(card_data: CardData, card_path: String) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(260, 340)
@@ -379,8 +371,6 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 
 	# ── 每张卡的独特种子 ──
 	var cid: String = card_data.card_id if card_data.card_id != "" else card_path
-	var unique_hue: float = _card_unique_hue(cid)
-	var bright_off: float = _card_bright_offset(cid)
 	var h1: float = _hash_f(cid, 1)
 	var h2: float = _hash_f(cid, 2)
 	var h3: float = _hash_f(cid, 3)
@@ -388,57 +378,28 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	var h5: float = _hash_f(cid, 5)
 	var h6: float = _hash_f(cid, 6)
 
-	# ── 类型基础色 ──
-	var type_base_r: float = 0.3
-	var type_base_g: float = 0.15
-	var type_base_b: float = 0.5
-	match card_data.card_type:
-		CardData.CardType.ATTACK:
-			type_base_r = 0.7
-			type_base_g = 0.15
-			type_base_b = 0.12
-		CardData.CardType.DEFENSE:
-			type_base_r = 0.1
-			type_base_g = 0.3
-			type_base_b = 0.65
-		CardData.CardType.SUMMON:
-			type_base_r = 0.45
-			type_base_g = 0.15
-			type_base_b = 0.65
-		CardData.CardType.SPELL:
-			type_base_r = 0.1
-			type_base_g = 0.55
-			type_base_b = 0.25
-		CardData.CardType.POWER:
-			type_base_r = 0.6
-			type_base_g = 0.5
-			type_base_b = 0.08
+	# ── 主色调: 直接用卡牌自身 card_color (每张卡唯一) ──
+	var accent: Color = card_data.card_color
+	if accent == Color.WHITE or accent == Color.BLACK:
+		# fallback: 用 hash 生成色
+		accent = Color(0.3 + h1 * 0.6, 0.2 + h2 * 0.5, 0.3 + h3 * 0.6)
 
-	# 每张卡对类型基础色做独特偏移
-	var shift_r: float = (h1 - 0.5) * 0.15
-	var shift_g: float = (h2 - 0.5) * 0.15
-	var shift_b: float = (h3 - 0.5) * 0.15
-	var bg_r: float = clampf(type_base_r * 0.12 + shift_r * 0.3 + bright_off, 0.02, 0.2)
-	var bg_g: float = clampf(type_base_g * 0.12 + shift_g * 0.3 + bright_off, 0.01, 0.18)
-	var bg_b: float = clampf(type_base_b * 0.12 + shift_b * 0.3 + bright_off, 0.02, 0.22)
+	# 背景: 卡牌自身色的暗色版, 但足够可见
+	var bg_r: float = clampf(accent.r * 0.2 + h4 * 0.04, 0.04, 0.25)
+	var bg_g: float = clampf(accent.g * 0.2 + h5 * 0.04, 0.03, 0.22)
+	var bg_b: float = clampf(accent.b * 0.2 + h6 * 0.04, 0.04, 0.28)
 
-	# ── 边框色: 阴阳 + 独特偏移 ──
-	var border_r: float = type_base_r
-	var border_g: float = type_base_g
-	var border_b: float = type_base_b
+	# 边框: 卡牌自身色为主 (明亮), 阴阳微调冷暖
+	var border_r: float = accent.r
+	var border_g: float = accent.g
+	var border_b: float = accent.b
 	match card_data.yinyang:
-		0:  # Yin - 偏冷
-			border_r = clampf(border_r * 0.6 + h4 * 0.1, 0.1, 0.8)
-			border_g = clampf(border_g * 0.5 + h5 * 0.15, 0.05, 0.6)
-			border_b = clampf(border_b + 0.2 + h6 * 0.1, 0.3, 1.0)
-		1:  # Yang - 偏暖
-			border_r = clampf(border_r + 0.2 + h4 * 0.1, 0.4, 1.0)
-			border_g = clampf(border_g * 0.7 + h5 * 0.2, 0.1, 0.8)
-			border_b = clampf(border_b * 0.4 + h6 * 0.05, 0.02, 0.4)
-		_:  # 中性 - 保持类型色
-			border_r = clampf(border_r + (h4 - 0.5) * 0.2, 0.15, 0.9)
-			border_g = clampf(border_g + (h5 - 0.5) * 0.2, 0.1, 0.8)
-			border_b = clampf(border_b + (h6 - 0.5) * 0.2, 0.15, 0.9)
+		0:  # Yin - 整体偏冷一点
+			border_r = clampf(border_r * 0.8, 0.1, 0.9)
+			border_b = clampf(border_b + 0.15, 0.2, 1.0)
+		1:  # Yang - 整体偏暖一点
+			border_r = clampf(border_r + 0.1, 0.2, 1.0)
+			border_b = clampf(border_b * 0.8, 0.05, 0.85)
 
 	# ── 稀有度影响边框宽度和圆角 ──
 	var border_w: int = 2 + card_data.rarity
@@ -492,23 +453,22 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
 
-	# ── 顶部色条: 独特渐变用两段拼接 ──
+	# ── 顶部色条: 用卡牌自身色 ──
 	var strip_h := HBoxContainer.new()
-	strip_h.custom_minimum_size = Vector2(0, 5)
+	strip_h.custom_minimum_size = Vector2(0, 6)
 	strip_h.add_theme_constant_override("separation", 0)
 	var strip_left := ColorRect.new()
-	strip_left.custom_minimum_size = Vector2(0, 5)
+	strip_left.custom_minimum_size = Vector2(0, 6)
 	strip_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	strip_left.color = Color(border_r, border_g, border_b, 0.9)
+	strip_left.color = Color(accent.r, accent.g, accent.b, 0.9)
 	strip_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var strip_right := ColorRect.new()
-	strip_right.custom_minimum_size = Vector2(0, 5)
+	strip_right.custom_minimum_size = Vector2(0, 6)
 	strip_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# 右半用独特偏移色
 	strip_right.color = Color(
-		clampf(border_r + shift_r, 0.0, 1.0),
-		clampf(border_g + shift_g, 0.0, 1.0),
-		clampf(border_b + shift_b, 0.0, 1.0), 0.7)
+		clampf(accent.r * 0.6 + h1 * 0.4, 0.0, 1.0),
+		clampf(accent.g * 0.6 + h2 * 0.4, 0.0, 1.0),
+		clampf(accent.b * 0.6 + h3 * 0.4, 0.0, 1.0), 0.75)
 	strip_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	strip_h.add_child(strip_left)
 	strip_h.add_child(strip_right)
@@ -519,21 +479,21 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	art_container.custom_minimum_size = Vector2(240, 110)
 	art_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# 图片背景 (每张卡独特底色)
+	# 图片背景 (用卡牌自身色, 更明亮可见)
 	var art_bg := ColorRect.new()
 	art_bg.position = Vector2.ZERO
 	art_bg.size = Vector2(240, 110)
-	art_bg.color = Color(bg_r * 1.5, bg_g * 1.5, bg_b * 1.5, 0.4)
+	art_bg.color = Color(accent.r * 0.25 + 0.02, accent.g * 0.25 + 0.02, accent.b * 0.25 + 0.02, 0.55)
 	art_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_container.add_child(art_bg)
 
-	# 独特装饰线条 (每张卡不同位置/方向)
-	_add_unique_deco(art_container, cid, Color(border_r, border_g, border_b, 0.2))
+	# 大型独特徽章 (每张卡完全不同的几何图案)
+	_add_card_emblem(art_container, cid, accent)
 
 	var card_art := TextureRect.new()
 	var _ai_db_card := AssetLoader.get_card_art(card_data.card_type, card_data.yinyang, card_data.rarity, card_path.hash(), card_data.card_id)
 	card_art.texture = _ai_db_card if _ai_db_card else PixelArtGenerator.generate_card_art(
-		card_data.card_type, card_data.yinyang, card_data.rarity, card_path.hash()
+		card_data.card_type, card_data.yinyang, card_data.rarity, cid.hash()
 	)
 	card_art.position = Vector2(30, 5)
 	card_art.size = Vector2(180, 100)
@@ -542,7 +502,7 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	art_container.add_child(card_art)
 
 	# 费用球 (独特形状)
-	var cost_orb := _create_cost_orb(card_data, cid)
+	var cost_orb := _create_cost_orb(card_data, cid, accent)
 	art_container.add_child(cost_orb)
 
 	vbox.add_child(art_container)
@@ -569,22 +529,22 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	name_panel.add_child(name_lbl)
 	vbox.add_child(name_panel)
 
-	# ── 类型/阴阳/费用 行 (独特文字颜色) ──
+	# ── 类型/阴阳/费用 行 ──
 	var cost_text: String = "X" if card_data.cost == -1 else str(card_data.cost)
 	var info_lbl := Label.new()
 	info_lbl.text = card_data.get_type_text() + " | " + card_data.get_yinyang_text() + " | " + cost_text + "算力"
 	info_lbl.add_theme_font_size_override("font_size", 12)
 	info_lbl.add_theme_color_override("font_color", Color(
-		clampf(border_r * 0.6 + 0.3, 0.3, 0.8),
-		clampf(border_g * 0.6 + 0.3, 0.3, 0.8),
-		clampf(border_b * 0.6 + 0.3, 0.3, 0.8), 0.8))
+		clampf(accent.r * 0.5 + 0.35, 0.35, 0.85),
+		clampf(accent.g * 0.5 + 0.35, 0.35, 0.85),
+		clampf(accent.b * 0.5 + 0.35, 0.35, 0.85), 0.85))
 	vbox.add_child(info_lbl)
 
-	# ── 数值行: 类型特化显示, 独特强调色 ──
+	# ── 数值行: 用卡牌主色强调 ──
 	var stats_color := Color(
-		clampf(type_base_r + 0.4 + shift_r, 0.4, 1.0),
-		clampf(type_base_g + 0.3 + shift_g, 0.3, 1.0),
-		clampf(type_base_b + 0.2 + shift_b, 0.2, 1.0))
+		clampf(accent.r + 0.25, 0.45, 1.0),
+		clampf(accent.g + 0.2, 0.35, 1.0),
+		clampf(accent.b + 0.15, 0.3, 1.0))
 	var stats_text := ""
 	match card_data.card_type:
 		CardData.CardType.ATTACK:
@@ -630,7 +590,9 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	desc_lbl.text = card_data.description
 	desc_lbl.add_theme_font_size_override("font_size", 11)
 	desc_lbl.add_theme_color_override("font_color", Color(
-		0.55 + bright_off, 0.55 + bright_off, 0.65 + bright_off, 0.9))
+		clampf(accent.r * 0.15 + 0.5, 0.45, 0.7),
+		clampf(accent.g * 0.15 + 0.5, 0.45, 0.7),
+		clampf(accent.b * 0.15 + 0.55, 0.5, 0.75), 0.9))
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.custom_minimum_size = Vector2(240, 0)
 	vbox.add_child(desc_lbl)
@@ -645,47 +607,195 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	panel.add_child(vbox)
 	return panel
 
-## 在卡面图区域内添加独特装饰线/点
-func _add_unique_deco(container: Control, cid: String, col: Color) -> void:
-	var d1: float = _hash_f(cid, 20)
-	var d2: float = _hash_f(cid, 21)
-	var d3: float = _hash_f(cid, 22)
-	var d4: float = _hash_f(cid, 23)
-	var d5: float = _hash_f(cid, 24)
+## 为每张卡生成大型独特几何徽章 (8种基础图案 × hash参数 = 每张卡唯一)
+func _add_card_emblem(container: Control, cid: String, accent: Color) -> void:
+	var e1: float = _hash_f(cid, 40)
+	var e2: float = _hash_f(cid, 41)
+	var e3: float = _hash_f(cid, 42)
+	var e4: float = _hash_f(cid, 43)
+	var e5: float = _hash_f(cid, 44)
+	var e6: float = _hash_f(cid, 45)
+	var e7: float = _hash_f(cid, 46)
+	var e8: float = _hash_f(cid, 47)
 
-	# 水平线
-	var hl := ColorRect.new()
-	hl.position = Vector2(d1 * 60.0, 10.0 + d2 * 90.0)
-	hl.size = Vector2(80.0 + d3 * 120.0, 1)
-	hl.color = Color(col.r, col.g, col.b, 0.15 + d4 * 0.15)
-	hl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	container.add_child(hl)
+	# 徽章中心和尺寸 (每张卡位置微偏)
+	var cx: float = 120.0 + (e7 - 0.5) * 30.0
+	var cy: float = 55.0 + (e8 - 0.5) * 16.0
+	var col := Color(accent.r, accent.g, accent.b, 0.4 + e1 * 0.2)
+	var col_bright := Color(
+		clampf(accent.r + 0.3, 0.0, 1.0),
+		clampf(accent.g + 0.3, 0.0, 1.0),
+		clampf(accent.b + 0.3, 0.0, 1.0), 0.35 + e2 * 0.15)
 
-	# 垂直线
-	var vl := ColorRect.new()
-	vl.position = Vector2(180.0 + d5 * 50.0, d1 * 40.0)
-	vl.size = Vector2(1, 40.0 + d2 * 50.0)
-	vl.color = Color(col.r, col.g, col.b, 0.1 + d3 * 0.15)
-	vl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	container.add_child(vl)
+	var pattern: int = int(e1 * 8.0)
 
-	# 角标点 (稀有度越高越多)
-	if d4 > 0.4:
-		var dot := ColorRect.new()
-		dot.position = Vector2(d5 * 220.0, d1 * 100.0)
-		dot.size = Vector2(3, 3)
-		dot.color = Color(col.r + 0.2, col.g + 0.2, col.b + 0.2, 0.3)
-		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		container.add_child(dot)
-	if d2 > 0.5:
-		var dot2 := ColorRect.new()
-		dot2.position = Vector2(d3 * 200.0 + 20.0, d4 * 90.0 + 5.0)
-		dot2.size = Vector2(2, 2)
-		dot2.color = Color(col.r, col.g, col.b, 0.25)
-		dot2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		container.add_child(dot2)
+	if pattern == 0:
+		# 大圆环 + 内圆
+		var r_out: float = 30.0 + e2 * 15.0
+		_add_circle(container, cx, cy, r_out, col, 2)
+		_add_circle(container, cx, cy, r_out * 0.5, col_bright, 1)
+		# 小装饰点
+		_add_circle(container, cx - r_out * 0.8, cy, 4.0, col_bright, 0)
+		_add_circle(container, cx + r_out * 0.8, cy, 4.0, col_bright, 0)
 
-func _create_cost_orb(card_data: CardData, cid: String) -> Panel:
+	elif pattern == 1:
+		# 十字架
+		var arm_len: float = 30.0 + e3 * 18.0
+		var arm_w: float = 4.0 + e4 * 5.0
+		_add_rect(container, cx - arm_len, cy - arm_w * 0.5, arm_len * 2, arm_w, col)
+		_add_rect(container, cx - arm_w * 0.5, cy - arm_len * 0.7, arm_w, arm_len * 1.4, col)
+		_add_circle(container, cx, cy, arm_w + 2.0, col_bright, 0)
+
+	elif pattern == 2:
+		# 三层同心方框
+		var s1: float = 22.0 + e2 * 16.0
+		var s2: float = s1 * 0.65
+		var s3: float = s1 * 0.35
+		_add_rect_border(container, cx - s1, cy - s1 * 0.7, s1 * 2, s1 * 1.4, col, 2)
+		_add_rect_border(container, cx - s2, cy - s2 * 0.7, s2 * 2, s2 * 1.4, col_bright, 1)
+		_add_rect(container, cx - s3, cy - s3 * 0.7, s3 * 2, s3 * 1.4, col)
+
+	elif pattern == 3:
+		# 星芒放射 (8条线从中心向外)
+		var ray_len: float = 28.0 + e2 * 18.0
+		# 上下左右4线
+		_add_rect(container, cx - 1, cy - ray_len, 2, ray_len, col)
+		_add_rect(container, cx - 1, cy, 2, ray_len, col)
+		_add_rect(container, cx - ray_len, cy - 1, ray_len, 2, col)
+		_add_rect(container, cx, cy - 1, ray_len, 2, col)
+		# 对角4线 (用短粗矩形近似)
+		var d: float = ray_len * 0.55
+		_add_rect(container, cx - d, cy - d, d * 0.15 + 3, d * 0.15 + 3, col_bright)
+		_add_rect(container, cx + d * 0.85, cy - d, d * 0.15 + 3, d * 0.15 + 3, col_bright)
+		_add_rect(container, cx - d, cy + d * 0.85, d * 0.15 + 3, d * 0.15 + 3, col_bright)
+		_add_rect(container, cx + d * 0.85, cy + d * 0.85, d * 0.15 + 3, d * 0.15 + 3, col_bright)
+		_add_circle(container, cx, cy, 5.0 + e3 * 4.0, col_bright, 0)
+
+	elif pattern == 4:
+		# 点阵 (3x3 到 4x4 网格)
+		var cols_n: int = 3 + int(e3 * 2.0)
+		var rows_n: int = 3 + int(e4 * 1.5)
+		var spacing: float = 16.0 + e5 * 8.0
+		var dot_r: float = 3.0 + e6 * 3.0
+		var ox: float = cx - float(cols_n - 1) * spacing * 0.5
+		var oy: float = cy - float(rows_n - 1) * spacing * 0.5
+		for gy in range(rows_n):
+			for gx in range(cols_n):
+				var dot_col: Color = col if ((gx + gy) % 2 == 0) else col_bright
+				_add_circle(container, ox + float(gx) * spacing, oy + float(gy) * spacing, dot_r, dot_col, 0)
+
+	elif pattern == 5:
+		# 水平条纹 (4-6条)
+		var n_stripes: int = 4 + int(e2 * 3.0)
+		var stripe_h: float = 3.0 + e3 * 3.0
+		var total_h: float = float(n_stripes) * (stripe_h + 6.0)
+		var start_y: float = cy - total_h * 0.5
+		var stripe_w: float = 100.0 + e4 * 80.0
+		var start_x: float = cx - stripe_w * 0.5
+		for si in range(n_stripes):
+			var sy: float = start_y + float(si) * (stripe_h + 6.0)
+			var sw: float = stripe_w * (0.6 + _hash_f(cid, 50 + si) * 0.4)
+			var sx: float = start_x + (stripe_w - sw) * _hash_f(cid, 60 + si)
+			var sc: Color = col if si % 2 == 0 else col_bright
+			_add_rect(container, sx, sy, sw, stripe_h, sc)
+
+	elif pattern == 6:
+		# 角落括号装饰 (四角L形)
+		var bk_len: float = 18.0 + e2 * 12.0
+		var bk_w: float = 2.0 + e3 * 2.0
+		var margin: float = 12.0 + e4 * 10.0
+		# 左上
+		_add_rect(container, margin, margin, bk_len, bk_w, col)
+		_add_rect(container, margin, margin, bk_w, bk_len, col)
+		# 右上
+		_add_rect(container, 240 - margin - bk_len, margin, bk_len, bk_w, col)
+		_add_rect(container, 240 - margin - bk_w, margin, bk_w, bk_len, col)
+		# 左下
+		_add_rect(container, margin, 110 - margin - bk_w, bk_len, bk_w, col)
+		_add_rect(container, margin, 110 - margin - bk_len, bk_w, bk_len, col)
+		# 右下
+		_add_rect(container, 240 - margin - bk_len, 110 - margin - bk_w, bk_len, bk_w, col)
+		_add_rect(container, 240 - margin - bk_w, 110 - margin - bk_len, bk_w, bk_len, col)
+		# 中心点
+		_add_circle(container, cx, cy, 6.0 + e5 * 4.0, col_bright, 1)
+
+	else:
+		# 菱形组合 (用4个方块拼)
+		var diam_s: float = 16.0 + e2 * 12.0
+		_add_rect(container, cx - diam_s * 0.5, cy - diam_s * 0.5, diam_s, diam_s, col)
+		# 4个小方块在菱形位置
+		var offset_d: float = diam_s + 4.0
+		_add_rect(container, cx - 4, cy - offset_d - 4, 8, 8, col_bright)
+		_add_rect(container, cx - 4, cy + offset_d - 4, 8, 8, col_bright)
+		_add_rect(container, cx - offset_d - 4, cy - 4, 8, 8, col_bright)
+		_add_rect(container, cx + offset_d - 4, cy - 4, 8, 8, col_bright)
+		# 连接线
+		_add_rect(container, cx - 1, cy - offset_d, 2, offset_d * 2, Color(col.r, col.g, col.b, 0.2))
+		_add_rect(container, cx - offset_d, cy - 1, offset_d * 2, 2, Color(col.r, col.g, col.b, 0.2))
+
+	# 额外: 基于另一组hash添加小装饰 (让同pattern的卡也不完全相同)
+	if e5 > 0.3:
+		var extra_x: float = e6 * 200.0 + 20.0
+		var extra_y: float = e7 * 80.0 + 15.0
+		_add_circle(container, extra_x, extra_y, 2.0 + e8 * 2.0, col, 0)
+	if e6 > 0.5:
+		var lx: float = e7 * 180.0 + 30.0
+		_add_rect(container, lx, 5.0 + e8 * 20.0, 1, 20.0 + e5 * 30.0, Color(col.r, col.g, col.b, 0.15))
+
+## 辅助: 在容器内添加圆形 (Panel + StyleBoxFlat)
+## mode: 0=实心, 1=有边框实心, 2=只有边框
+func _add_circle(container: Control, cx_pos: float, cy_pos: float, radius: float, col: Color, mode: int) -> void:
+	var p := Panel.new()
+	var d: float = radius * 2.0
+	p.position = Vector2(cx_pos - radius, cy_pos - radius)
+	p.size = Vector2(d, d)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(int(radius) + 1)
+	if mode == 2:
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.border_color = col
+		sb.set_border_width_all(2)
+	elif mode == 1:
+		sb.bg_color = Color(col.r, col.g, col.b, col.a * 0.4)
+		sb.border_color = col
+		sb.set_border_width_all(1)
+	else:
+		sb.bg_color = col
+	sb.content_margin_left = 0
+	sb.content_margin_right = 0
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 0
+	p.add_theme_stylebox_override("panel", sb)
+	container.add_child(p)
+
+## 辅助: 添加实心矩形
+func _add_rect(container: Control, x: float, y: float, w: float, h: float, col: Color) -> void:
+	var r := ColorRect.new()
+	r.position = Vector2(x, y)
+	r.size = Vector2(w, h)
+	r.color = col
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	container.add_child(r)
+
+## 辅助: 添加边框矩形
+func _add_rect_border(container: Control, x: float, y: float, w: float, h: float, col: Color, bw: int) -> void:
+	var p := Panel.new()
+	p.position = Vector2(x, y)
+	p.size = Vector2(w, h)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.border_color = col
+	sb.set_border_width_all(bw)
+	sb.content_margin_left = 0
+	sb.content_margin_right = 0
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 0
+	p.add_theme_stylebox_override("panel", sb)
+	container.add_child(p)
+
+func _create_cost_orb(card_data: CardData, cid: String, accent: Color) -> Panel:
 	var orb := Panel.new()
 	orb.position = Vector2(3, 3)
 	orb.size = Vector2(30, 30)
@@ -696,21 +806,12 @@ func _create_cost_orb(card_data: CardData, cid: String) -> Panel:
 	var orb_sb := StyleBoxFlat.new()
 	orb_sb.set_corner_radius_all(orb_round)
 
-	# 费用球颜色: 类型基色 + 独特偏移
-	var orb_shift: float = _hash_f(cid, 31) * 0.15 - 0.075
-	match card_data.card_type:
-		CardData.CardType.ATTACK:
-			orb_sb.bg_color = Color(0.75 + orb_shift, 0.12, 0.08, 0.92)
-		CardData.CardType.DEFENSE:
-			orb_sb.bg_color = Color(0.08, 0.35 + orb_shift, 0.75, 0.92)
-		CardData.CardType.SUMMON:
-			orb_sb.bg_color = Color(0.45 + orb_shift, 0.15, 0.75, 0.92)
-		CardData.CardType.SPELL:
-			orb_sb.bg_color = Color(0.08, 0.6 + orb_shift, 0.28, 0.92)
-		CardData.CardType.POWER:
-			orb_sb.bg_color = Color(0.75 + orb_shift, 0.6, 0.05, 0.92)
-		_:
-			orb_sb.bg_color = Color(0.3, 0.3, 0.3, 0.92)
+	# 费用球颜色: 用卡牌自身色
+	var orb_shift: float = _hash_f(cid, 31) * 0.1 - 0.05
+	orb_sb.bg_color = Color(
+		clampf(accent.r * 0.8 + 0.15 + orb_shift, 0.15, 0.95),
+		clampf(accent.g * 0.8 + 0.1 + orb_shift, 0.1, 0.9),
+		clampf(accent.b * 0.8 + 0.1 + orb_shift, 0.1, 0.95), 0.92)
 
 	orb_sb.border_color = Color(1, 1, 1, 0.3 + _hash_f(cid, 32) * 0.2)
 	orb_sb.set_border_width_all(1)
