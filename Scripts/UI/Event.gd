@@ -482,8 +482,8 @@ func _create_shop_card(card_data: CardData, card_path: String, with_buy_btn: boo
 		card_art.texture = _ai_ev_card if _ai_ev_card else PixelArtGenerator.generate_card_art(
 			card_data.card_type, card_data.yinyang, card_data.rarity, ev_art_seed
 		)
-		card_art.position = Vector2(108, 6)
-		card_art.size = Vector2(64, 64)
+		card_art.position = Vector2(90, 4)
+		card_art.size = Vector2(100, 70)
 		card_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		item_panel.add_child(card_art)
 
