@@ -700,6 +700,9 @@ func _on_continue() -> void:
 	var node_data: Dictionary = GameState.get_current_node()
 	if node_data.get("type", "") == "event_then_battle":
 		Global.change_scene(Global.SCENE_BATTLE)
+	elif node_data.get("_reward_mode", false):
+		# 从Victory奖励模式进入，不再推进节点（Boss已在BattleManager中advance过）
+		Global.change_scene(Global.SCENE_MAP)
 	else:
 		GameState.advance_node()
 		Global.change_scene(Global.SCENE_MAP)

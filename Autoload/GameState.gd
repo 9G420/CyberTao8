@@ -291,5 +291,5 @@ func load_game() -> bool:
 func start_new_run_with_legacy(card_path: String) -> void:
 	legacy_card = card_path
 	run_number += 1
-	save_game()
 	start_new_game()
+	save_game()  # 保存重置后的状态（而非重置前的旧状态）

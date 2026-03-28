@@ -245,7 +245,9 @@ func _build_ui() -> void:
 	# 检查是否全部完成
 	if GameState.current_node_index >= GameState.MAX_NODES:
 		info_label.text = "所有节点已完成！前往最终战斗..."
-		Global.change_scene(Global.SCENE_VICTORY)
+		# 直接切换，绕过 is_transitioning 锁（可能在上一次过渡中未重置）
+		Global.is_transitioning = false
+		get_tree().change_scene_to_file(Global.SCENE_VICTORY)
 
 func _create_circuit_bg() -> void:
 	# Subtle circuit board pattern using thin lines

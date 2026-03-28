@@ -2141,6 +2141,7 @@ func _on_enemy_defeated() -> void:
 		if player_hp == player_max_hp:
 			GameState.achievements["no_damage_boss"] = true
 		GameState.achievements["first_awakening"] = true
+		GameState.advance_node()  # 标记Boss节点完成
 		await get_tree().create_timer(1.5).timeout
 		Global.is_transitioning = false
 		get_tree().change_scene_to_file(Global.SCENE_VICTORY)
@@ -2163,38 +2164,6 @@ func _on_player_defeated() -> void:
 	# Direct scene change - bypass Global.change_scene to avoid transition lock
 	Global.is_transitioning = false
 	get_tree().change_scene_to_file(Global.SCENE_DEFEAT)
-
-## 战败过渡动画（红色覆盖 + "战败" 文字淡入）
-func _play_defeat_transition() -> void:
-	var overlay := ColorRect.new()
-	overlay.set_anchors_preset(PRESET_FULL_RECT)
-	overlay.color = Color(0.4, 0.02, 0.02, 0)
-	overlay.z_index = 100
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(overlay)
-
-	var def_label := Label.new()
-	def_label.text = "意 识 崩 溃"
-	def_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	def_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	def_label.set_anchors_preset(PRESET_FULL_RECT)
-	def_label.add_theme_font_size_override("font_size", 52)
-	def_label.add_theme_color_override("font_color", Color(0.9, 0.1, 0.1))
-	def_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	def_label.add_theme_constant_override("shadow_offset_x", 3)
-	def_label.add_theme_constant_override("shadow_offset_y", 3)
-	def_label.modulate.a = 0.0
-	def_label.z_index = 101
-	add_child(def_label)
-
-	_screen_shake(12.0, 0.5)
-
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(overlay, "color:a", 0.65, 0.8)
-	tw.tween_property(def_label, "modulate:a", 1.0, 0.5).set_delay(0.3)
-	await tw.finished
-	await get_tree().create_timer(0.5).timeout
 
 # ============================================================
 # 卡牌类型视觉效果
