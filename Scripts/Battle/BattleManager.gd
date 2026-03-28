@@ -261,6 +261,51 @@ func _setup_ui() -> void:
 	# Start idle bobbing animation
 	_start_player_idle_bob()
 
+	# --- 角色脚下阴影（消除漂浮感）---
+	var player_shadow := ColorRect.new()
+	player_shadow.size = Vector2(120, 16)
+	player_shadow.position = Vector2(52, 370)
+	player_shadow.color = Color(0, 0, 0, 0)
+	player_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shadow_shader := Shader.new()
+	shadow_shader.code = "
+shader_type canvas_item;
+void fragment() {
+	vec2 c = UV - vec2(0.5);
+	float d = length(c * vec2(1.0, 2.5));
+	float a = (1.0 - smoothstep(0.0, 0.5, d)) * 0.35;
+	COLOR = vec4(0.0, 0.0, 0.02, a);
+}
+"
+	var shadow_mat := ShaderMaterial.new()
+	shadow_mat.shader = shadow_shader
+	player_shadow.material = shadow_mat
+	play_zone.add_child(player_shadow)
+
+	var enemy_shadow := ColorRect.new()
+	enemy_shadow.size = Vector2(130, 18)
+	enemy_shadow.position = Vector2(547, 300)
+	enemy_shadow.color = Color(0, 0, 0, 0)
+	enemy_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var eshadow_mat := ShaderMaterial.new()
+	eshadow_mat.shader = shadow_shader
+	enemy_shadow.material = eshadow_mat
+	play_zone.add_child(enemy_shadow)
+
+	# --- 地面分割线（战场底部平台边缘）---
+	var ground_line := ColorRect.new()
+	ground_line.size = Vector2(1280, 2)
+	ground_line.position = Vector2(0, 385)
+	ground_line.color = Color(0.12, 0.08, 0.22, 0.5)
+	ground_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play_zone.add_child(ground_line)
+	var ground_glow := ColorRect.new()
+	ground_glow.size = Vector2(1280, 8)
+	ground_glow.position = Vector2(0, 385)
+	ground_glow.color = Color(0.08, 0.05, 0.18, 0.2)
+	ground_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play_zone.add_child(ground_glow)
+
 	# --- 玩家信息区（左下） ---
 	var player_panel := Panel.new()
 	player_panel.position = Vector2(15, 430)

@@ -95,63 +95,212 @@ static func _draw_border_glow(img: Image, w: int, h_val: int, color: Color, rari
 static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 	var variant := int(_hash_float(seed_val) * 3.0)
 	if variant == 0:
-		# Sword / blade pointing up
-		for i in range(20):
-			_set_pixel_safe(img, 32, 10 + i, EVA_CYAN)
-			_set_pixel_safe(img, 31, 10 + i, EVA_CYAN.darkened(0.3))
-			_set_pixel_safe(img, 33, 10 + i, EVA_CYAN.darkened(0.3))
-		# Crossguard
-		_draw_line_h(img, 27, 37, 30, EVA_ORANGE)
-		_draw_line_h(img, 27, 37, 31, EVA_ORANGE.darkened(0.2))
-		# Handle
-		for i in range(8):
-			_set_pixel_safe(img, 32, 32 + i, EVA_RED)
-		# Tip glow
-		_draw_circle(img, 32, 10, 2, Color(0.5, 0.9, 1.0, 0.5))
+		# === 道剑：赛博符文之刃 ===
+		# 剑身（3px宽，渐变青→白）
+		for i in range(28):
+			var t := float(i) / 28.0
+			var blade_col := EVA_CYAN.lerp(Color(0.8, 0.95, 1.0), t * 0.5)
+			_set_pixel_safe(img, 31, 6 + i, blade_col.darkened(0.2))
+			_set_pixel_safe(img, 32, 6 + i, blade_col)
+			_set_pixel_safe(img, 33, 6 + i, blade_col.darkened(0.2))
+		# 剑尖（三角形）
+		_set_pixel_safe(img, 32, 4, Color(0.7, 1.0, 1.0))
+		_set_pixel_safe(img, 32, 5, EVA_CYAN)
+		_set_pixel_safe(img, 31, 5, EVA_CYAN.darkened(0.3))
+		_set_pixel_safe(img, 33, 5, EVA_CYAN.darkened(0.3))
+		# 剑尖发光晕
+		_draw_circle(img, 32, 5, 3, Color(0.3, 0.8, 1.0, 0.25))
+		# 护手（道教八卦横条 + 橙色）
+		_draw_line_h(img, 25, 39, 34, EVA_ORANGE)
+		_draw_line_h(img, 25, 39, 35, EVA_ORANGE)
+		_draw_line_h(img, 27, 37, 36, EVA_ORANGE.darkened(0.3))
+		# 护手两端符文点
+		_set_pixel_safe(img, 25, 34, NEON_PINK)
+		_set_pixel_safe(img, 39, 34, NEON_PINK)
+		# 剑柄
+		for i in range(10):
+			_set_pixel_safe(img, 32, 37 + i, EVA_RED.darkened(0.1))
+			# 缠绕纹
+			if i % 3 == 0:
+				_set_pixel_safe(img, 31, 37 + i, EVA_ORANGE.darkened(0.4))
+				_set_pixel_safe(img, 33, 37 + i, EVA_ORANGE.darkened(0.4))
+		# 柄底宝珠
+		_draw_circle(img, 32, 48, 2, EVA_PURPLE)
+		_set_pixel_safe(img, 32, 48, NEON_PINK)
+		# 剑身电路纹（每隔4像素一个节点 + 水平短线）
+		for i in range(5):
+			var ny := 10 + i * 5
+			_set_pixel_safe(img, 30, ny, EVA_CYAN.darkened(0.5))
+			_set_pixel_safe(img, 34, ny, EVA_CYAN.darkened(0.5))
+			_set_pixel_safe(img, 29, ny, Color(0.0, 0.5, 0.6, 0.4))
+			_set_pixel_safe(img, 35, ny, Color(0.0, 0.5, 0.6, 0.4))
+		# 两侧道气流（弧形散射粒子）
+		for s in range(8):
+			var side := -1 if s < 4 else 1
+			var idx := s % 4
+			var px := 32 + side * (5 + idx * 3)
+			var py := 12 + idx * 5
+			_set_pixel_safe(img, px, py, Color(0.0, 0.7, 0.9, 0.5))
 	elif variant == 1:
-		# Lightning bolt
-		var points := [Vector2i(20, 12), Vector2i(30, 25), Vector2i(25, 27),
-						Vector2i(38, 45), Vector2i(30, 33), Vector2i(35, 31)]
-		for idx in range(points.size() - 1):
-			_draw_pixel_line(img, points[idx], points[idx + 1], NEON_PINK)
-		# Sparks
-		for s in range(6):
-			var sx := int(_hash_float(seed_val + s * 7) * 40.0) + 12
-			var sy := int(_hash_float(seed_val + s * 13) * 30.0) + 12
-			_set_pixel_safe(img, sx, sy, EVA_CYAN)
+		# === 雷符：道教雷法电击 ===
+		# 主雷（粗锯齿 Z 形，2px宽）
+		var thunder_pts := [Vector2i(22, 8), Vector2i(34, 20), Vector2i(26, 24),
+							Vector2i(40, 40), Vector2i(32, 44), Vector2i(38, 54)]
+		for idx in range(thunder_pts.size() - 1):
+			_draw_pixel_line(img, thunder_pts[idx], thunder_pts[idx + 1], NEON_PINK)
+			# 加粗：偏移1像素再画一遍
+			var shifted_a := Vector2i(thunder_pts[idx].x + 1, thunder_pts[idx].y)
+			var shifted_b := Vector2i(thunder_pts[idx + 1].x + 1, thunder_pts[idx + 1].y)
+			_draw_pixel_line(img, shifted_a, shifted_b, NEON_PINK.darkened(0.2))
+		# 雷电发光晕（沿路径关键点）
+		_draw_circle(img, 34, 20, 3, Color(1.0, 0.4, 0.7, 0.2))
+		_draw_circle(img, 40, 40, 4, Color(1.0, 0.4, 0.7, 0.25))
+		# 分叉小雷
+		_draw_pixel_line(img, Vector2i(34, 20), Vector2i(42, 16), EVA_CYAN)
+		_draw_pixel_line(img, Vector2i(26, 24), Vector2i(18, 28), EVA_CYAN)
+		_draw_pixel_line(img, Vector2i(40, 40), Vector2i(48, 36), EVA_CYAN)
+		# 道教雷符框（顶部）
+		_draw_rect_area(img, 16, 4, 32, 2, Color(0.5, 0.2, 0.0, 0.5))
+		_draw_line_h(img, 16, 47, 6, EVA_ORANGE.darkened(0.4))
+		# 符文点缀
+		for s in range(10):
+			var px := int(_hash_float(seed_val + s * 7) * 48.0) + 8
+			var py := int(_hash_float(seed_val + s * 13) * 48.0) + 8
+			_set_pixel_safe(img, px, py, Color(0.6, 0.9, 1.0, 0.7))
+			_set_pixel_safe(img, px + 1, py, Color(0.6, 0.9, 1.0, 0.3))
 	else:
-		# Dual energy blades crossed
-		for i in range(25):
-			_set_pixel_safe(img, 15 + i, 15 + i, NEON_PINK)
-			_set_pixel_safe(img, 48 - i, 15 + i, EVA_CYAN)
-		# Center burst
-		_draw_circle(img, 32, 28, 4, EVA_ORANGE)
-		_draw_circle(img, 32, 28, 2, Color(1.0, 0.9, 0.5))
+		# === 双刃太极斩 ===
+		# 太极底纹（中心）
+		_draw_circle(img, 32, 30, 8, Color(0.15, 0.08, 0.25, 0.6))
+		# 阴阳鱼眼
+		_draw_circle(img, 32, 26, 2, EVA_CYAN)
+		_draw_circle(img, 32, 34, 2, NEON_PINK)
+		_set_pixel_safe(img, 32, 26, Color(0.05, 0.05, 0.15))
+		_set_pixel_safe(img, 32, 34, Color(0.05, 0.05, 0.15))
+		# X型双刃（每条3px宽）
+		for i in range(30):
+			var t := float(i) / 30.0
+			# 左上→右下（青刃）
+			var x1 := 8 + i
+			var y1 := 8 + i
+			var cyan_col := EVA_CYAN.lerp(Color(0.5, 1.0, 1.0), t * 0.3)
+			_set_pixel_safe(img, x1, y1, cyan_col)
+			_set_pixel_safe(img, x1 - 1, y1, cyan_col.darkened(0.3))
+			_set_pixel_safe(img, x1 + 1, y1, cyan_col.darkened(0.3))
+			# 右上→左下（粉刃）
+			var x2 := 55 - i
+			var y2 := 8 + i
+			var pink_col := NEON_PINK.lerp(Color(1.0, 0.6, 0.8), t * 0.3)
+			_set_pixel_safe(img, x2, y2, pink_col)
+			_set_pixel_safe(img, x2 - 1, y2, pink_col.darkened(0.3))
+			_set_pixel_safe(img, x2 + 1, y2, pink_col.darkened(0.3))
+		# 交叉点爆发
+		_draw_circle(img, 32, 30, 5, EVA_ORANGE)
+		_draw_circle(img, 32, 30, 3, Color(1.0, 0.9, 0.5))
+		_set_pixel_safe(img, 32, 30, Color(1.0, 1.0, 0.9))
+		# 四角道气散射
+		for corner in [Vector2i(10, 10), Vector2i(54, 10), Vector2i(10, 52), Vector2i(54, 52)]:
+			_set_pixel_safe(img, corner.x, corner.y, EVA_PURPLE)
+			_set_pixel_safe(img, corner.x + 1, corner.y, EVA_PURPLE.darkened(0.3))
+			_set_pixel_safe(img, corner.x, corner.y + 1, EVA_PURPLE.darkened(0.3))
 
 static func _draw_defense_motif(img: Image, seed_val: int) -> void:
-	var variant := int(_hash_float(seed_val) * 2.0)
+	var variant := int(_hash_float(seed_val) * 3.0)
 	if variant == 0:
-		# Shield shape
-		_draw_circle(img, 32, 30, 16, EVA_DARK_BLUE)
-		_draw_circle(img, 32, 30, 14, Color(0.1, 0.1, 0.3))
-		# Shield cross
-		_draw_line_h(img, 20, 44, 30, EVA_CYAN)
-		_draw_line_v(img, 32, 16, 46, EVA_CYAN)
-		# Corner rivets
-		for p in [Vector2i(24, 22), Vector2i(40, 22), Vector2i(24, 38), Vector2i(40, 38)]:
-			_set_pixel_safe(img, p.x, p.y, EVA_ORANGE)
+		# === 八卦盾：道教八卦阵防御 ===
+		# 外圈（双层环，粗实线）
+		for a_step in range(48):
+			var a := float(a_step) * TAU / 48.0
+			for r in [16, 17, 18]:
+				var px := 32 + int(cos(a) * float(r))
+				var py := 30 + int(sin(a) * float(r))
+				_set_pixel_safe(img, px, py, EVA_CYAN.darkened(0.2))
+		# 八卦线段（8条辐射线）
+		for i in range(8):
+			var a := float(i) * TAU / 8.0
+			for r in range(8, 16):
+				var px := 32 + int(cos(a) * float(r))
+				var py := 30 + int(sin(a) * float(r))
+				_set_pixel_safe(img, px, py, EVA_CYAN.darkened(0.5))
+		# 中心太极圆
+		_draw_circle(img, 32, 30, 7, EVA_DARK_BLUE)
+		# 太极 S 曲线
+		for s_step in range(20):
+			var t := float(s_step) / 20.0
+			var sx := 32 + int(sin(t * PI) * 3.0)
+			var sy := 23 + int(t * 14.0)
+			_set_pixel_safe(img, sx, sy, Color(0.4, 0.4, 0.5))
+		# 阴阳鱼眼
+		_draw_circle(img, 32, 26, 1, Color(0.9, 0.9, 0.9))
+		_draw_circle(img, 32, 34, 1, Color(0.1, 0.1, 0.15))
+		# 四角电路端子
+		for corner in [Vector2i(14, 12), Vector2i(50, 12), Vector2i(14, 48), Vector2i(50, 48)]:
+			_set_pixel_safe(img, corner.x, corner.y, EVA_ORANGE)
+			_set_pixel_safe(img, corner.x + 1, corner.y, EVA_ORANGE)
+			_set_pixel_safe(img, corner.x, corner.y + 1, EVA_ORANGE)
+			_set_pixel_safe(img, corner.x + 1, corner.y + 1, EVA_ORANGE)
+		# 护盾脉冲光晕
+		_draw_circle(img, 32, 30, 20, Color(0.0, 0.6, 0.8, 0.1))
+	elif variant == 1:
+		# === 符篆壁障：道教护身符 ===
+		# 符纸底板
+		_draw_rect_area(img, 16, 6, 32, 52, Color(0.12, 0.08, 0.2))
+		# 符纸边框（双线）
+		for t in range(2):
+			_draw_line_h(img, 16 + t, 47 - t, 6 + t, EVA_ORANGE.darkened(float(t) * 0.3))
+			_draw_line_h(img, 16 + t, 47 - t, 57 - t, EVA_ORANGE.darkened(float(t) * 0.3))
+			_draw_line_v(img, 16 + t, 6 + t, 57 - t, EVA_ORANGE.darkened(float(t) * 0.3))
+			_draw_line_v(img, 47 - t, 6 + t, 57 - t, EVA_ORANGE.darkened(float(t) * 0.3))
+		# 符文竖笔画（中央的道教"敕"字简化）
+		_draw_line_v(img, 32, 12, 50, EVA_RED)  # 中竖
+		_draw_line_h(img, 24, 40, 16, EVA_RED)   # 上横
+		_draw_line_h(img, 24, 40, 28, EVA_RED)   # 中横
+		# 左右撇捺
+		for i in range(8):
+			_set_pixel_safe(img, 28 - i, 30 + i, EVA_RED.darkened(0.2))
+			_set_pixel_safe(img, 36 + i, 30 + i, EVA_RED.darkened(0.2))
+		# 符文四角印章
+		_draw_circle(img, 22, 11, 2, NEON_PINK)
+		_draw_circle(img, 42, 11, 2, NEON_PINK)
+		_draw_circle(img, 22, 52, 2, NEON_PINK)
+		_draw_circle(img, 42, 52, 2, NEON_PINK)
+		# 电路连接线
+		_draw_line_h(img, 20, 24, 20, EVA_CYAN.darkened(0.5))
+		_draw_line_h(img, 40, 44, 20, EVA_CYAN.darkened(0.5))
+		_draw_line_h(img, 20, 24, 42, EVA_CYAN.darkened(0.5))
+		_draw_line_h(img, 40, 44, 42, EVA_CYAN.darkened(0.5))
 	else:
-		# Wall / barrier with hex pattern
-		_draw_rect_area(img, 10, 18, 44, 28, Color(0.08, 0.15, 0.25))
-		# Hex grid lines
-		for row in range(4):
-			var y_pos := 20 + row * 7
-			_draw_line_h(img, 11, 53, y_pos, EVA_CYAN.darkened(0.5))
-		for col in range(6):
-			var x_pos := 14 + col * 7
-			_draw_line_v(img, x_pos, 18, 45, EVA_CYAN.darkened(0.6))
-		# Glow center
-		_draw_circle(img, 32, 32, 5, Color(0.0, 0.4, 0.5, 0.5))
+		# === 六角结界：赛博蜂巢护盾 ===
+		# 六边形外框（大六边形）
+		for i in range(6):
+			var a1 := float(i) * TAU / 6.0 - PI / 6.0
+			var a2 := float(i + 1) * TAU / 6.0 - PI / 6.0
+			var p1 := Vector2i(32 + int(cos(a1) * 22.0), 30 + int(sin(a1) * 22.0))
+			var p2 := Vector2i(32 + int(cos(a2) * 22.0), 30 + int(sin(a2) * 22.0))
+			_draw_pixel_line(img, p1, p2, EVA_CYAN)
+			# 加粗内层
+			var p3 := Vector2i(32 + int(cos(a1) * 20.0), 30 + int(sin(a1) * 20.0))
+			var p4 := Vector2i(32 + int(cos(a2) * 20.0), 30 + int(sin(a2) * 20.0))
+			_draw_pixel_line(img, p3, p4, EVA_CYAN.darkened(0.3))
+		# 内部蜂巢格（3×3小六边形）
+		for row in range(3):
+			for col in range(3):
+				var hx := 22 + col * 10 - (5 if row == 1 else 0)
+				var hy := 18 + row * 10
+				for hi in range(6):
+					var ha1 := float(hi) * TAU / 6.0 - PI / 6.0
+					var ha2 := float(hi + 1) * TAU / 6.0 - PI / 6.0
+					var hp1 := Vector2i(hx + int(cos(ha1) * 4.0), hy + int(sin(ha1) * 4.0))
+					var hp2 := Vector2i(hx + int(cos(ha2) * 4.0), hy + int(sin(ha2) * 4.0))
+					_draw_pixel_line(img, hp1, hp2, Color(0.0, 0.5, 0.6, 0.5))
+				# 蜂巢节点
+				_set_pixel_safe(img, hx, hy, EVA_ORANGE)
+		# 中心能量核心
+		_draw_circle(img, 32, 30, 4, Color(0.0, 0.4, 0.5, 0.6))
+		_draw_circle(img, 32, 30, 2, EVA_CYAN)
+		# 顶底锚点
+		_set_pixel_safe(img, 32, 8, NEON_PINK)
+		_set_pixel_safe(img, 32, 52, NEON_PINK)
 
 static func _draw_summon_motif(img: Image, seed_val: int) -> void:
 	var creature := int(_hash_float(seed_val) * 4.0)
@@ -252,69 +401,208 @@ static func _draw_summon_motif(img: Image, seed_val: int) -> void:
 		_draw_rect_area(img, 33, 40, 5, 6, Color(0.22, 0.18, 0.28))
 
 static func _draw_spell_motif(img: Image, seed_val: int) -> void:
-	# Swirling taiji energy pattern
+	var variant := int(_hash_float(seed_val) * 3.0)
 	var cx := 32
 	var cy := 30
-	for angle_step in range(72):
-		var a := float(angle_step) * TAU / 72.0
-		var r := 8.0 + float(angle_step) * 0.18
-		var px := cx + int(cos(a) * r)
-		var py := cy + int(sin(a) * r)
-		var col := EVA_PURPLE.lerp(EVA_CYAN, float(angle_step) / 72.0)
-		_set_pixel_safe(img, px, py, col)
-		_set_pixel_safe(img, px + 1, py, col.darkened(0.3))
-	# Counter spiral
-	for angle_step in range(72):
-		var a := float(angle_step) * TAU / 72.0 + PI
-		var r := 8.0 + float(angle_step) * 0.18
-		var px := cx + int(cos(a) * r)
-		var py := cy + int(sin(a) * r)
-		var col := EVA_ORANGE.lerp(NEON_PINK, float(angle_step) / 72.0)
-		_set_pixel_safe(img, px, py, col)
-	# Center dots
-	_draw_circle(img, cx, cy, 3, EVA_PURPLE)
-	_draw_circle(img, cx, cy, 1, EVA_ORANGE)
-	# Floating particles
-	for s in range(10):
-		var px := int(_hash_float(seed_val + s * 3) * 50.0) + 7
-		var py := int(_hash_float(seed_val + s * 5) * 40.0) + 8
-		var brightness := _hash_float(seed_val + s * 11)
-		_set_pixel_safe(img, px, py, EVA_CYAN * brightness)
+	if variant == 0:
+		# === 太极旋涡：阴阳双螺旋法阵 ===
+		# 外圈法阵环
+		for a_step in range(64):
+			var a := float(a_step) * TAU / 64.0
+			var px := cx + int(cos(a) * 22.0)
+			var py := cy + int(sin(a) * 22.0)
+			var ring_col := EVA_PURPLE.lerp(EVA_CYAN, float(a_step) / 64.0)
+			_set_pixel_safe(img, px, py, ring_col)
+		# 阳螺旋（顺时针，青色）
+		for a_step in range(90):
+			var a := float(a_step) * TAU / 90.0
+			var r := 4.0 + float(a_step) * 0.18
+			var px := cx + int(cos(a) * r)
+			var py := cy + int(sin(a) * r)
+			var col := EVA_CYAN.lerp(Color(0.6, 1.0, 1.0), float(a_step) / 90.0)
+			_set_pixel_safe(img, px, py, col)
+			_set_pixel_safe(img, px + 1, py, col.darkened(0.4))
+		# 阴螺旋（逆时针，紫色）
+		for a_step in range(90):
+			var a := float(a_step) * TAU / 90.0 + PI
+			var r := 4.0 + float(a_step) * 0.18
+			var px := cx + int(cos(a) * r)
+			var py := cy + int(sin(a) * r)
+			var col := EVA_PURPLE.lerp(NEON_PINK, float(a_step) / 90.0)
+			_set_pixel_safe(img, px, py, col)
+		# 中心太极核
+		_draw_circle(img, cx, cy, 4, EVA_PURPLE)
+		_draw_circle(img, cx, cy, 2, EVA_CYAN)
+		_set_pixel_safe(img, cx, cy, Color(0.9, 0.9, 1.0))
+		# 八方位符点
+		for i in range(8):
+			var a := float(i) * TAU / 8.0
+			var px := cx + int(cos(a) * 20.0)
+			var py := cy + int(sin(a) * 20.0)
+			_draw_circle(img, px, py, 1, EVA_ORANGE)
+	elif variant == 1:
+		# === 五行法阵：金木水火土循环 ===
+		# 五角星连线
+		var star_pts: Array[Vector2i] = []
+		for i in range(5):
+			var a := float(i) * TAU / 5.0 - PI / 2.0
+			star_pts.append(Vector2i(cx + int(cos(a) * 20.0), cy + int(sin(a) * 20.0)))
+		# 画五角星（跳一个连）
+		var star_colors := [EVA_RED, NEON_GREEN, EVA_CYAN, EVA_ORANGE, EVA_PURPLE]
+		for i in range(5):
+			var next := (i + 2) % 5
+			_draw_pixel_line(img, star_pts[i], star_pts[next], star_colors[i])
+		# 五元素节点（大圆点）
+		for i in range(5):
+			_draw_circle(img, star_pts[i].x, star_pts[i].y, 2, star_colors[i])
+			_set_pixel_safe(img, star_pts[i].x, star_pts[i].y, Color(1, 1, 1, 0.8))
+		# 外圈
+		for a_step in range(60):
+			var a := float(a_step) * TAU / 60.0
+			var px := cx + int(cos(a) * 24.0)
+			var py := cy + int(sin(a) * 24.0)
+			_set_pixel_safe(img, px, py, Color(0.3, 0.2, 0.5, 0.6))
+		# 中心道印
+		_draw_circle(img, cx, cy, 3, Color(0.3, 0.15, 0.5))
+		_draw_circle(img, cx, cy, 1, Color(0.9, 0.7, 0.2))
+		# 能量粒子
+		for s in range(12):
+			var px := int(_hash_float(seed_val + s * 3) * 50.0) + 7
+			var py := int(_hash_float(seed_val + s * 5) * 50.0) + 7
+			var ci := s % 5
+			_set_pixel_safe(img, px, py, star_colors[ci].lightened(0.3))
+	else:
+		# === 符咒矩阵：赛博符文矩阵 ===
+		# 3×3 符文网格
+		for row in range(3):
+			for col in range(3):
+				var gx := 14 + col * 16
+				var gy := 10 + row * 16
+				# 符框
+				_draw_line_h(img, gx, gx + 10, gy, EVA_CYAN.darkened(0.4))
+				_draw_line_h(img, gx, gx + 10, gy + 10, EVA_CYAN.darkened(0.4))
+				_draw_line_v(img, gx, gy, gy + 10, EVA_CYAN.darkened(0.4))
+				_draw_line_v(img, gx + 10, gy, gy + 10, EVA_CYAN.darkened(0.4))
+				# 符内随机道纹
+				var rune_seed := seed_val + row * 3 + col
+				var rune_type := int(_hash_float(rune_seed) * 4.0)
+				var rune_col := EVA_PURPLE.lerp(NEON_PINK, _hash_float(rune_seed + 99))
+				if rune_type == 0:  # 十字
+					_draw_line_h(img, gx + 2, gx + 8, gy + 5, rune_col)
+					_draw_line_v(img, gx + 5, gy + 2, gy + 8, rune_col)
+				elif rune_type == 1:  # 圆
+					_draw_circle(img, gx + 5, gy + 5, 3, rune_col)
+				elif rune_type == 2:  # 三横
+					for ln in range(3):
+						_draw_line_h(img, gx + 2, gx + 8, gy + 3 + ln * 2, rune_col)
+				else:  # 斜线
+					_draw_pixel_line(img, Vector2i(gx + 2, gy + 2), Vector2i(gx + 8, gy + 8), rune_col)
+					_draw_pixel_line(img, Vector2i(gx + 8, gy + 2), Vector2i(gx + 2, gy + 8), rune_col)
+		# 网格连接电路线
+		for row in range(3):
+			_draw_line_h(img, 10, 54, 15 + row * 16, Color(0.0, 0.4, 0.5, 0.3))
+		for col in range(3):
+			_draw_line_v(img, 19 + col * 16, 8, 56, Color(0.0, 0.4, 0.5, 0.3))
+		# 激活闪光（中心格高亮）
+		_draw_rect_area(img, 28, 24, 8, 8, Color(0.5, 0.2, 0.8, 0.15))
 
 static func _draw_power_motif(img: Image, seed_val: int) -> void:
-	# Radiating golden star/mandala pattern for power cards
+	# === 金丹曼荼罗：道教修炼核心 ===
 	var cx := 32
 	var cy := 30
-	# Outer ring of golden dots
-	for i in range(16):
-		var a := float(i) * TAU / 16.0
-		var px := cx + int(cos(a) * 18.0)
-		var py := cy + int(sin(a) * 18.0)
-		_set_pixel_safe(img, px, py, EVA_ORANGE)
-		_set_pixel_safe(img, px + 1, py, EVA_ORANGE.darkened(0.2))
-	# Inner ring
-	for i in range(8):
-		var a := float(i) * TAU / 8.0 + 0.4
-		var px := cx + int(cos(a) * 10.0)
-		var py := cy + int(sin(a) * 10.0)
-		_draw_circle(img, px, py, 1, Color(1, 0.85, 0.3))
-	# Connecting rays from center
-	for i in range(8):
-		var a := float(i) * TAU / 8.0
-		for r in range(4, 16):
-			var px := cx + int(cos(a) * float(r))
-			var py := cy + int(sin(a) * float(r))
-			var col := EVA_ORANGE.lerp(Color(1, 0.85, 0.3), float(r) / 16.0)
-			col.a = 0.4 + 0.4 * (1.0 - float(r) / 16.0)
-			_set_pixel_safe(img, px, py, col)
-	# Golden core
-	_draw_circle(img, cx, cy, 4, Color(1, 0.85, 0.3))
-	_draw_circle(img, cx, cy, 2, Color(1, 0.95, 0.7))
-	# Sparkle accents
-	for s in range(6):
-		var px := int(_hash_float(seed_val + s * 7) * 44.0) + 10
-		var py := int(_hash_float(seed_val + s * 13) * 36.0) + 10
-		_set_pixel_safe(img, px, py, Color(1, 1, 0.8, 0.9))
+	var variant := int(_hash_float(seed_val) * 2.0)
+	if variant == 0:
+		# === 金丹放射：层层金光曼荼罗 ===
+		# 最外层光环（24 颗金点）
+		for i in range(24):
+			var a := float(i) * TAU / 24.0
+			var px := cx + int(cos(a) * 24.0)
+			var py := cy + int(sin(a) * 24.0)
+			_set_pixel_safe(img, px, py, EVA_ORANGE)
+		# 外圈辐射线（12条，粗）
+		for i in range(12):
+			var a := float(i) * TAU / 12.0
+			for r in range(10, 22):
+				var px := cx + int(cos(a) * float(r))
+				var py := cy + int(sin(a) * float(r))
+				var col := EVA_ORANGE.lerp(Color(1.0, 0.85, 0.3), float(r - 10) / 12.0)
+				col.a = 0.6 + 0.3 * (1.0 - float(r - 10) / 12.0)
+				_set_pixel_safe(img, px, py, col)
+		# 中层六芒星
+		for i in range(6):
+			var a1 := float(i) * TAU / 6.0
+			var a2 := float(i + 2) * TAU / 6.0
+			var p1 := Vector2i(cx + int(cos(a1) * 14.0), cy + int(sin(a1) * 14.0))
+			var p2 := Vector2i(cx + int(cos(a2) * 14.0), cy + int(sin(a2) * 14.0))
+			_draw_pixel_line(img, p1, p2, Color(1.0, 0.75, 0.2, 0.7))
+		# 内层圆环
+		for a_step in range(36):
+			var a := float(a_step) * TAU / 36.0
+			var px := cx + int(cos(a) * 8.0)
+			var py := cy + int(sin(a) * 8.0)
+			_set_pixel_safe(img, px, py, Color(1.0, 0.85, 0.3))
+		# 金丹核心（多层发光）
+		_draw_circle(img, cx, cy, 5, Color(0.8, 0.6, 0.1))
+		_draw_circle(img, cx, cy, 3, Color(1.0, 0.85, 0.3))
+		_draw_circle(img, cx, cy, 1, Color(1.0, 0.95, 0.7))
+		# 四方位三爻卦符
+		var trigram_positions := [Vector2i(cx, cy - 20), Vector2i(cx, cy + 20),
+								  Vector2i(cx - 20, cy), Vector2i(cx + 20, cy)]
+		for ti in range(4):
+			var tp := trigram_positions[ti]
+			for line_idx in range(3):
+				var ly := tp.y - 2 + line_idx * 2
+				var broken := (int(_hash_float(seed_val + ti * 3 + line_idx) * 2.0) == 0)
+				if broken:
+					_draw_line_h(img, tp.x - 3, tp.x - 1, ly, EVA_ORANGE)
+					_draw_line_h(img, tp.x + 1, tp.x + 3, ly, EVA_ORANGE)
+				else:
+					_draw_line_h(img, tp.x - 3, tp.x + 3, ly, EVA_ORANGE)
+	else:
+		# === 天眼觉醒：竖瞳 + 灵能爆发 ===
+		# 外层散射能量线
+		for i in range(16):
+			var a := float(i) * TAU / 16.0
+			for r in range(18, 26):
+				var px := cx + int(cos(a) * float(r))
+				var py := cy + int(sin(a) * float(r))
+				var intensity := 1.0 - float(r - 18) / 8.0
+				_set_pixel_safe(img, px, py, Color(1.0, 0.8, 0.2, intensity * 0.5))
+		# 眼眶（椭圆形，水平长）
+		for a_step in range(48):
+			var a := float(a_step) * TAU / 48.0
+			var px := cx + int(cos(a) * 18.0)
+			var py := cy + int(sin(a) * 10.0)
+			_set_pixel_safe(img, px, py, Color(1.0, 0.85, 0.3))
+			# 内层
+			var px2 := cx + int(cos(a) * 16.0)
+			var py2 := cy + int(sin(a) * 8.0)
+			_set_pixel_safe(img, px2, py2, EVA_ORANGE)
+		# 虹膜
+		_draw_circle(img, cx, cy, 6, EVA_PURPLE)
+		_draw_circle(img, cx, cy, 4, Color(0.6, 0.2, 0.8))
+		# 竖瞳
+		for i in range(8):
+			_set_pixel_safe(img, cx, cy - 4 + i, Color(0.1, 0.05, 0.15))
+			_set_pixel_safe(img, cx + 1, cy - 3 + i, Color(0.1, 0.05, 0.15, 0.5))
+		# 瞳孔高光
+		_set_pixel_safe(img, cx - 1, cy - 2, Color(1.0, 1.0, 0.9))
+		_set_pixel_safe(img, cx + 2, cy + 1, Color(1.0, 0.9, 0.7, 0.6))
+		# 眼角道纹延伸
+		for i in range(6):
+			_set_pixel_safe(img, cx - 19 - i, cy, Color(1.0, 0.7, 0.2, 0.6 - float(i) * 0.1))
+			_set_pixel_safe(img, cx + 19 + i, cy, Color(1.0, 0.7, 0.2, 0.6 - float(i) * 0.1))
+		# 上下三角道印
+		for i in range(4):
+			_set_pixel_safe(img, cx - i, cy - 12 - i, EVA_ORANGE.darkened(0.2))
+			_set_pixel_safe(img, cx + i, cy - 12 - i, EVA_ORANGE.darkened(0.2))
+			_set_pixel_safe(img, cx - i, cy + 12 + i, EVA_ORANGE.darkened(0.2))
+			_set_pixel_safe(img, cx + i, cy + 12 + i, EVA_ORANGE.darkened(0.2))
+		# 能量粒子
+		for s in range(8):
+			var px := int(_hash_float(seed_val + s * 7) * 50.0) + 7
+			var py := int(_hash_float(seed_val + s * 13) * 50.0) + 7
+			_set_pixel_safe(img, px, py, Color(1.0, 0.9, 0.5, 0.8))
 
 static func _draw_pixel_line(img: Image, from: Vector2i, to: Vector2i, color: Color) -> void:
 	var dx := absi(to.x - from.x)
@@ -517,12 +805,14 @@ static func _draw_player_sprite(img: Image, frame: int) -> void:
 			_set_pixel_safe(img, rx, ry, Color(cyber_glow.r, cyber_glow.g, cyber_glow.b, 0.5))
 
 static func _draw_grunt_sprite(img: Image, frame: int) -> void:
-	# 16bit数据游魂 - 幽灵状紫色实体，飘动的数字残影
+	# 16bit数据游魂 - 大型幽灵实体，道教符文+赛博电路混合
 	var body_outer := Color(0.35, 0.2, 0.65)
 	var body_mid := Color(0.22, 0.12, 0.5)
 	var body_inner := Color(0.12, 0.06, 0.35)
 	var eye_col := EVA_CYAN
 	var data_col := Color(0.0, 0.8, 0.6, 0.5)
+	var rune_col := Color(0.7, 0.55, 0.15, 0.45)
+	var circuit_col := Color(0.0, 0.6, 0.8, 0.4)
 	var bob := 0
 	match frame:
 		0: bob = 0
@@ -530,49 +820,95 @@ static func _draw_grunt_sprite(img: Image, frame: int) -> void:
 		2: bob = 3
 		3: bob = -1
 
-	# 主体（椭圆幽灵身体，3层渐变）
-	_draw_circle(img, 24, 28 + bob, 12, body_outer)
-	_draw_circle(img, 24, 28 + bob, 10, body_mid)
-	_draw_circle(img, 24, 28 + bob, 7, body_inner)
+	# === 主体（更大的椭圆幽灵身体，4层渐变）===
+	_draw_circle(img, 24, 26 + bob, 15, body_outer)
+	_draw_circle(img, 24, 26 + bob, 13, body_mid)
+	_draw_circle(img, 24, 26 + bob, 10, body_inner)
+	_draw_circle(img, 24, 25 + bob, 7, body_inner.lightened(0.05))
 
-	# 飘动的下摆（波浪形渐隐）
-	for x_off in range(-11, 12):
-		var wave: int = int(sin(float(x_off) * 0.7) * 3.0)
-		var fade: float = 1.0 - absf(float(x_off)) / 12.0
-		var c := Color(body_outer.r, body_outer.g, body_outer.b, fade * 0.8)
-		_set_pixel_safe(img, 24 + x_off, 40 + bob + wave, c)
-		_set_pixel_safe(img, 24 + x_off, 41 + bob + wave, Color(body_mid.r, body_mid.g, body_mid.b, fade * 0.5))
-		_set_pixel_safe(img, 24 + x_off, 42 + bob + wave, Color(body_mid.r, body_mid.g, body_mid.b, fade * 0.3))
-		_set_pixel_safe(img, 24 + x_off, 43 + bob + wave, Color(body_inner.r, body_inner.g, body_inner.b, fade * 0.15))
+	# === 头顶尖角（幽灵冠）===
+	_set_pixel_safe(img, 24, 10 + bob, body_outer)
+	_set_pixel_safe(img, 23, 11 + bob, body_outer)
+	_set_pixel_safe(img, 25, 11 + bob, body_outer)
+	_set_pixel_safe(img, 22, 12 + bob, body_mid)
+	_set_pixel_safe(img, 26, 12 + bob, body_mid)
 
-	# 眼睛（发光数据插口）
-	_draw_rect_area(img, 18, 25 + bob, 4, 4, eye_col)
-	_draw_rect_area(img, 26, 25 + bob, 4, 4, eye_col)
-	# 瞳孔
-	_set_pixel_safe(img, 19, 26 + bob, body_inner)
-	_set_pixel_safe(img, 20, 27 + bob, body_inner)
-	_set_pixel_safe(img, 27, 26 + bob, body_inner)
-	_set_pixel_safe(img, 28, 27 + bob, body_inner)
-	# 眼睛光晕
-	_set_pixel_safe(img, 17, 26 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.3))
-	_set_pixel_safe(img, 30, 26 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.3))
+	# === 飘动的下摆（更宽、更多层波浪）===
+	for x_off in range(-14, 15):
+		var wave: int = int(sin(float(x_off) * 0.6) * 4.0)
+		var wave2: int = int(sin(float(x_off) * 1.2 + 2.0) * 2.0)
+		var fade: float = 1.0 - absf(float(x_off)) / 15.0
+		_set_pixel_safe(img, 24 + x_off, 41 + bob + wave, Color(body_outer.r, body_outer.g, body_outer.b, fade * 0.85))
+		_set_pixel_safe(img, 24 + x_off, 42 + bob + wave, Color(body_mid.r, body_mid.g, body_mid.b, fade * 0.65))
+		_set_pixel_safe(img, 24 + x_off, 43 + bob + wave, Color(body_mid.r, body_mid.g, body_mid.b, fade * 0.4))
+		_set_pixel_safe(img, 24 + x_off, 44 + bob + wave + wave2, Color(body_inner.r, body_inner.g, body_inner.b, fade * 0.25))
+		_set_pixel_safe(img, 24 + x_off, 45 + bob + wave + wave2, Color(body_inner.r, body_inner.g, body_inner.b, fade * 0.12))
 
-	# 数据碎片装饰（身体上的浮动01字符感）
-	_set_pixel_safe(img, 20, 32 + bob, data_col)
-	_set_pixel_safe(img, 22, 34 + bob, data_col)
-	_set_pixel_safe(img, 27, 33 + bob, data_col)
-	_set_pixel_safe(img, 25, 36 + bob, data_col)
+	# === 眼睛（更大、更有威胁感）===
+	# 左眼
+	_draw_rect_area(img, 16, 23 + bob, 5, 5, eye_col)
+	_set_pixel_safe(img, 17, 24 + bob, body_inner)
+	_set_pixel_safe(img, 18, 25 + bob, body_inner)
+	_set_pixel_safe(img, 19, 24 + bob, body_inner)
+	# 右眼
+	_draw_rect_area(img, 27, 23 + bob, 5, 5, eye_col)
+	_set_pixel_safe(img, 28, 24 + bob, body_inner)
+	_set_pixel_safe(img, 29, 25 + bob, body_inner)
+	_set_pixel_safe(img, 30, 24 + bob, body_inner)
+	# 眼睛外圈光晕
+	for ex in [15, 21, 26, 32]:
+		_set_pixel_safe(img, ex, 24 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.25))
+		_set_pixel_safe(img, ex, 25 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.2))
+	# 眼下光痕（哭泣般的数据流）
+	for tear_y in range(3):
+		_set_pixel_safe(img, 18, 28 + bob + tear_y, Color(eye_col.r, eye_col.g, eye_col.b, 0.3 - float(tear_y) * 0.08))
+		_set_pixel_safe(img, 29, 28 + bob + tear_y, Color(eye_col.r, eye_col.g, eye_col.b, 0.3 - float(tear_y) * 0.08))
 
-	# 受击帧: 静电干扰线
+	# === 嘴（锯齿状裂口）===
+	_set_pixel_safe(img, 20, 30 + bob, body_inner.darkened(0.3))
+	_set_pixel_safe(img, 22, 31 + bob, body_inner.darkened(0.3))
+	_set_pixel_safe(img, 24, 30 + bob, body_inner.darkened(0.3))
+	_set_pixel_safe(img, 26, 31 + bob, body_inner.darkened(0.3))
+	_set_pixel_safe(img, 28, 30 + bob, body_inner.darkened(0.3))
+
+	# === 赛博电路纹（身体表面）===
+	_draw_line_h(img, 16, 20, 33 + bob, circuit_col)
+	_draw_line_v(img, 20, 33 + bob, 37 + bob, circuit_col)
+	_draw_line_h(img, 28, 32, 34 + bob, circuit_col)
+	_draw_line_v(img, 28, 34 + bob, 38 + bob, circuit_col)
+	# 电路节点亮点
+	_set_pixel_safe(img, 16, 33 + bob, Color(0.0, 0.9, 1.0, 0.6))
+	_set_pixel_safe(img, 32, 34 + bob, Color(0.0, 0.9, 1.0, 0.6))
+
+	# === 道教符文（身体上浮现的符号点阵）===
+	_set_pixel_safe(img, 22, 35 + bob, rune_col)
+	_set_pixel_safe(img, 24, 34 + bob, rune_col)
+	_set_pixel_safe(img, 26, 35 + bob, rune_col)
+	_set_pixel_safe(img, 23, 37 + bob, rune_col)
+	_set_pixel_safe(img, 25, 37 + bob, rune_col)
+	_set_pixel_safe(img, 24, 39 + bob, rune_col)
+
+	# === 数据碎片装饰（周围浮动）===
+	_set_pixel_safe(img, 8, 20 + bob, data_col)
+	_set_pixel_safe(img, 10, 35 + bob, data_col)
+	_set_pixel_safe(img, 38, 22 + bob, data_col)
+	_set_pixel_safe(img, 40, 32 + bob, data_col)
+	_set_pixel_safe(img, 6, 28 + bob, Color(data_col.r, data_col.g, data_col.b, 0.3))
+	_set_pixel_safe(img, 42, 26 + bob, Color(data_col.r, data_col.g, data_col.b, 0.3))
+
+	# === 受击帧: 静电干扰线 + 闪白 ===
 	if frame == 2:
-		for row in range(4):
-			var y_pos: int = 23 + bob + row * 5
-			_draw_line_h(img, 14, 34, y_pos, Color(1.0, 1.0, 1.0, 0.35))
-	# 攻击帧: 数据冲击波
+		for row in range(6):
+			var y_pos: int = 18 + bob + row * 5
+			_draw_line_h(img, 10, 38, y_pos, Color(1.0, 1.0, 1.0, 0.3))
+	# === 攻击帧: 前冲数据冲击波 ===
 	if frame == 1:
-		for i in range(6):
-			_set_pixel_safe(img, 12 - i, 28 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.7 - float(i) * 0.1))
-			_set_pixel_safe(img, 36 + i, 28 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.7 - float(i) * 0.1))
+		for i in range(10):
+			var wave_a: float = 0.7 - float(i) * 0.06
+			_set_pixel_safe(img, 8 - i, 26 + bob, Color(eye_col.r, eye_col.g, eye_col.b, wave_a))
+			_set_pixel_safe(img, 8 - i, 28 + bob, Color(eye_col.r, eye_col.g, eye_col.b, wave_a * 0.7))
+			_set_pixel_safe(img, 40 + i, 26 + bob, Color(eye_col.r, eye_col.g, eye_col.b, wave_a))
+			_set_pixel_safe(img, 40 + i, 28 + bob, Color(eye_col.r, eye_col.g, eye_col.b, wave_a * 0.7))
 
 static func _draw_elite_sprite(img: Image, frame: int) -> void:
 	# Puppet / marionette with neon strings
@@ -1072,57 +1408,142 @@ static func generate_battle_background(stage: int) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 static func _draw_bg_neon_city(img: Image) -> void:
-	# Night sky gradient
+	# === Sky gradient (deep purple-blue, richer tones) ===
 	for y in range(180):
 		var t := float(y) / 180.0
-		var sky := EVA_DARK_BLUE.lerp(Color(0.02, 0.02, 0.08), t)
+		var sky_top := Color(0.04, 0.02, 0.14)
+		var sky_mid := Color(0.06, 0.03, 0.18)
+		var sky_bot := Color(0.03, 0.02, 0.10)
+		var sky: Color
+		if t < 0.4:
+			sky = sky_top.lerp(sky_mid, t / 0.4)
+		else:
+			sky = sky_mid.lerp(sky_bot, (t - 0.4) / 0.6)
 		for x in range(320):
 			img.set_pixel(x, y, sky)
 
-	# Stars
-	for s in range(40):
+	# === Stars (more, with size variation) ===
+	for s in range(70):
 		var sx := int(_hash_float(s * 7) * 320.0)
-		var sy := int(_hash_float(s * 13) * 80.0)
-		var bright := 0.5 + _hash_float(s * 3) * 0.5
-		_set_pixel_safe(img, sx, sy, Color(bright, bright, bright * 0.9))
+		var sy := int(_hash_float(s * 13) * 60.0)
+		var bright := 0.4 + _hash_float(s * 3) * 0.6
+		var star_col := Color(bright, bright, bright * 0.85)
+		_set_pixel_safe(img, sx, sy, star_col)
+		if _hash_float(s * 41) > 0.7:
+			_set_pixel_safe(img, sx + 1, sy, star_col.darkened(0.3))
+			_set_pixel_safe(img, sx, sy + 1, star_col.darkened(0.3))
 
-	# Buildings silhouettes
-	for b in range(12):
-		var bx := int(_hash_float(b * 17 + 1) * 300.0)
-		var bw := int(_hash_float(b * 23 + 2) * 25.0) + 10
-		var bh := int(_hash_float(b * 31 + 3) * 70.0) + 40
-		var by := 180 - bh
-		var dark := Color(0.03, 0.03, 0.06 + _hash_float(b * 41) * 0.04)
+	# === Distant city haze (horizon glow) ===
+	for x in range(320):
+		for dy in range(8):
+			var haze_y: int = 55 + dy
+			var haze_a: float = (1.0 - float(dy) / 8.0) * 0.12
+			var haze_col := Color(0.15, 0.08, 0.3, haze_a)
+			var existing := img.get_pixel(x, haze_y)
+			img.set_pixel(x, haze_y, existing.blend(haze_col))
+
+	# === Far background buildings (small, dark, many) ===
+	for b in range(20):
+		var bx := int(_hash_float(b * 17 + 100) * 310.0)
+		var bw := int(_hash_float(b * 23 + 200) * 12.0) + 5
+		var bh := int(_hash_float(b * 31 + 300) * 25.0) + 15
+		var by := 65 - bh
+		var dark := Color(0.04, 0.03, 0.08 + _hash_float(b * 41) * 0.03)
 		_draw_rect_area(img, bx, by, bw, bh, dark)
-		# Windows
-		for wy in range(by + 3, 175, 6):
-			for wx in range(bx + 2, bx + bw - 2, 5):
-				if _hash_float(wx * 53 + wy * 97) > 0.4:
-					var wc: Color
-					if _hash_float(wx + wy * 7) > 0.5:
-						wc = EVA_CYAN.darkened(0.5)
-					else:
-						wc = EVA_ORANGE.darkened(0.6)
+		# Tiny windows
+		for wy in range(by + 2, 64, 4):
+			for wx in range(bx + 1, bx + bw - 1, 3):
+				if _hash_float(wx * 53 + wy * 97 + 500) > 0.5:
+					var wc := EVA_CYAN.darkened(0.7) if _hash_float(wx + wy) > 0.5 else EVA_ORANGE.darkened(0.75)
 					_set_pixel_safe(img, wx, wy, wc)
-					_set_pixel_safe(img, wx + 1, wy, wc)
 
-	# Neon signs
-	_draw_rect_area(img, 50, 90, 20, 4, NEON_PINK.darkened(0.2))
-	_draw_rect_area(img, 200, 70, 16, 4, NEON_GREEN.darkened(0.2))
-	_draw_rect_area(img, 140, 100, 24, 3, EVA_CYAN.darkened(0.3))
+	# === Mid-ground buildings (taller, more detail, starts at y~50 so visible in battle) ===
+	for b in range(14):
+		var bx := int(_hash_float(b * 19 + 1) * 300.0)
+		var bw := int(_hash_float(b * 29 + 2) * 22.0) + 12
+		var bh := int(_hash_float(b * 37 + 3) * 60.0) + 50
+		var by := 120 - bh  # tops reach into visible battle area
+		var base_bright := 0.03 + _hash_float(b * 43) * 0.03
+		var bld_col := Color(base_bright, base_bright * 0.9, base_bright * 1.2 + 0.02)
+		_draw_rect_area(img, bx, by, bw, bh, bld_col)
+		# Rooftop highlight
+		_draw_line_h(img, bx, bx + bw - 1, by, bld_col.lightened(0.15))
+		# Windows (2x1 pixel, colored)
+		for wy in range(by + 3, 118, 5):
+			for wx in range(bx + 2, bx + bw - 2, 4):
+				if _hash_float(wx * 53 + wy * 97) > 0.35:
+					var wc: Color
+					var r := _hash_float(wx + wy * 7)
+					if r > 0.65:
+						wc = EVA_CYAN.darkened(0.4)
+					elif r > 0.35:
+						wc = EVA_ORANGE.darkened(0.5)
+					else:
+						wc = NEON_PINK.darkened(0.55)
+					_set_pixel_safe(img, wx, wy, wc)
+					_set_pixel_safe(img, wx + 1, wy, wc.darkened(0.15))
 
-	# Ground / street
-	_draw_rect_area(img, 0, 160, 320, 20, Color(0.04, 0.04, 0.06))
-	# Street line
-	_draw_line_h(img, 0, 319, 168, Color(0.3, 0.3, 0.1))
+	# === Neon signs (more, brighter, with glow halos) ===
+	var signs: Array[Dictionary] = [
+		{"x": 40, "y": 45, "w": 18, "h": 3, "color": NEON_PINK},
+		{"x": 180, "y": 35, "w": 14, "h": 3, "color": NEON_GREEN},
+		{"x": 110, "y": 55, "w": 22, "h": 3, "color": EVA_CYAN},
+		{"x": 250, "y": 42, "w": 16, "h": 3, "color": EVA_ORANGE},
+		{"x": 70, "y": 70, "w": 12, "h": 2, "color": EVA_PURPLE.lightened(0.3)},
+		{"x": 210, "y": 62, "w": 20, "h": 3, "color": NEON_PINK.lightened(0.1)},
+	]
+	for sign in signs:
+		var sx: int = sign["x"]
+		var sy: int = sign["y"]
+		var sw: int = sign["w"]
+		var sh: int = sign["h"]
+		var sc: Color = sign["color"]
+		_draw_rect_area(img, sx, sy, sw, sh, sc.darkened(0.15))
+		# Glow halo (1px around, low alpha)
+		for gx in range(sx - 1, sx + sw + 1):
+			_set_pixel_safe(img, gx, sy - 1, Color(sc.r, sc.g, sc.b, 0.15))
+			_set_pixel_safe(img, gx, sy + sh, Color(sc.r, sc.g, sc.b, 0.12))
 
-	# Rain streaks
-	for r in range(60):
-		var rx := int(_hash_float(r * 11) * 320.0)
-		var ry := int(_hash_float(r * 19) * 150.0)
-		var rlen := int(_hash_float(r * 7) * 4.0) + 2
+	# === Ground platform (raised to y=120 so it's visible in battle area) ===
+	# Dark metallic platform
+	_draw_rect_area(img, 0, 120, 320, 60, Color(0.035, 0.03, 0.055))
+	# Platform surface highlight line
+	_draw_line_h(img, 0, 319, 120, Color(0.12, 0.08, 0.2))
+	_draw_line_h(img, 0, 319, 121, Color(0.08, 0.05, 0.14))
+	# Grid lines on platform (perspective-ish)
+	for gx in range(0, 320, 20):
+		for gy in range(122, 180, 1):
+			var fade: float = 1.0 - float(gy - 122) / 58.0
+			_set_pixel_safe(img, gx, gy, Color(0.08, 0.05, 0.15, fade * 0.25))
+	for gy in range(125, 180, 10):
+		var fade: float = 1.0 - float(gy - 122) / 58.0
+		_draw_line_h(img, 0, 319, gy, Color(0.08, 0.05, 0.15, fade * 0.2))
+
+	# === Dao symbols faintly on the ground ===
+	# Bagua circle hint at center
+	for angle_step in range(32):
+		var a: float = float(angle_step) * TAU / 32.0
+		var cx: int = 160 + int(cos(a) * 35.0)
+		var cy: int = 145 + int(sin(a) * 12.0)
+		_set_pixel_safe(img, cx, cy, Color(0.1, 0.06, 0.2, 0.3))
+
+	# === Rain streaks (more, varied alpha) ===
+	for r in range(90):
+		var rx := int(_hash_float(r * 11 + 777) * 320.0)
+		var ry := int(_hash_float(r * 19 + 888) * 115.0)
+		var rlen := int(_hash_float(r * 7 + 999) * 5.0) + 2
+		var rain_alpha: float = 0.08 + _hash_float(r * 3) * 0.15
 		for rl in range(rlen):
-			_set_pixel_safe(img, rx, ry + rl, Color(0.4, 0.5, 0.7, 0.2))
+			_set_pixel_safe(img, rx, ry + rl, Color(0.35, 0.45, 0.65, rain_alpha))
+
+	# === Atmospheric fog at bottom ===
+	for fy in range(115, 130):
+		var fog_a: float = (1.0 - float(fy - 115) / 15.0) * 0.08
+		for fx in range(320):
+			var noise: float = _hash_float(fx * 7 + fy * 13) * 0.04
+			var existing := img.get_pixel(fx, fy)
+			var fog := Color(0.1, 0.06, 0.18, fog_a + noise)
+			img.set_pixel(fx, fy, existing.blend(fog))
 
 static func _draw_bg_tower_interior(img: Image) -> void:
 	# Dark stone walls
