@@ -358,93 +358,221 @@ static func generate_character_sprite(char_type: String, frame: int) -> ImageTex
 		"summon_swarm": _draw_summon_swarm(img, frame)
 		"summon_beast": _draw_summon_beast(img, frame)
 
+	# 16bit后处理: 自动描边 + 边缘高光 + 阴影
+	_enhance_16bit(img)
 	return ImageTexture.create_from_image(img)
 
+## 16bit风格后处理: 描边 + 顶部高光 + 底部阴影
+static func _enhance_16bit(img: Image) -> void:
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var outline_color := Color(0.02, 0.01, 0.05, 0.85)
+	# Pass 1: 收集描边位置（透明像素旁有不透明邻居）
+	var outline_pixels: Array[Vector2i] = []
+	for y in h:
+		for x in w:
+			if img.get_pixel(x, y).a < 0.1:
+				var has_neighbor := false
+				for dy in [-1, 0, 1]:
+					for dx in [-1, 0, 1]:
+						if dx == 0 and dy == 0:
+							continue
+						var nx: int = x + dx
+						var ny: int = y + dy
+						if nx >= 0 and nx < w and ny >= 0 and ny < h:
+							if img.get_pixel(nx, ny).a > 0.5:
+								has_neighbor = true
+								break
+					if has_neighbor:
+						break
+				if has_neighbor:
+					outline_pixels.append(Vector2i(x, y))
+	for p in outline_pixels:
+		img.set_pixel(p.x, p.y, outline_color)
+	# Pass 2: 顶部边缘高光 + 底部边缘阴影
+	for y in range(1, h - 1):
+		for x in range(1, w - 1):
+			var c: Color = img.get_pixel(x, y)
+			if c.a > 0.5 and c != outline_color:
+				var above: Color = img.get_pixel(x, y - 1)
+				var below: Color = img.get_pixel(x, y + 1)
+				if above.a < 0.1:
+					img.set_pixel(x, y, c.lightened(0.18))
+				elif below.a < 0.1:
+					img.set_pixel(x, y, c.darkened(0.12))
+
 static func _draw_player_sprite(img: Image, frame: int) -> void:
-	var body_color := Color(0.15, 0.12, 0.2)
-	var armor_color := Color(0.25, 0.2, 0.35)
-	var skin_color := Color(0.7, 0.55, 0.45)
-	var hood_color := Color(0.1, 0.08, 0.15)
-	var eye_color := EVA_RED
+	# 16bit赛博道士 - 深色道袍+发光电路纹+赛博单眼
+	var robe_dark := Color(0.08, 0.06, 0.15)
+	var robe_mid := Color(0.15, 0.12, 0.25)
+	var robe_light := Color(0.22, 0.18, 0.35)
+	var skin := Color(0.72, 0.58, 0.48)
+	var skin_shade := Color(0.55, 0.42, 0.35)
+	var hair_col := Color(0.12, 0.10, 0.18)
+	var cyber_glow := EVA_CYAN
+	var eye_glow := EVA_RED
+	var circuit := Color(0.0, 0.6, 0.8, 0.8)
 
 	var bob := 0
-	var arm_offset := 0
+	var arm_off := 0
 	match frame:
 		0: bob = 0
-		1: arm_offset = -4
-		2: bob = 2
-		3: bob = -1
+		1: arm_off = -5  # 攻击
+		2: bob = 2       # 受击
+		3: bob = -1      # 特殊
 
-	# Legs
-	_draw_rect_area(img, 19, 50 + bob, 4, 10, body_color)
-	_draw_rect_area(img, 25, 50 + bob, 4, 10, body_color)
-	# Body
-	_draw_rect_area(img, 17, 34 + bob, 14, 17, armor_color)
-	# Armor plate highlight
-	_draw_rect_area(img, 19, 36 + bob, 10, 2, EVA_CYAN.darkened(0.5))
-	_draw_rect_area(img, 20, 42 + bob, 8, 1, EVA_CYAN.darkened(0.6))
-	# Arms
-	_draw_rect_area(img, 12, 36 + bob + arm_offset, 5, 12, body_color)
-	_draw_rect_area(img, 31, 36 + bob, 5, 12, body_color)
-	# Head / hood
-	_draw_rect_area(img, 18, 22 + bob, 12, 13, hood_color)
-	# Face opening
-	_draw_rect_area(img, 20, 26 + bob, 8, 6, skin_color)
-	# Red eye glow
-	_set_pixel_safe(img, 22, 28 + bob, eye_color)
-	_set_pixel_safe(img, 23, 28 + bob, eye_color)
-	_set_pixel_safe(img, 25, 28 + bob, eye_color)
-	_set_pixel_safe(img, 26, 28 + bob, eye_color)
-	# Eye glow bloom
-	_set_pixel_safe(img, 21, 28 + bob, Color(eye_color.r, eye_color.g, eye_color.b, 0.3))
-	_set_pixel_safe(img, 27, 28 + bob, Color(eye_color.r, eye_color.g, eye_color.b, 0.3))
-	# Hood peak
-	_draw_rect_area(img, 22, 20 + bob, 4, 3, hood_color)
-	# Cyber circuit lines on armor
-	_set_pixel_safe(img, 24, 38 + bob, EVA_CYAN)
-	_set_pixel_safe(img, 24, 40 + bob, EVA_CYAN)
-	_set_pixel_safe(img, 24, 44 + bob, EVA_CYAN)
-	# Attack frame: energy slash
+	var cy: int = bob  # center Y offset
+
+	# === 脚 / 鞋 ===
+	_draw_rect_area(img, 18, 56 + cy, 5, 5, robe_dark)
+	_draw_rect_area(img, 25, 56 + cy, 5, 5, robe_dark)
+	_draw_line_h(img, 18, 22, 60 + cy, robe_mid)
+	_draw_line_h(img, 25, 29, 60 + cy, robe_mid)
+
+	# === 腿 ===
+	_draw_rect_area(img, 19, 49 + cy, 4, 7, robe_mid)
+	_draw_rect_area(img, 25, 49 + cy, 4, 7, robe_mid)
+	# 腿部明暗
+	_draw_line_v(img, 19, 49 + cy, 55 + cy, robe_dark)
+	_draw_line_v(img, 28, 49 + cy, 55 + cy, robe_dark)
+
+	# === 身体/道袍 ===
+	_draw_rect_area(img, 15, 30 + cy, 18, 20, robe_mid)
+	# 道袍左右深色边
+	_draw_rect_area(img, 15, 30 + cy, 2, 20, robe_dark)
+	_draw_rect_area(img, 31, 30 + cy, 2, 20, robe_dark)
+	# 道袍中间亮色对襟
+	_draw_line_v(img, 23, 32 + cy, 48 + cy, robe_light)
+	_draw_line_v(img, 24, 32 + cy, 48 + cy, robe_light)
+	# 腰带
+	_draw_rect_area(img, 16, 42 + cy, 16, 2, Color(0.4, 0.25, 0.1))
+	_set_pixel_safe(img, 23, 42 + cy, EVA_ORANGE)
+	_set_pixel_safe(img, 24, 42 + cy, EVA_ORANGE)
+
+	# === 电路纹（道袍上的赛博纹路）===
+	_set_pixel_safe(img, 20, 34 + cy, circuit)
+	_set_pixel_safe(img, 20, 36 + cy, circuit)
+	_set_pixel_safe(img, 20, 38 + cy, circuit)
+	_draw_line_h(img, 20, 22, 38 + cy, circuit)
+	_set_pixel_safe(img, 27, 35 + cy, circuit)
+	_set_pixel_safe(img, 27, 37 + cy, circuit)
+	_draw_line_h(img, 26, 28, 37 + cy, circuit)
+	# 下摆电路
+	_set_pixel_safe(img, 18, 46 + cy, circuit)
+	_set_pixel_safe(img, 29, 46 + cy, circuit)
+
+	# === 手臂 ===
+	# 左臂
+	_draw_rect_area(img, 10, 32 + cy + arm_off, 5, 14, robe_mid)
+	_draw_line_v(img, 10, 32 + cy + arm_off, 45 + cy + arm_off, robe_dark)
+	_draw_rect_area(img, 11, 45 + cy + arm_off, 4, 3, skin_shade)
+	# 右臂
+	_draw_rect_area(img, 33, 32 + cy, 5, 14, robe_mid)
+	_draw_line_v(img, 37, 32 + cy, 45 + cy, robe_dark)
+	_draw_rect_area(img, 33, 45 + cy, 4, 3, skin_shade)
+
+	# === 头部 ===
+	# 头发/帽
+	_draw_rect_area(img, 17, 17 + cy, 14, 14, hair_col)
+	# 脸（肤色）
+	_draw_rect_area(img, 19, 22 + cy, 10, 8, skin)
+	# 脸部阴影（下半）
+	_draw_rect_area(img, 19, 27 + cy, 10, 3, skin_shade)
+	# 赛博单眼（左眼红色发光, 右眼正常）
+	_set_pixel_safe(img, 21, 24 + cy, eye_glow)
+	_set_pixel_safe(img, 22, 24 + cy, eye_glow)
+	_set_pixel_safe(img, 21, 25 + cy, Color(eye_glow.r, 0.1, 0.1, 0.5))
+	# 正常右眼
+	_set_pixel_safe(img, 26, 24 + cy, Color(0.1, 0.1, 0.1))
+	_set_pixel_safe(img, 27, 24 + cy, Color(0.1, 0.1, 0.1))
+	# 嘴
+	_draw_line_h(img, 22, 25, 28 + cy, skin_shade.darkened(0.2))
+	# 道冠
+	_draw_rect_area(img, 20, 16 + cy, 8, 3, Color(0.35, 0.25, 0.1))
+	_set_pixel_safe(img, 23, 15 + cy, EVA_ORANGE)
+	_set_pixel_safe(img, 24, 15 + cy, EVA_ORANGE)
+	# 头发侧面
+	_draw_rect_area(img, 17, 22 + cy, 2, 6, hair_col)
+	_draw_rect_area(img, 29, 22 + cy, 2, 6, hair_col)
+
+	# === 攻击帧: 能量斩 ===
 	if frame == 1:
-		for i in range(8):
-			_set_pixel_safe(img, 8 + i, 30 + i, NEON_PINK)
-			_set_pixel_safe(img, 9 + i, 30 + i, NEON_PINK.darkened(0.3))
-	# Special frame: aura
+		for i in range(10):
+			_set_pixel_safe(img, 6 + i, 26 + i, NEON_PINK)
+			_set_pixel_safe(img, 7 + i, 26 + i, Color(1, 0.4, 0.7, 0.7))
+			_set_pixel_safe(img, 5 + i, 26 + i, Color(1, 0.2, 0.5, 0.4))
+	# === 受击帧: 闪白 ===
+	if frame == 2:
+		for y in range(17, 61):
+			for x in range(10, 38):
+				var c: Color = img.get_pixel(x, y + cy)
+				if c.a > 0.3:
+					img.set_pixel(x, y + cy, c.lightened(0.35))
+	# === 特殊帧: 太极气场 ===
 	if frame == 3:
-		for i in range(14):
-			_set_pixel_safe(img, 16, 24 + i, Color(EVA_CYAN.r, EVA_CYAN.g, EVA_CYAN.b, 0.3))
-			_set_pixel_safe(img, 32, 24 + i, Color(EVA_CYAN.r, EVA_CYAN.g, EVA_CYAN.b, 0.3))
+		for angle_step in range(20):
+			var a: float = float(angle_step) * TAU / 20.0
+			var rx: int = 24 + int(cos(a) * 16.0)
+			var ry: int = 38 + cy + int(sin(a) * 16.0)
+			_set_pixel_safe(img, rx, ry, Color(cyber_glow.r, cyber_glow.g, cyber_glow.b, 0.5))
 
 static func _draw_grunt_sprite(img: Image, frame: int) -> void:
-	# Ghost-like data entity
-	var base_color := Color(0.3, 0.2, 0.6)
-	var inner := Color(0.15, 0.1, 0.4)
+	# 16bit数据游魂 - 幽灵状紫色实体，飘动的数字残影
+	var body_outer := Color(0.35, 0.2, 0.65)
+	var body_mid := Color(0.22, 0.12, 0.5)
+	var body_inner := Color(0.12, 0.06, 0.35)
+	var eye_col := EVA_CYAN
+	var data_col := Color(0.0, 0.8, 0.6, 0.5)
 	var bob := 0
 	match frame:
 		0: bob = 0
-		1: bob = -2
+		1: bob = -3
 		2: bob = 3
 		3: bob = -1
 
-	# Ghost body (oval)
-	_draw_circle(img, 24, 30 + bob, 10, base_color)
-	_draw_circle(img, 24, 30 + bob, 8, inner)
-	# Trailing bottom (wavy)
-	for x_off in range(-9, 10):
-		var wave := int(sin(float(x_off) * 0.8) * 2.0)
-		_set_pixel_safe(img, 24 + x_off, 40 + bob + wave, base_color)
-		_set_pixel_safe(img, 24 + x_off, 41 + bob + wave, base_color.darkened(0.3))
-		_set_pixel_safe(img, 24 + x_off, 42 + bob + wave, base_color.darkened(0.6))
-	# Eyes - hollow data sockets
-	_draw_rect_area(img, 19, 27 + bob, 3, 3, EVA_CYAN)
-	_draw_rect_area(img, 26, 27 + bob, 3, 3, EVA_CYAN)
-	_set_pixel_safe(img, 20, 28 + bob, inner)
-	_set_pixel_safe(img, 27, 28 + bob, inner)
-	# Static/glitch lines
+	# 主体（椭圆幽灵身体，3层渐变）
+	_draw_circle(img, 24, 28 + bob, 12, body_outer)
+	_draw_circle(img, 24, 28 + bob, 10, body_mid)
+	_draw_circle(img, 24, 28 + bob, 7, body_inner)
+
+	# 飘动的下摆（波浪形渐隐）
+	for x_off in range(-11, 12):
+		var wave: int = int(sin(float(x_off) * 0.7) * 3.0)
+		var fade: float = 1.0 - absf(float(x_off)) / 12.0
+		var c := Color(body_outer.r, body_outer.g, body_outer.b, fade * 0.8)
+		_set_pixel_safe(img, 24 + x_off, 40 + bob + wave, c)
+		_set_pixel_safe(img, 24 + x_off, 41 + bob + wave, Color(body_mid.r, body_mid.g, body_mid.b, fade * 0.5))
+		_set_pixel_safe(img, 24 + x_off, 42 + bob + wave, Color(body_mid.r, body_mid.g, body_mid.b, fade * 0.3))
+		_set_pixel_safe(img, 24 + x_off, 43 + bob + wave, Color(body_inner.r, body_inner.g, body_inner.b, fade * 0.15))
+
+	# 眼睛（发光数据插口）
+	_draw_rect_area(img, 18, 25 + bob, 4, 4, eye_col)
+	_draw_rect_area(img, 26, 25 + bob, 4, 4, eye_col)
+	# 瞳孔
+	_set_pixel_safe(img, 19, 26 + bob, body_inner)
+	_set_pixel_safe(img, 20, 27 + bob, body_inner)
+	_set_pixel_safe(img, 27, 26 + bob, body_inner)
+	_set_pixel_safe(img, 28, 27 + bob, body_inner)
+	# 眼睛光晕
+	_set_pixel_safe(img, 17, 26 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.3))
+	_set_pixel_safe(img, 30, 26 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.3))
+
+	# 数据碎片装饰（身体上的浮动01字符感）
+	_set_pixel_safe(img, 20, 32 + bob, data_col)
+	_set_pixel_safe(img, 22, 34 + bob, data_col)
+	_set_pixel_safe(img, 27, 33 + bob, data_col)
+	_set_pixel_safe(img, 25, 36 + bob, data_col)
+
+	# 受击帧: 静电干扰线
 	if frame == 2:
-		for row in range(3):
-			var y_pos := 26 + bob + row * 4
-			_draw_line_h(img, 16, 32, y_pos, Color(1.0, 1.0, 1.0, 0.3))
+		for row in range(4):
+			var y_pos: int = 23 + bob + row * 5
+			_draw_line_h(img, 14, 34, y_pos, Color(1.0, 1.0, 1.0, 0.35))
+	# 攻击帧: 数据冲击波
+	if frame == 1:
+		for i in range(6):
+			_set_pixel_safe(img, 12 - i, 28 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.7 - float(i) * 0.1))
+			_set_pixel_safe(img, 36 + i, 28 + bob, Color(eye_col.r, eye_col.g, eye_col.b, 0.7 - float(i) * 0.1))
 
 static func _draw_elite_sprite(img: Image, frame: int) -> void:
 	# Puppet / marionette with neon strings
@@ -522,73 +650,102 @@ static func _draw_elite2_sprite(img: Image, frame: int) -> void:
 			_draw_line_h(img, 10, 38, gy, Color(1.0, 0.0, 0.5, 0.4))
 
 static func _draw_boss_sprite(img: Image, frame: int) -> void:
-	# Half-mecha half-Taoist, large imposing figure
-	var mecha_col := Color(0.2, 0.2, 0.25)
-	var robes_col := Color(0.15, 0.05, 0.2)
+	# 16bit「旧我」- 半机械半道士，威严巨大身躯
+	var mecha_dark := Color(0.15, 0.15, 0.2)
+	var mecha_mid := Color(0.25, 0.25, 0.3)
+	var mecha_light := Color(0.35, 0.35, 0.4)
+	var robe_dark := Color(0.1, 0.03, 0.18)
+	var robe_mid := Color(0.18, 0.06, 0.28)
+	var robe_light := Color(0.25, 0.1, 0.38)
 	var rune_col := EVA_CYAN
 	var bob := 0
 	if frame == 1: bob = -2
 	if frame == 2: bob = 1
 
-	# Large body - left half mecha, right half robes
-	# Mecha side (left)
-	_draw_rect_area(img, 8, 20 + bob, 16, 30, mecha_col)
-	# Plate details
-	_draw_line_h(img, 9, 23, 25 + bob, EVA_CYAN.darkened(0.4))
-	_draw_line_h(img, 9, 23, 35 + bob, EVA_CYAN.darkened(0.4))
-	_draw_rect_area(img, 10, 28 + bob, 4, 4, Color(0.3, 0.3, 0.35))
-	# Robes side (right)
-	_draw_rect_area(img, 24, 20 + bob, 16, 34, robes_col)
-	# Flowing robe bottom
-	for i in range(8):
+	# === 腿 ===
+	_draw_rect_area(img, 12, 52 + bob, 7, 10, mecha_mid)
+	_draw_rect_area(img, 29, 52 + bob, 7, 10, robe_dark)
+	_draw_line_v(img, 12, 52 + bob, 61 + bob, mecha_dark)
+	_draw_line_v(img, 35, 52 + bob, 61 + bob, robe_dark.darkened(0.2))
+
+	# === 身体 - 左半机械，右半道袍 ===
+	# 机械侧
+	_draw_rect_area(img, 6, 18 + bob, 18, 34, mecha_mid)
+	_draw_rect_area(img, 6, 18 + bob, 2, 34, mecha_dark)
+	# 机械板甲细节
+	_draw_line_h(img, 8, 23, 24 + bob, mecha_light)
+	_draw_line_h(img, 8, 23, 34 + bob, mecha_light)
+	_draw_rect_area(img, 10, 27 + bob, 5, 5, mecha_light)
+	_draw_rect_area(img, 11, 28 + bob, 3, 3, EVA_RED.darkened(0.3))
+	# 关节铆钉
+	_set_pixel_safe(img, 9, 22 + bob, mecha_light)
+	_set_pixel_safe(img, 9, 38 + bob, mecha_light)
+
+	# 道袍侧
+	_draw_rect_area(img, 24, 18 + bob, 18, 36, robe_mid)
+	_draw_rect_area(img, 40, 18 + bob, 2, 36, robe_dark)
+	# 道袍纹饰
+	_draw_line_v(img, 30, 20 + bob, 50 + bob, robe_light)
+	_draw_line_v(img, 31, 20 + bob, 50 + bob, robe_light)
+	# 道袍下摆飘动
+	for i in range(10):
 		@warning_ignore("integer_division")
-		_set_pixel_safe(img, 30 + i, 54 + bob + i / 3, robes_col.darkened(0.1))
+		var wave: int = i / 4
+		_set_pixel_safe(img, 32 + i, 54 + bob + wave, robe_mid)
+		_set_pixel_safe(img, 32 + i, 55 + bob + wave, robe_dark)
 
-	# Large head
-	_draw_rect_area(img, 14, 8 + bob, 20, 14, mecha_col)
-	_draw_rect_area(img, 24, 8 + bob, 10, 14, robes_col.lightened(0.1))
-	# Mecha eye (left)
-	_draw_rect_area(img, 17, 13 + bob, 4, 2, EVA_RED)
-	# Human/Taoist eye (right)
-	_set_pixel_safe(img, 29, 14 + bob, Color(0.9, 0.8, 0.5))
-	_set_pixel_safe(img, 30, 14 + bob, Color(0.9, 0.8, 0.5))
-	# Crown / headpiece
-	_draw_rect_area(img, 18, 6 + bob, 12, 3, EVA_PURPLE)
-	_set_pixel_safe(img, 24, 4 + bob, EVA_ORANGE)
-	_set_pixel_safe(img, 24, 5 + bob, EVA_ORANGE)
+	# === 巨大头部 ===
+	_draw_rect_area(img, 12, 4 + bob, 24, 16, mecha_mid)
+	_draw_rect_area(img, 24, 4 + bob, 12, 16, robe_mid.lightened(0.08))
+	# 机械眼（左，红色大眼）
+	_draw_rect_area(img, 15, 10 + bob, 5, 3, EVA_RED)
+	_set_pixel_safe(img, 14, 11 + bob, Color(EVA_RED.r, 0, 0, 0.4))
+	_set_pixel_safe(img, 20, 11 + bob, Color(EVA_RED.r, 0, 0, 0.4))
+	# 道士眼（右，金色）
+	_set_pixel_safe(img, 30, 11 + bob, Color(0.9, 0.8, 0.4))
+	_set_pixel_safe(img, 31, 11 + bob, Color(0.9, 0.8, 0.4))
+	_set_pixel_safe(img, 30, 12 + bob, Color(0.7, 0.6, 0.3))
+	# 道冠
+	_draw_rect_area(img, 16, 2 + bob, 16, 3, EVA_PURPLE)
+	_draw_rect_area(img, 22, 0 + bob, 4, 3, EVA_ORANGE)
+	# 面部分界线
+	_draw_line_v(img, 24, 5 + bob, 19 + bob, Color(0.4, 0.3, 0.2))
 
-	# Mecha arm (left)
-	_draw_rect_area(img, 2, 24 + bob, 6, 16, mecha_col.lightened(0.1))
-	_draw_rect_area(img, 1, 38 + bob, 8, 4, Color(0.3, 0.3, 0.35))
-	# Robes arm (right)
-	_draw_rect_area(img, 40, 24 + bob, 5, 14, robes_col)
+	# === 手臂 ===
+	# 机械臂（粗壮）
+	_draw_rect_area(img, 0, 22 + bob, 6, 18, mecha_mid)
+	_draw_rect_area(img, 0, 22 + bob, 1, 18, mecha_dark)
+	_draw_rect_area(img, 0, 38 + bob, 7, 5, mecha_light)
+	# 道袍袖
+	_draw_rect_area(img, 42, 22 + bob, 5, 16, robe_mid)
+	_draw_rect_area(img, 46, 22 + bob, 1, 16, robe_dark)
 
-	# Cyber runes glowing on body
-	for r in range(5):
-		var rx := 12 + r * 3
-		var ry := 30 + bob + int(sin(float(r)) * 2.0)
+	# === 符文发光 ===
+	for r in range(6):
+		var rx: int = 10 + r * 3
+		var ry: int = 30 + bob + int(sin(float(r) * 1.2) * 2.0)
 		_set_pixel_safe(img, rx, ry, rune_col)
-	for r in range(4):
-		var rx := 28 + r * 3
-		var ry := 32 + bob + r
+		_set_pixel_safe(img, rx, ry + 1, Color(rune_col.r, rune_col.g, rune_col.b, 0.4))
+	for r in range(5):
+		var rx: int = 26 + r * 3
+		var ry: int = 32 + bob + r
 		_set_pixel_safe(img, rx, ry, EVA_ORANGE)
+		_set_pixel_safe(img, rx + 1, ry, Color(EVA_ORANGE.r, EVA_ORANGE.g, EVA_ORANGE.b, 0.3))
 
-	# Legs
-	_draw_rect_area(img, 14, 50 + bob, 6, 10, mecha_col)
-	_draw_rect_area(img, 28, 50 + bob, 6, 10, robes_col.darkened(0.1))
-
-	# Attack frame: energy blast from mecha arm
+	# === 攻击帧: 机械臂能量炮 ===
 	if frame == 1:
-		for i in range(6):
-			_set_pixel_safe(img, 1 - i, 30, EVA_RED)
-			_set_pixel_safe(img, 1 - i, 31, EVA_ORANGE)
-	# Special: full rune glow
+		for i in range(8):
+			var alpha: float = 0.9 - float(i) * 0.1
+			_set_pixel_safe(img, -1 - i, 30 + bob, Color(EVA_RED.r, 0.2, 0.1, alpha))
+			_set_pixel_safe(img, -1 - i, 31 + bob, Color(1, 0.5, 0.1, alpha))
+	# === 特殊帧: 全身符文阵 ===
 	if frame == 3:
-		for angle_step in range(24):
-			var a := float(angle_step) * TAU / 24.0
-			var rx := 24 + int(cos(a) * 20.0)
-			var ry := 35 + bob + int(sin(a) * 20.0)
+		for angle_step in range(28):
+			var a: float = float(angle_step) * TAU / 28.0
+			var rx: int = 24 + int(cos(a) * 22.0)
+			var ry: int = 32 + bob + int(sin(a) * 22.0)
 			_set_pixel_safe(img, rx, ry, rune_col)
+			_set_pixel_safe(img, rx + 1, ry, Color(rune_col.r, rune_col.g, rune_col.b, 0.3))
 
 static func _draw_summon_fox(img: Image, frame: int) -> void:
 	var shift := 3 if frame == 1 else 0

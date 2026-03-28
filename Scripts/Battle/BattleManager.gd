@@ -430,6 +430,23 @@ func _start_player_idle_bob() -> void:
 	var base_y: float = player_sprite.position.y
 	_player_bob_tween.tween_property(player_sprite, "position:y", base_y - 4.0, 0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	_player_bob_tween.tween_property(player_sprite, "position:y", base_y + 4.0, 0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	# 玩家呼吸缩放
+	var breath_tw := create_tween().set_loops()
+	breath_tw.tween_property(player_sprite, "scale", Vector2(1.02, 0.98), 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	breath_tw.tween_property(player_sprite, "scale", Vector2(0.98, 1.02), 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+
+## 敌人待机浮动动画
+func _start_enemy_idle_bob() -> void:
+	if not enemy_sprite:
+		return
+	var bob_tw := create_tween().set_loops()
+	var base_y: float = enemy_sprite.position.y
+	bob_tw.tween_property(enemy_sprite, "position:y", base_y - 3.0, 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	bob_tw.tween_property(enemy_sprite, "position:y", base_y + 3.0, 1.0).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	# 敌人呼吸缩放
+	var breath_tw := create_tween().set_loops()
+	breath_tw.tween_property(enemy_sprite, "scale", Vector2(1.01, 0.99), 1.2).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	breath_tw.tween_property(enemy_sprite, "scale", Vector2(0.99, 1.01), 1.2).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 
 ## Start taiji rotation tween (visual rotation of the TextureRect node)
 func _start_taiji_rotation() -> void:
@@ -633,6 +650,7 @@ func _init_battle() -> void:
 
 	# Update enemy sprite now that enemy is known
 	_update_enemy_sprite()
+	_start_enemy_idle_bob()
 
 	# Battle intro transition then start first turn
 	await _play_battle_intro()
