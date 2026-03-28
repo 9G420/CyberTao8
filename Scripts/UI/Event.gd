@@ -475,11 +475,12 @@ func _create_shop_card(card_data: CardData, card_path: String, with_buy_btn: boo
 	item_panel.add_theme_stylebox_override("panel", ip_sb)
 
 	if card_data:
-		# 卡面缩略图
+		# 卡面缩略图 (用card_id hash作为seed)
 		var card_art := TextureRect.new()
-		var _ai_ev_card := AssetLoader.get_card_art(card_data.card_type, card_data.yinyang, card_data.rarity, card_path.hash(), card_data.card_id)
+		var ev_art_seed: int = card_data.card_id.hash() if card_data.card_id != "" else card_path.hash()
+		var _ai_ev_card := AssetLoader.get_card_art(card_data.card_type, card_data.yinyang, card_data.rarity, ev_art_seed, card_data.card_id)
 		card_art.texture = _ai_ev_card if _ai_ev_card else PixelArtGenerator.generate_card_art(
-			card_data.card_type, card_data.yinyang, card_data.rarity, card_path.hash()
+			card_data.card_type, card_data.yinyang, card_data.rarity, ev_art_seed
 		)
 		card_art.position = Vector2(108, 6)
 		card_art.size = Vector2(64, 64)

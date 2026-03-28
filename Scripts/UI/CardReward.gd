@@ -238,23 +238,24 @@ func _create_reward_card(cd: CardData, card_path: String, _idx: int) -> Panel:
 	var panel := Panel.new()
 	panel.size = Vector2(card_w, card_h)
 
-	# 卡牌边框颜色根据类型
-	var type_color: Color
-	match cd.card_type:
-		CardData.CardType.ATTACK: type_color = Color(0.8, 0.25, 0.2)
-		CardData.CardType.DEFENSE: type_color = Color(0.2, 0.5, 0.8)
-		CardData.CardType.SPELL: type_color = Color(0.6, 0.3, 0.8)
-		CardData.CardType.POWER: type_color = Color(0.8, 0.7, 0.2)
-		CardData.CardType.SUMMON: type_color = Color(0.2, 0.7, 0.35)
-		_: type_color = Color(0.5, 0.5, 0.5)
+	# 卡牌边框颜色根据卡牌自身色 (每张卡唯一)
+	var accent: Color = cd.card_color
+	if accent == Color.WHITE or accent == Color.BLACK:
+		match cd.card_type:
+			CardData.CardType.ATTACK: accent = Color(0.8, 0.25, 0.2)
+			CardData.CardType.DEFENSE: accent = Color(0.2, 0.5, 0.8)
+			CardData.CardType.SPELL: accent = Color(0.6, 0.3, 0.8)
+			CardData.CardType.POWER: accent = Color(0.8, 0.7, 0.2)
+			CardData.CardType.SUMMON: accent = Color(0.2, 0.7, 0.35)
+			_: accent = Color(0.5, 0.5, 0.5)
 
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.06, 0.04, 0.1, 0.92)
-	sb.border_color = type_color
+	sb.bg_color = Color(accent.r * 0.12 + 0.03, accent.g * 0.12 + 0.02, accent.b * 0.12 + 0.05, 0.92)
+	sb.border_color = accent
 	sb.set_border_width_all(3)
 	sb.border_width_top = 4
 	sb.set_corner_radius_all(6)
-	sb.shadow_color = Color(type_color.r, type_color.g, type_color.b, 0.3)
+	sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.3)
 	sb.shadow_size = 6
 	panel.add_theme_stylebox_override("panel", sb)
 
@@ -279,11 +280,12 @@ func _create_reward_card(cd: CardData, card_path: String, _idx: int) -> Panel:
 	cost_bg.z_index = -1
 	panel.add_child(cost_bg)
 
-	# 卡面缩略图
+	# 卡面缩略图 (用card_id作为seed, 保证每张卡像素画独特)
 	var card_art := TextureRect.new()
-	var _ai_art := AssetLoader.get_card_art(cd.card_type, cd.yinyang, cd.rarity, card_path.hash(), cd.card_id)
+	var art_seed: int = cd.card_id.hash() if cd.card_id != "" else card_path.hash()
+	var _ai_art := AssetLoader.get_card_art(cd.card_type, cd.yinyang, cd.rarity, art_seed, cd.card_id)
 	card_art.texture = _ai_art if _ai_art else PixelArtGenerator.generate_card_art(
-		cd.card_type, cd.yinyang, cd.rarity, card_path.hash()
+		cd.card_type, cd.yinyang, cd.rarity, art_seed
 	)
 	card_art.position = Vector2(50, 40)
 	card_art.size = Vector2(120, 120)
@@ -294,7 +296,7 @@ func _create_reward_card(cd: CardData, card_path: String, _idx: int) -> Panel:
 	var sep := ColorRect.new()
 	sep.position = Vector2(12, 165)
 	sep.size = Vector2(card_w - 24, 1)
-	sep.color = Color(type_color.r, type_color.g, type_color.b, 0.4)
+	sep.color = Color(accent.r, accent.g, accent.b, 0.4)
 	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(sep)
 

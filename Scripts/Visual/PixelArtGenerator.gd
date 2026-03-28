@@ -56,6 +56,14 @@ static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_va
 		0: bg_color = Color(0.15, 0.05, 0.25) # yin - deep purple
 		1: bg_color = Color(0.2, 0.15, 0.05)  # yang - dark gold
 		_: bg_color = Color(0.1, 0.1, 0.12)   # neutral gray
+
+	# Seed-based background tint shift (unique per card)
+	var bg_shift_r: float = _hash_float(seed_val + 777) * 0.1 - 0.05
+	var bg_shift_g: float = _hash_float(seed_val + 888) * 0.08 - 0.04
+	var bg_shift_b: float = _hash_float(seed_val + 999) * 0.1 - 0.05
+	bg_color.r = clampf(bg_color.r + bg_shift_r, 0.02, 0.35)
+	bg_color.g = clampf(bg_color.g + bg_shift_g, 0.02, 0.3)
+	bg_color.b = clampf(bg_color.b + bg_shift_b, 0.02, 0.35)
 	_draw_rect_area(img, 0, 0, 64, 64, bg_color)
 
 	# Card-type-specific motif
@@ -65,6 +73,49 @@ static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_va
 		2: _draw_summon_motif(img, seed_val)
 		3: _draw_spell_motif(img, seed_val)
 		4: _draw_power_motif(img, seed_val)
+
+	# === Seed-based unique color tint (makes same variant look different) ===
+	var tint_r: float = _hash_float(seed_val + 1111) * 0.25 - 0.125
+	var tint_g: float = _hash_float(seed_val + 2222) * 0.2 - 0.1
+	var tint_b: float = _hash_float(seed_val + 3333) * 0.25 - 0.125
+	for ty in range(64):
+		for tx in range(64):
+			var c: Color = img.get_pixel(tx, ty)
+			if c.a > 0.05:
+				c.r = clampf(c.r + tint_r, 0.0, 1.0)
+				c.g = clampf(c.g + tint_g, 0.0, 1.0)
+				c.b = clampf(c.b + tint_b, 0.0, 1.0)
+				img.set_pixel(tx, ty, c)
+
+	# === Seed-based unique accent marks ===
+	var mark_col := Color(
+		_hash_float(seed_val + 4444) * 0.5 + 0.4,
+		_hash_float(seed_val + 5555) * 0.5 + 0.3,
+		_hash_float(seed_val + 6666) * 0.5 + 0.4, 0.55)
+	# Unique decorative pixels at hash-determined positions
+	for mi in range(8):
+		var mx: int = int(_hash_float(seed_val + mi * 17 + 100) * 52.0) + 6
+		var my: int = int(_hash_float(seed_val + mi * 31 + 200) * 52.0) + 6
+		_set_pixel_safe(img, mx, my, mark_col)
+		if mi < 4:
+			_set_pixel_safe(img, mx + 1, my, Color(mark_col.r, mark_col.g, mark_col.b, 0.3))
+	# Unique accent line (horizontal or vertical based on seed)
+	var line_orient: float = _hash_float(seed_val + 7777)
+	var line_pos: int = int(_hash_float(seed_val + 8888) * 44.0) + 10
+	var line_start: int = int(_hash_float(seed_val + 9999) * 20.0) + 6
+	var line_len: int = int(_hash_float(seed_val + 1010) * 18.0) + 10
+	var line_col := Color(mark_col.r, mark_col.g, mark_col.b, 0.3)
+	if line_orient < 0.5:
+		_draw_line_h(img, line_start, line_start + line_len, line_pos, line_col)
+	else:
+		_draw_line_v(img, line_pos, line_start, line_start + line_len, line_col)
+	# Corner accent (unique position)
+	var corner_type: int = int(_hash_float(seed_val + 1212) * 4.0)
+	var cx_corner: int = 6 if corner_type < 2 else 54
+	var cy_corner: int = 6 if (corner_type % 2 == 0) else 54
+	_set_pixel_safe(img, cx_corner, cy_corner, mark_col)
+	_set_pixel_safe(img, cx_corner + 1, cy_corner, mark_col)
+	_set_pixel_safe(img, cx_corner, cy_corner + 1, mark_col)
 
 	# Scanlines for retro feel (every other row dimmed)
 	for y in range(0, 64, 2):
@@ -78,6 +129,10 @@ static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_va
 		0: glow_color = Color(0.4, 0.4, 0.4, 0.6)
 		1: glow_color = Color(0.2, 0.4, 1.0, 0.7)
 		_: glow_color = Color(0.6, 0.15, 0.9, 0.8)
+	# Tint the glow color slightly per-card too
+	glow_color.r = clampf(glow_color.r + tint_r * 0.5, 0.0, 1.0)
+	glow_color.g = clampf(glow_color.g + tint_g * 0.5, 0.0, 1.0)
+	glow_color.b = clampf(glow_color.b + tint_b * 0.5, 0.0, 1.0)
 	_draw_border_glow(img, 64, 64, glow_color, rarity)
 
 	return ImageTexture.create_from_image(img)
