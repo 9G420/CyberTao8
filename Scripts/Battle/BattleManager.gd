@@ -111,6 +111,13 @@ var _taiji_rot_tween: Tween = null
 var _floating_log_container: VBoxContainer = null
 var _front_shield_texture: ImageTexture = null  # cached
 
+# --- 卡牌指向系统 ---
+var _targeting_mode: bool = false
+var _targeting_card: Card = null
+var _targeting_overlay: Control = null
+var _targeting_arrow: Line2D = null
+var _targeting_start_pos: Vector2 = Vector2.ZERO
+
 func _ready() -> void:
 	_setup_ui()
 	_init_battle()
@@ -412,6 +419,10 @@ func _process(delta: float) -> void:
 		var pulse := (sin(_resonance_pulse_time * 4.0) + 1.0) / 2.0
 		var glow_color := Color(1, 0.85, 0.3).lerp(Color(1, 1, 0.8), pulse)
 		balance_label.add_theme_color_override("font_color", glow_color)
+
+	# 指向箭头跟随鼠标
+	if _targeting_mode and _targeting_arrow:
+		_targeting_arrow.set_point_position(1, get_global_mouse_position())
 
 # ============================================================
 # Visual helper methods
@@ -804,7 +815,154 @@ func _on_card_played(card: Card) -> void:
 	GameState.yin_count = yin_count
 	GameState.yang_count = yang_count
 
-	# 执行效果
+	# SPELL/POWER卡且有召唤物时 → 指向模式（选择目标）
+	if _should_enter_targeting(data):
+		_enter_targeting_mode(card)
+		return
+
+	# 直接执行效果（无需指向的卡牌）
+	_execute_card_effect(card, data, actual_cost, "enemy")
+
+## 判断是否需要进入指向模式
+func _should_enter_targeting(data: CardData) -> bool:
+	if data.card_type != CardData.CardType.SPELL and data.card_type != CardData.CardType.POWER:
+		return false
+	# 有召唤物在场时才需要指向（否则默认目标即可）
+	if player_summons.size() == 0:
+		return false
+	return true
+
+## 进入指向模式
+func _enter_targeting_mode(card: Card) -> void:
+	_targeting_mode = true
+	_targeting_card = card
+	_targeting_start_pos = Vector2(640, 400)
+
+	# 创建半透明遮罩
+	_targeting_overlay = Control.new()
+	_targeting_overlay.set_anchors_preset(PRESET_FULL_RECT)
+	_targeting_overlay.z_index = 80
+	add_child(_targeting_overlay)
+
+	# 背景遮罩
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.4)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_targeting_overlay.add_child(dim)
+
+	# 提示文字
+	var hint := Label.new()
+	hint.text = "[ 选择目标 ]"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.position = Vector2(440, 8)
+	hint.size = Vector2(400, 30)
+	hint.add_theme_font_size_override("font_size", 22)
+	hint.add_theme_color_override("font_color", Color(1, 0.9, 0.3))
+	_targeting_overlay.add_child(hint)
+
+	# 指向箭头
+	_targeting_arrow = Line2D.new()
+	_targeting_arrow.width = 3.0
+	_targeting_arrow.default_color = Color(1, 0.8, 0.2, 0.8)
+	_targeting_arrow.add_point(_targeting_start_pos)
+	_targeting_arrow.add_point(_targeting_start_pos)
+	_targeting_arrow.z_index = 81
+	_targeting_overlay.add_child(_targeting_arrow)
+
+	# 目标按钮: 敌人
+	var btn_enemy := _create_target_btn("敌人", Color(1, 0.2, 0.2), Vector2(480, 80), Vector2(200, 50))
+	btn_enemy.pressed.connect(func(): _on_target_selected("enemy"))
+	_targeting_overlay.add_child(btn_enemy)
+
+	# 目标按钮: 自身
+	var btn_self := _create_target_btn("自身", Color(0.2, 0.8, 1), Vector2(40, 400), Vector2(200, 50))
+	btn_self.pressed.connect(func(): _on_target_selected("self"))
+	_targeting_overlay.add_child(btn_self)
+
+	# 目标按钮: 每个召唤物
+	for i in range(player_summons.size()):
+		var s: Dictionary = player_summons[i]
+		var btn_summon := _create_target_btn(s["name"], Color(0.2, 1, 0.5), Vector2(260 + i * 160, 350), Vector2(150, 50))
+		var idx: int = i
+		btn_summon.pressed.connect(func(): _on_target_selected("summon_" + str(idx)))
+		_targeting_overlay.add_child(btn_summon)
+
+	# 取消按钮
+	var btn_cancel := _create_target_btn("取消", Color(0.5, 0.5, 0.5), Vector2(540, 460), Vector2(200, 40))
+	btn_cancel.pressed.connect(func(): _cancel_targeting())
+	_targeting_overlay.add_child(btn_cancel)
+
+## 创建目标选择按钮
+func _create_target_btn(text: String, color: Color, pos: Vector2, btn_size: Vector2) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.position = pos
+	btn.size = btn_size
+	btn.add_theme_font_size_override("font_size", 18)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(color.r * 0.3, color.g * 0.3, color.b * 0.3, 0.9)
+	sb.border_color = color
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("normal", sb)
+	var sb_hover := StyleBoxFlat.new()
+	sb_hover.bg_color = Color(color.r * 0.5, color.g * 0.5, color.b * 0.5, 0.95)
+	sb_hover.border_color = color.lightened(0.3)
+	sb_hover.set_border_width_all(3)
+	sb_hover.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("hover", sb_hover)
+	btn.add_theme_color_override("font_color", Color.WHITE)
+	return btn
+
+## 目标选定回调
+func _on_target_selected(target: String) -> void:
+	if not _targeting_mode or not _targeting_card:
+		return
+	var card: Card = _targeting_card
+	var data: CardData = card.card_data
+	var actual_cost: int = data.cost
+	if data.cost == -1:
+		actual_cost = energy
+	_exit_targeting_mode()
+	_execute_card_effect(card, data, actual_cost, target)
+
+## 取消指向
+func _cancel_targeting() -> void:
+	if not _targeting_mode or not _targeting_card:
+		return
+	var card: Card = _targeting_card
+	var data: CardData = card.card_data
+	var actual_cost: int = data.cost
+	if data.cost == -1:
+		actual_cost = energy
+	# 返还费用
+	energy += actual_cost
+	cards_played_this_turn -= 1
+	if data.card_type == CardData.CardType.ATTACK:
+		attacks_played_this_turn -= 1
+	# 返还阴阳
+	if data.yinyang == CardData.YinYang.YIN:
+		yin_count -= abs(data.yinyang_value) if data.yinyang_value != 0 else 1
+	elif data.yinyang == CardData.YinYang.YANG:
+		yang_count -= abs(data.yinyang_value) if data.yinyang_value != 0 else 1
+	GameState.yin_count = yin_count
+	GameState.yang_count = yang_count
+	_exit_targeting_mode()
+	hand_node._return_card_to_hand(card)
+	_update_all_ui()
+
+## 退出指向模式
+func _exit_targeting_mode() -> void:
+	_targeting_mode = false
+	_targeting_card = null
+	if _targeting_overlay:
+		_targeting_overlay.queue_free()
+		_targeting_overlay = null
+	_targeting_arrow = null
+
+## 执行卡牌效果（target: "enemy", "self", "summon_0", "summon_1" 等）
+func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: String) -> void:
 	var result: EffectResult = EffectSystem.execute_card(data, player_hp, player_shield)
 
 	# 道境共鸣伤害加成
@@ -905,13 +1063,32 @@ func _on_card_played(card: Card) -> void:
 			AudioManager.play_sfx_generated("attack")
 
 	if result.shield_gained > 0:
-		player_shield += result.shield_gained
-		_add_log("[color=blue]  → 获得 " + str(result.shield_gained) + " 护盾[/color]")
+		if target.begins_with("summon_"):
+			var sidx: int = target.replace("summon_", "").to_int()
+			if sidx >= 0 and sidx < player_summons.size():
+				player_summons[sidx]["shield"] = player_summons[sidx].get("shield", 0) + result.shield_gained
+				_add_log("[color=blue]  → " + player_summons[sidx]["name"] + " 获得 " + str(result.shield_gained) + " 护盾[/color]")
+			else:
+				player_shield += result.shield_gained
+				_add_log("[color=blue]  → 获得 " + str(result.shield_gained) + " 护盾[/color]")
+		else:
+			player_shield += result.shield_gained
+			_add_log("[color=blue]  → 获得 " + str(result.shield_gained) + " 护盾[/color]")
 		AudioManager.play_sfx_generated("defense")
 
 	if result.healing_done > 0:
-		player_hp = min(player_max_hp, player_hp + result.healing_done)
-		_add_log("[color=green]  → 恢复 " + str(result.healing_done) + " 生命[/color]")
+		if target.begins_with("summon_"):
+			var sidx: int = target.replace("summon_", "").to_int()
+			if sidx >= 0 and sidx < player_summons.size():
+				var s: Dictionary = player_summons[sidx]
+				s["hp"] = mini(s.get("max_hp", s["hp"]), s["hp"] + result.healing_done)
+				_add_log("[color=green]  → " + s["name"] + " 恢复 " + str(result.healing_done) + " 生命[/color]")
+			else:
+				player_hp = min(player_max_hp, player_hp + result.healing_done)
+				_add_log("[color=green]  → 恢复 " + str(result.healing_done) + " 生命[/color]")
+		else:
+			player_hp = min(player_max_hp, player_hp + result.healing_done)
+			_add_log("[color=green]  → 恢复 " + str(result.healing_done) + " 生命[/color]")
 
 	if result.cards_drawn > 0 and not no_draw_mode:
 		var extra_cards: Array[String] = deck.draw_cards(result.cards_drawn)
