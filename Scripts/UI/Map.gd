@@ -6,10 +6,10 @@
 extends Control
 
 # ── 布局常量 ──
-const FLOOR_HEIGHT := 90  # 每层间距
+const FLOOR_HEIGHT := 110  # 每层间距
 const MAP_TOP_MARGIN := 60
 const MAP_BOTTOM_MARGIN := 120
-const NODE_RADIUS := 18
+const NODE_RADIUS := 28
 const MAP_TOTAL_HEIGHT: int = MAP_TOP_MARGIN + 15 * FLOOR_HEIGHT + MAP_BOTTOM_MARGIN
 const VIEWPORT_W := 1280
 const VIEWPORT_H := 720
@@ -75,13 +75,13 @@ func _build_ui() -> void:
 	# ── 地图滚动区域 ──
 	# 使用ClipControl来裁剪超出区域的内容
 	var clip := Control.new()
-	clip.position = Vector2(140, 50)
-	clip.size = Vector2(1000, 560)
+	clip.position = Vector2(100, 50)
+	clip.size = Vector2(1050, 560)
 	clip.clip_contents = true
 	add_child(clip)
 
 	map_canvas = Control.new()
-	map_canvas.size = Vector2(1000, MAP_TOTAL_HEIGHT)
+	map_canvas.size = Vector2(1050, MAP_TOTAL_HEIGHT)
 	map_canvas.position = Vector2(0, 0)
 	clip.add_child(map_canvas)
 
@@ -99,7 +99,7 @@ func _build_ui() -> void:
 	title.position = Vector2(0, 8)
 	title.size = Vector2(VIEWPORT_W, 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0, 0.9, 1))
 	title.add_theme_color_override("font_shadow_color", Color(0, 0.4, 0.8, 0.4))
 	title.add_theme_constant_override("shadow_offset_x", 2)
@@ -144,8 +144,8 @@ func _build_ui() -> void:
 
 ## 将(floor_idx, col)映射到画布像素坐标
 func _get_node_pos(floor_idx: int, col: int) -> Vector2:
-	# X: 在1000px宽画布上分7列
-	var x: float = 80.0 + col * 140.0
+	# X: 在1050px宽画布上分7列
+	var x: float = 90.0 + col * 138.0
 	# Y: 底部=第0层, 顶部=第14层 (倒置)
 	var y: float = MAP_TOTAL_HEIGHT - MAP_BOTTOM_MARGIN - floor_idx * FLOOR_HEIGHT
 	return Vector2(x, y)
@@ -183,21 +183,21 @@ func _draw_dashed_line(from: Vector2, to: Vector2, is_walked: bool, is_available
 	if length < 1.0:
 		return
 	direction = direction.normalized()
-	var dash_len: float = 8.0
-	var gap_len: float = 6.0
+	var dash_len: float = 12.0
+	var gap_len: float = 7.0
 	var traveled: float = 0.0
 
 	var color: Color
 	var width: float
 	if is_walked:
 		color = Color(0.8, 0.7, 0.3, 0.7)
-		width = 3.0
+		width = 4.0
 	elif is_available:
 		color = Color(0, 0.7, 0.9, 0.6)
-		width = 2.0
+		width = 3.0
 	else:
 		color = Color(0.3, 0.2, 0.4, 0.3)
-		width = 1.5
+		width = 2.0
 
 	while traveled < length:
 		var seg_start: Vector2 = from + direction * traveled
@@ -347,7 +347,7 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	icon_lbl.size = Vector2(NODE_RADIUS * 2, NODE_RADIUS * 2)
 	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	icon_lbl.add_theme_font_size_override("font_size", 16)
+	icon_lbl.add_theme_font_size_override("font_size", 24)
 	var icon_alpha: float = 0.3 if (not is_reachable and not is_current and not is_completed) else 0.9
 	if is_completed:
 		icon_alpha = 0.4
@@ -359,10 +359,10 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	if is_reachable or is_current:
 		var type_lbl := Label.new()
 		type_lbl.text = TYPE_NAMES.get(ntype, "")
-		type_lbl.position = Vector2(pos.x - 30, pos.y + NODE_RADIUS + 2)
-		type_lbl.size = Vector2(60, 18)
+		type_lbl.position = Vector2(pos.x - 40, pos.y + NODE_RADIUS + 4)
+		type_lbl.size = Vector2(80, 20)
 		type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		type_lbl.add_theme_font_size_override("font_size", 10)
+		type_lbl.add_theme_font_size_override("font_size", 13)
 		type_lbl.add_theme_color_override("font_color", Color(base_color.r, base_color.g, base_color.b, 0.8))
 		type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		map_canvas.add_child(type_lbl)
@@ -372,13 +372,13 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 		var glow_tween: Tween = btn.create_tween().set_loops()
 		glow_tween.tween_method(func(v: float):
 			if is_instance_valid(btn):
-				sb.shadow_size = int(4 + v * 5)
-				sb.shadow_color.a = 0.3 + v * 0.3
+				sb.shadow_size = int(6 + v * 8)
+				sb.shadow_color.a = 0.3 + v * 0.4
 		, 0.0, 1.0, 0.8)
 		glow_tween.tween_method(func(v: float):
 			if is_instance_valid(btn):
-				sb.shadow_size = int(4 + v * 5)
-				sb.shadow_color.a = 0.3 + v * 0.3
+				sb.shadow_size = int(6 + v * 8)
+				sb.shadow_color.a = 0.3 + v * 0.4
 		, 1.0, 0.0, 0.8)
 
 	node_buttons.append({"btn": btn, "floor": floor_idx, "node": node_idx, "pos": pos})
@@ -399,7 +399,7 @@ func _build_legend_panel() -> void:
 		floor_lbl.position = Vector2(4, y - 8)
 		floor_lbl.size = Vector2(40, 18)
 		floor_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		floor_lbl.add_theme_font_size_override("font_size", 10)
+		floor_lbl.add_theme_font_size_override("font_size", 12)
 		floor_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.5, 0.6))
 		floor_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		map_canvas.add_child(floor_lbl)
@@ -407,7 +407,7 @@ func _build_legend_panel() -> void:
 	# 右侧图例
 	var legend := Panel.new()
 	legend.position = Vector2(1155, 55)
-	legend.size = Vector2(115, 280)
+	legend.size = Vector2(120, 310)
 	var leg_sb := StyleBoxFlat.new()
 	leg_sb.bg_color = Color(0.04, 0.03, 0.08, 0.85)
 	leg_sb.border_color = Color(0.3, 0.15, 0.45, 0.5)
@@ -419,9 +419,9 @@ func _build_legend_panel() -> void:
 	var leg_title := Label.new()
 	leg_title.text = "图例"
 	leg_title.position = Vector2(0, 6)
-	leg_title.size = Vector2(115, 22)
+	leg_title.size = Vector2(120, 22)
 	leg_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	leg_title.add_theme_font_size_override("font_size", 13)
+	leg_title.add_theme_font_size_override("font_size", 14)
 	leg_title.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
 	legend.add_child(leg_title)
 
@@ -438,9 +438,9 @@ func _build_legend_panel() -> void:
 		var item: Array = legend_items[i]
 		var item_lbl := Label.new()
 		item_lbl.text = item[0]
-		item_lbl.position = Vector2(10, 30 + i * 34)
-		item_lbl.size = Vector2(95, 30)
-		item_lbl.add_theme_font_size_override("font_size", 12)
+		item_lbl.position = Vector2(10, 32 + i * 38)
+		item_lbl.size = Vector2(100, 32)
+		item_lbl.add_theme_font_size_override("font_size", 14)
 		var col: Color = TYPE_COLORS.get(item[1], Color.WHITE)
 		item_lbl.add_theme_color_override("font_color", col)
 		legend.add_child(item_lbl)
@@ -472,7 +472,7 @@ func _build_status_bar() -> void:
 	var hp_lbl := Label.new()
 	hp_lbl.text = "❤ " + str(GameState.player_hp) + "/" + str(GameState.player_max_hp)
 	hp_lbl.position = Vector2(24, 14)
-	hp_lbl.add_theme_font_size_override("font_size", 18)
+	hp_lbl.add_theme_font_size_override("font_size", 20)
 	hp_lbl.add_theme_color_override("font_color", Color(0.3, 0.9, 0.4))
 	bar.add_child(hp_lbl)
 
@@ -480,7 +480,7 @@ func _build_status_bar() -> void:
 	var gold_lbl := Label.new()
 	gold_lbl.text = "◆ " + str(GameState.player_gold)
 	gold_lbl.position = Vector2(220, 14)
-	gold_lbl.add_theme_font_size_override("font_size", 18)
+	gold_lbl.add_theme_font_size_override("font_size", 20)
 	gold_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
 	bar.add_child(gold_lbl)
 
@@ -488,7 +488,7 @@ func _build_status_bar() -> void:
 	var deck_lbl := Label.new()
 	deck_lbl.text = "◈ " + str(GameState.player_deck.size()) + "张"
 	deck_lbl.position = Vector2(400, 14)
-	deck_lbl.add_theme_font_size_override("font_size", 18)
+	deck_lbl.add_theme_font_size_override("font_size", 20)
 	deck_lbl.add_theme_color_override("font_color", Color(0.5, 0.7, 1))
 	bar.add_child(deck_lbl)
 
@@ -497,7 +497,7 @@ func _build_status_bar() -> void:
 	var f_num: int = GameState.map_current_floor + 1 if GameState.map_current_floor >= 0 else 0
 	floor_lbl.text = "层: " + str(f_num) + "/" + str(GameState.MAP_FLOORS)
 	floor_lbl.position = Vector2(560, 14)
-	floor_lbl.add_theme_font_size_override("font_size", 18)
+	floor_lbl.add_theme_font_size_override("font_size", 20)
 	floor_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
 	bar.add_child(floor_lbl)
 
@@ -505,7 +505,7 @@ func _build_status_bar() -> void:
 	var run_lbl := Label.new()
 	run_lbl.text = "第" + str(GameState.run_number) + "轮"
 	run_lbl.position = Vector2(720, 14)
-	run_lbl.add_theme_font_size_override("font_size", 18)
+	run_lbl.add_theme_font_size_override("font_size", 20)
 	run_lbl.add_theme_color_override("font_color", Color(0.6, 0.5, 0.7))
 	bar.add_child(run_lbl)
 
@@ -527,7 +527,7 @@ func _draw_player_marker() -> void:
 		player_marker = TextureRect.new()
 		player_marker.texture = player_tex
 		player_marker.position = Vector2(480, MAP_TOTAL_HEIGHT - 50)
-		player_marker.size = Vector2(32, 42)
+		player_marker.size = Vector2(40, 52)
 		player_marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		player_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		map_canvas.add_child(player_marker)
@@ -541,8 +541,8 @@ func _draw_player_marker() -> void:
 			var player_tex: ImageTexture = _ai_p if _ai_p else PixelArtGenerator.generate_character_sprite("player", 0)
 			player_marker = TextureRect.new()
 			player_marker.texture = player_tex
-			player_marker.position = Vector2(pos.x - 16, pos.y - 52)
-			player_marker.size = Vector2(32, 42)
+			player_marker.position = Vector2(pos.x - 20, pos.y - 62)
+			player_marker.size = Vector2(40, 52)
 			player_marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			player_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			map_canvas.add_child(player_marker)

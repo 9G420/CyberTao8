@@ -116,13 +116,13 @@ func _build_ui() -> void:
 	# 滚动容器
 	scroll_ref = ScrollContainer.new()
 	scroll_ref.position = Vector2(40, 98)
-	scroll_ref.size = Vector2(1200, 490)
+	scroll_ref.size = Vector2(1200, 480)
 	add_child(scroll_ref)
 
 	deck_container = GridContainer.new()
-	deck_container.columns = 5
-	deck_container.add_theme_constant_override("h_separation", 14)
-	deck_container.add_theme_constant_override("v_separation", 14)
+	deck_container.columns = 4
+	deck_container.add_theme_constant_override("h_separation", 18)
+	deck_container.add_theme_constant_override("v_separation", 18)
 	scroll_ref.add_child(deck_container)
 
 	# 填充卡牌
@@ -148,9 +148,8 @@ func _build_ui() -> void:
 	info_label.text = "点击卡牌查看详情。使用上方标签筛选类型，右侧按钮排序。"
 
 	# 返回按钮
-	back_btn = _make_deck_button("返回地图", Color(0, 0.9, 1), Color(0, 0.5, 0.8, 0.5))
+	back_btn = UIFactory.make_cyan_button("返回地图", 260, 56)
 	back_btn.position = Vector2(960, 620)
-	back_btn.size = Vector2(260, 56)
 	back_btn.pressed.connect(_on_back)
 	add_child(back_btn)
 
@@ -337,15 +336,25 @@ func _create_atmospheric_bg() -> void:
 
 func _create_card_display(card_data: CardData, card_path: String) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(220, 160)
+	panel.custom_minimum_size = Vector2(260, 340)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.06, 0.04, 0.12, 0.8)
-	sb.set_border_width_all(2)
+	sb.set_border_width_all(3)
 	sb.set_corner_radius_all(4)
 	sb.content_margin_left = 8
 	sb.content_margin_top = 6
 	sb.content_margin_right = 8
 	sb.content_margin_bottom = 6
+
+	# Card type color for the top strip
+	var type_color := Color(0.3, 0.15, 0.5, 0.6)
+	if card_data:
+		match card_data.card_type:
+			CardData.CardType.ATTACK: type_color = Color(1, 0.4, 0.3, 0.9)
+			CardData.CardType.DEFENSE: type_color = Color(0.3, 0.8, 1, 0.9)
+			CardData.CardType.SUMMON: type_color = Color(0.7, 0.5, 1, 0.9)
+			CardData.CardType.SPELL: type_color = Color(0.4, 1, 0.6, 0.9)
+			CardData.CardType.POWER: type_color = Color(1, 0.85, 0.2, 0.9)
 
 	if card_data:
 		match card_data.yinyang:
@@ -358,7 +367,7 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 			_:  # Neutral
 				sb.border_color = Color(0.3, 0.15, 0.5, 0.5)
 				sb.shadow_color = Color(0.2, 0.1, 0.3, 0.15)
-		sb.shadow_size = 3
+		sb.shadow_size = 5
 	else:
 		sb.border_color = Color(0.3, 0.15, 0.5, 0.5)
 
@@ -368,12 +377,12 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	var normal_border := sb.border_color
 	panel.mouse_entered.connect(func():
 		sb.border_color = Color(0, 0.9, 1, 0.8)
-		sb.shadow_size = 6
+		sb.shadow_size = 8
 		sb.shadow_color = Color(0, 0.5, 0.8, 0.3)
 	)
 	panel.mouse_exited.connect(func():
 		sb.border_color = normal_border
-		sb.shadow_size = 3
+		sb.shadow_size = 5
 		sb.shadow_color = Color(normal_border.r, normal_border.g, normal_border.b, 0.2)
 	)
 
@@ -388,21 +397,32 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 	vbox.add_theme_constant_override("separation", 2)
 
 	if card_data:
-		# Card art
+		# Card type colored strip at top
+		var type_strip := ColorRect.new()
+		type_strip.custom_minimum_size = Vector2(0, 4)
+		type_strip.color = type_color
+		type_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(type_strip)
+
+		# Card art (larger and more prominent)
 		var card_art := TextureRect.new()
 		var _ai_db_card := AssetLoader.get_card_art(card_data.card_type, card_data.yinyang, card_data.rarity, card_path.hash(), card_data.card_id)
 		card_art.texture = _ai_db_card if _ai_db_card else PixelArtGenerator.generate_card_art(
 			card_data.card_type, card_data.yinyang, card_data.rarity, card_path.hash()
 		)
-		card_art.custom_minimum_size = Vector2(64, 32)
+		card_art.custom_minimum_size = Vector2(180, 100)
 		card_art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		card_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		vbox.add_child(card_art)
 
+		# Cost orb overlay (top-left of card art)
+		var cost_orb := _create_cost_orb(card_data)
+		card_art.add_child(cost_orb)
+
 		# 卡名（稀有度颜色）
 		var name_lbl := Label.new()
 		name_lbl.text = card_data.card_name
-		name_lbl.add_theme_font_size_override("font_size", 14)
+		name_lbl.add_theme_font_size_override("font_size", 18)
 		name_lbl.add_theme_color_override("font_color", card_data.get_rarity_color())
 		name_lbl.clip_text = true
 		vbox.add_child(name_lbl)
@@ -411,7 +431,7 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 		var cost_text: String = "X" if card_data.cost == -1 else str(card_data.cost)
 		var info_lbl := Label.new()
 		info_lbl.text = card_data.get_type_text() + " | " + card_data.get_yinyang_text() + " | " + cost_text + "算力"
-		info_lbl.add_theme_font_size_override("font_size", 11)
+		info_lbl.add_theme_font_size_override("font_size", 13)
 		info_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6))
 		vbox.add_child(info_lbl)
 
@@ -433,7 +453,7 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 				stats_text = "⚡永久效果"
 		var stats_lbl := Label.new()
 		stats_lbl.text = stats_text
-		stats_lbl.add_theme_font_size_override("font_size", 13)
+		stats_lbl.add_theme_font_size_override("font_size", 16)
 		stats_lbl.add_theme_color_override("font_color", Color(1, 0.6, 0.3))
 		vbox.add_child(stats_lbl)
 
@@ -442,9 +462,18 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 		if kw_text != "":
 			var kw_lbl := Label.new()
 			kw_lbl.text = kw_text
-			kw_lbl.add_theme_font_size_override("font_size", 10)
+			kw_lbl.add_theme_font_size_override("font_size", 12)
 			kw_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.3, 0.8))
 			vbox.add_child(kw_lbl)
+
+		# Description text
+		var desc_lbl := Label.new()
+		desc_lbl.text = card_data.description
+		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
+		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_lbl.custom_minimum_size = Vector2(240, 0)
+		vbox.add_child(desc_lbl)
 	else:
 		var err := Label.new()
 		err.text = "数据损坏"
@@ -454,6 +483,43 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 
 	panel.add_child(vbox)
 	return panel
+
+func _create_cost_orb(card_data: CardData) -> Control:
+	var orb := Control.new()
+	orb.position = Vector2(2, 2)
+	orb.custom_minimum_size = Vector2(28, 28)
+	orb.size = Vector2(28, 28)
+	orb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# Orb background circle
+	var orb_bg := ColorRect.new()
+	orb_bg.position = Vector2.ZERO
+	orb_bg.size = Vector2(28, 28)
+	orb_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Color based on card type
+	match card_data.card_type:
+		CardData.CardType.ATTACK: orb_bg.color = Color(0.8, 0.15, 0.1, 0.9)
+		CardData.CardType.DEFENSE: orb_bg.color = Color(0.1, 0.4, 0.8, 0.9)
+		CardData.CardType.SUMMON: orb_bg.color = Color(0.5, 0.2, 0.8, 0.9)
+		CardData.CardType.SPELL: orb_bg.color = Color(0.1, 0.7, 0.3, 0.9)
+		CardData.CardType.POWER: orb_bg.color = Color(0.8, 0.65, 0.05, 0.9)
+		_: orb_bg.color = Color(0.3, 0.3, 0.3, 0.9)
+	orb.add_child(orb_bg)
+
+	# Cost label
+	var cost_lbl := Label.new()
+	var cost_str: String = "X" if card_data.cost == -1 else str(card_data.cost)
+	cost_lbl.text = cost_str
+	cost_lbl.add_theme_font_size_override("font_size", 14)
+	cost_lbl.add_theme_color_override("font_color", Color(1, 1, 1))
+	cost_lbl.position = Vector2(0, 0)
+	cost_lbl.size = Vector2(28, 28)
+	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	orb.add_child(cost_lbl)
+
+	return orb
 
 func _show_card_detail(cd: CardData) -> void:
 	info_label.clear()
