@@ -51,6 +51,32 @@ static func _draw_line_v(img: Image, x: int, y1: int, y2: int, color: Color) -> 
 	for py in range(start, end + 1):
 		_set_pixel_safe(img, x, py, color)
 
+static func _draw_thick_circle(img: Image, cx: int, cy: int, radius: int, thickness: int, color: Color) -> void:
+	for dy in range(-radius - thickness, radius + thickness + 1):
+		for dx in range(-radius - thickness, radius + thickness + 1):
+			var dist: float = sqrt(float(dx * dx + dy * dy))
+			if dist >= float(radius - thickness) and dist <= float(radius + thickness):
+				var edge_fade: float = 1.0 - absf(dist - float(radius)) / float(thickness + 1)
+				var c := Color(color.r, color.g, color.b, color.a * clampf(edge_fade, 0.3, 1.0))
+				_set_pixel_safe(img, cx + dx, cy + dy, c)
+
+static func _draw_gradient_circle(img: Image, cx: int, cy: int, radius: int, center_col: Color, edge_col: Color) -> void:
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
+			var dist: float = sqrt(float(dx * dx + dy * dy))
+			if dist <= float(radius):
+				var t: float = dist / float(radius)
+				var c := center_col.lerp(edge_col, t)
+				_set_pixel_safe(img, cx + dx, cy + dy, c)
+
+static func _draw_ellipse(img: Image, cx: int, cy: int, rx: int, ry: int, color: Color) -> void:
+	for dy in range(-ry, ry + 1):
+		for dx in range(-rx, rx + 1):
+			var nx: float = float(dx) / float(maxi(rx, 1))
+			var ny: float = float(dy) / float(maxi(ry, 1))
+			if nx * nx + ny * ny <= 1.0:
+				_set_pixel_safe(img, cx + dx, cy + dy, color)
+
 # === Card Art Generator (64→128 upscaled with bloom) ===
 
 static func generate_card_art(card_type: int, yinyang: int, rarity: int, seed_val: int) -> ImageTexture:
@@ -225,7 +251,7 @@ static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 		_set_pixel_safe(img, 31 + ox, 5 + oy, main_cyan.darkened(0.3))
 		_set_pixel_safe(img, 33 + ox, 5 + oy, main_cyan.darkened(0.3))
 		# 剑尖发光晕
-		_draw_circle(img, 32 + ox, 5 + oy, 3, Color(main_cyan.r * 0.5, main_cyan.g, main_cyan.b, 0.25))
+		_draw_gradient_circle(img, 32 + ox, 5 + oy, 4, Color(main_cyan.r, main_cyan.g, main_cyan.b, 0.5), Color(main_cyan.r * 0.3, main_cyan.g * 0.3, main_cyan.b * 0.3, 0.0))
 		# 护手（道教八卦横条 + 橙色）
 		_draw_line_h(img, 25, 39, 34, EVA_ORANGE)
 		_draw_line_h(img, 25, 39, 35, EVA_ORANGE)
@@ -269,8 +295,8 @@ static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 			var shifted_b := Vector2i(thunder_pts[idx + 1].x + 1, thunder_pts[idx + 1].y)
 			_draw_pixel_line(img, shifted_a, shifted_b, NEON_PINK.darkened(0.2))
 		# 雷电发光晕（沿路径关键点）
-		_draw_circle(img, 34, 20, 3, Color(1.0, 0.4, 0.7, 0.2))
-		_draw_circle(img, 40, 40, 4, Color(1.0, 0.4, 0.7, 0.25))
+		_draw_gradient_circle(img, 34, 20, 5, Color(1.0, 0.4, 0.7, 0.4), Color(1.0, 0.2, 0.5, 0.0))
+		_draw_gradient_circle(img, 40, 40, 6, Color(1.0, 0.4, 0.7, 0.45), Color(1.0, 0.2, 0.5, 0.0))
 		# 分叉小雷
 		_draw_pixel_line(img, Vector2i(34, 20), Vector2i(42, 16), EVA_CYAN)
 		_draw_pixel_line(img, Vector2i(26, 24), Vector2i(18, 28), EVA_CYAN)
@@ -311,9 +337,9 @@ static func _draw_attack_motif(img: Image, seed_val: int) -> void:
 			_set_pixel_safe(img, x2 - 1, y2, pink_col.darkened(0.3))
 			_set_pixel_safe(img, x2 + 1, y2, pink_col.darkened(0.3))
 		# 交叉点爆发
-		_draw_circle(img, 32, 30, 5, EVA_ORANGE)
-		_draw_circle(img, 32, 30, 3, Color(1.0, 0.9, 0.5))
-		_set_pixel_safe(img, 32, 30, Color(1.0, 1.0, 0.9))
+		_draw_gradient_circle(img, 32, 30, 7, Color(1.0, 0.9, 0.5, 0.9), Color(EVA_ORANGE.r, EVA_ORANGE.g, EVA_ORANGE.b, 0.0))
+		_draw_circle(img, 32, 30, 3, Color(1.0, 0.95, 0.7))
+		_set_pixel_safe(img, 32, 30, Color(1.0, 1.0, 0.95))
 		# 四角道气散射
 		for corner in [Vector2i(10, 10), Vector2i(54, 10), Vector2i(10, 52), Vector2i(54, 52)]:
 			_set_pixel_safe(img, corner.x, corner.y, EVA_PURPLE)
@@ -366,7 +392,7 @@ static func _draw_defense_motif(img: Image, seed_val: int) -> void:
 			_set_pixel_safe(img, corner.x, corner.y + 1, EVA_ORANGE)
 			_set_pixel_safe(img, corner.x + 1, corner.y + 1, EVA_ORANGE)
 		# 护盾脉冲光晕
-		_draw_circle(img, 32, 30, 20, Color(0.0, 0.6, 0.8, 0.1))
+		_draw_gradient_circle(img, 32, 30, 22, Color(0.0, 0.6, 0.8, 0.15), Color(0.0, 0.3, 0.4, 0.0))
 	elif variant == 1:
 		# === 符篆壁障：道教护身符 ===
 		# 符纸底板
@@ -422,7 +448,7 @@ static func _draw_defense_motif(img: Image, seed_val: int) -> void:
 				# 蜂巢节点
 				_set_pixel_safe(img, hx, hy, EVA_ORANGE)
 		# 中心能量核心
-		_draw_circle(img, 32, 30, 4, Color(0.0, 0.4, 0.5, 0.6))
+		_draw_gradient_circle(img, 32, 30, 6, Color(0.0, 0.8, 0.9, 0.7), Color(0.0, 0.3, 0.4, 0.0))
 		_draw_circle(img, 32, 30, 2, EVA_CYAN)
 		# 顶底锚点
 		_set_pixel_safe(img, 32, 8, NEON_PINK)
@@ -435,9 +461,10 @@ static func _draw_summon_motif(img: Image, seed_val: int) -> void:
 	var ss2 := _hash_float(seed_val + 602)
 	var ss3 := _hash_float(seed_val + 603)
 	var circle_col := Color(0.15 + ss1 * 0.3, 0.02 + ss2 * 0.15, 0.2 + ss3 * 0.3, 0.4)
-	# Summoning circle base
-	_draw_circle(img, 32, 40, 18, circle_col)
-	_draw_circle(img, 32, 40, 17, Color(0.0, 0.0, 0.0, 0.0))
+	# Summoning circle base (gradient glow)
+	_draw_gradient_circle(img, 32, 40, 20, Color(circle_col.r, circle_col.g, circle_col.b, 0.5), Color(circle_col.r * 0.3, circle_col.g * 0.3, circle_col.b * 0.3, 0.0))
+	# Clear inner area
+	_draw_circle(img, 32, 40, 16, Color(0.0, 0.0, 0.0, 0.0))
 	# Outer ring
 	for angle_step in range(36):
 		var a := float(angle_step) * TAU / 36.0
@@ -684,7 +711,7 @@ static func _draw_power_motif(img: Image, seed_val: int) -> void:
 			var p1 := Vector2i(cx + int(cos(a1) * 12.0), cy + int(sin(a1) * 12.0))
 			var p2 := Vector2i(cx + int(cos(a2) * 12.0), cy + int(sin(a2) * 12.0))
 			_draw_pixel_line(img, p1, p2, Color(pri_col.r, pri_col.g * 0.8, pri_col.b, 0.7))
-		_draw_circle(img, cx, cy, 4 + int(s1 * 2.0), Color(pri_col.r * 0.8, pri_col.g * 0.6, 0.1))
+		_draw_gradient_circle(img, cx, cy, 5 + int(s1 * 2.0), Color(1.0, 0.95, 0.7, 0.9), Color(pri_col.r * 0.5, pri_col.g * 0.3, 0.1, 0.0))
 		_draw_circle(img, cx, cy, 2, Color(1.0, 0.95, 0.7))
 
 	elif variant == 1:
