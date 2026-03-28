@@ -1921,104 +1921,324 @@ func _play_attack_card_vfx() -> void:
 		return
 	var start_pos: Vector2 = play_zone.position + player_sprite.position + player_sprite.size / 2.0
 	var end_pos: Vector2 = play_zone.position + enemy_sprite.position + enemy_sprite.size / 2.0
-	var colors: Array[Color] = [
-		Color(1.0, 0.2, 0.1, 0.9),
-		Color(1.0, 0.45, 0.1, 0.85),
-		Color(0.9, 0.3, 0.05, 0.8),
+	var dir: Vector2 = (end_pos - start_pos).normalized()
+	var perp: Vector2 = Vector2(-dir.y, dir.x)
+
+	# --- Phase 1: 5 staggered arc-slash projectiles ---
+	var slash_colors: Array[Color] = [
+		Color(1.0, 0.15, 0.05, 0.95),
+		Color(1.0, 0.4, 0.08, 0.9),
+		Color(1.0, 0.6, 0.15, 0.85),
+		Color(1.0, 0.3, 0.05, 0.88),
+		Color(0.95, 0.15, 0.0, 0.8),
 	]
-	for i in range(3):
+	for i in range(5):
 		var slash := ColorRect.new()
-		slash.size = Vector2(80, 3)
-		slash.color = colors[i]
-		slash.position = start_pos + Vector2(0, -10 + i * 10)
-		slash.rotation = deg_to_rad(45.0)
+		slash.size = Vector2(60 + i * 8, 3)
+		slash.pivot_offset = slash.size / 2.0
+		var arc_offset: float = (-2.0 + float(i)) * 12.0
+		slash.position = start_pos + perp * arc_offset
+		slash.rotation = dir.angle() + deg_to_rad(-15.0 + float(i) * 7.5)
+		slash.color = slash_colors[i]
 		slash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		slash.z_index = 50
+		slash.z_index = 52
 		add_child(slash)
-		var target := end_pos + Vector2(0, -10 + i * 10)
-		var delay: float = i * 0.05
-		var tw := create_tween()
+		var target_pos: Vector2 = end_pos + perp * arc_offset * 0.3
+		var delay: float = float(i) * 0.04
+		var tw := slash.create_tween()
 		tw.set_parallel(true)
-		tw.tween_property(slash, "position", target, 0.2).set_delay(delay)
-		tw.tween_property(slash, "color:a", 0.0, 0.1).set_delay(delay + 0.15)
+		tw.tween_property(slash, "position", target_pos, 0.18).set_delay(delay).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		tw.tween_property(slash, "scale:x", 1.6, 0.18).set_delay(delay)
+		tw.tween_property(slash, "color:a", 0.0, 0.08).set_delay(delay + 0.14)
 		tw.chain().tween_callback(slash.queue_free)
 
-## Shield ring of 8 squares expanding outward around the player sprite
+	# --- Phase 2: Impact flash at enemy (white → transparent, 0.12s) ---
+	var flash := ColorRect.new()
+	flash.size = Vector2(100, 100)
+	flash.pivot_offset = Vector2(50, 50)
+	flash.position = end_pos - Vector2(50, 50)
+	flash.color = Color(1.0, 0.95, 0.85, 0.0)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.z_index = 55
+	add_child(flash)
+	var flash_tw := flash.create_tween()
+	flash_tw.tween_property(flash, "color:a", 0.85, 0.05).set_delay(0.2)
+	flash_tw.tween_property(flash, "scale", Vector2(1.8, 1.8), 0.1)
+	flash_tw.parallel().tween_property(flash, "color:a", 0.0, 0.1)
+	flash_tw.tween_callback(flash.queue_free)
+
+	# --- Phase 3: Impact debris particles scatter from enemy ---
+	for j in range(10):
+		var debris := ColorRect.new()
+		var dsize: float = randf_range(3.0, 7.0)
+		debris.size = Vector2(dsize, dsize)
+		debris.pivot_offset = debris.size / 2.0
+		debris.position = end_pos + Vector2(randf_range(-8, 8), randf_range(-8, 8))
+		debris.color = Color(1.0, randf_range(0.3, 0.7), 0.1, 0.9)
+		debris.rotation = randf_range(0.0, TAU)
+		debris.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		debris.z_index = 53
+		add_child(debris)
+		var scatter_angle: float = randf_range(0.0, TAU)
+		var scatter_dist: float = randf_range(30.0, 80.0)
+		var scatter_target: Vector2 = debris.position + Vector2(cos(scatter_angle), sin(scatter_angle)) * scatter_dist
+		var dtw := debris.create_tween().set_parallel(true)
+		dtw.tween_property(debris, "position", scatter_target, 0.35).set_delay(0.22).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		dtw.tween_property(debris, "color:a", 0.0, 0.2).set_delay(0.35)
+		dtw.tween_property(debris, "rotation", debris.rotation + randf_range(-3.0, 3.0), 0.4).set_delay(0.22)
+		dtw.chain().tween_callback(debris.queue_free)
+
+## Shield hex-ring + energy converge + pulse overlay around the player sprite
 func _play_defense_card_vfx() -> void:
 	if not player_sprite:
 		return
 	var center: Vector2 = play_zone.position + player_sprite.position + player_sprite.size / 2.0
-	for i in range(8):
-		var angle: float = float(i) * TAU / 8.0
-		var dir := Vector2(cos(angle), sin(angle))
-		var square := ColorRect.new()
-		square.size = Vector2(10, 10)
-		square.color = Color(0.2, 0.5, 1.0, 0.8)
-		square.position = center + dir * 20.0 - Vector2(5, 5)
-		square.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		square.z_index = 50
-		add_child(square)
-		var tw := create_tween()
-		tw.set_parallel(true)
-		tw.tween_property(square, "position", center + dir * 40.0 - Vector2(5, 5), 0.35)
-		tw.tween_property(square, "color:a", 0.0, 0.35)
-		tw.chain().tween_callback(square.queue_free)
 
-## Pillar of light at the summon area with rising particles
+	# --- Phase 1: Hex-ring (6 elongated segments forming hexagonal shield) ---
+	var hex_count: int = 6
+	var ring_radius: float = 45.0
+	for i in range(hex_count):
+		var angle: float = float(i) * TAU / float(hex_count) - PI / 6.0
+		var next_angle: float = float(i + 1) * TAU / float(hex_count) - PI / 6.0
+		var mid_angle: float = (angle + next_angle) / 2.0
+		var seg := ColorRect.new()
+		seg.size = Vector2(28, 4)
+		seg.pivot_offset = seg.size / 2.0
+		seg.position = center + Vector2(cos(mid_angle), sin(mid_angle)) * ring_radius - seg.size / 2.0
+		seg.rotation = mid_angle + PI / 2.0
+		seg.color = Color(0.2, 0.55, 1.0, 0.0)
+		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		seg.z_index = 52
+		add_child(seg)
+		var delay: float = float(i) * 0.04
+		var stw := seg.create_tween()
+		# Fade in with slight scale-up
+		stw.tween_property(seg, "color:a", 0.9, 0.1).set_delay(delay)
+		stw.tween_property(seg, "color", Color(0.4, 0.75, 1.0, 0.7), 0.15)
+		stw.tween_property(seg, "color:a", 0.0, 0.25)
+		stw.tween_callback(seg.queue_free)
+
+	# --- Phase 2: Energy lines converging from 8 directions ---
+	for j in range(8):
+		var line_angle: float = float(j) * TAU / 8.0
+		var line := ColorRect.new()
+		line.size = Vector2(40, 2)
+		line.pivot_offset = Vector2(0, 1)
+		var spawn_dist: float = 90.0
+		line.position = center + Vector2(cos(line_angle), sin(line_angle)) * spawn_dist
+		line.rotation = line_angle + PI
+		line.color = Color(0.3, 0.65, 1.0, 0.7)
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.z_index = 51
+		add_child(line)
+		var converge_target: Vector2 = center + Vector2(cos(line_angle), sin(line_angle)) * 15.0
+		var ltw := line.create_tween().set_parallel(true)
+		ltw.tween_property(line, "position", converge_target, 0.25).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		ltw.tween_property(line, "size:x", 12.0, 0.25)
+		ltw.tween_property(line, "color:a", 0.0, 0.12).set_delay(0.2)
+		ltw.chain().tween_callback(line.queue_free)
+
+	# --- Phase 3: Shield pulse overlay (expanding circle that fades) ---
+	var pulse := ColorRect.new()
+	pulse.size = Vector2(20, 20)
+	pulse.pivot_offset = Vector2(10, 10)
+	pulse.position = center - Vector2(10, 10)
+	pulse.color = Color(0.3, 0.6, 1.0, 0.0)
+	pulse.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pulse.z_index = 50
+	# Shield pulse shader (soft circular glow)
+	var shield_shader := Shader.new()
+	shield_shader.code = "
+shader_type canvas_item;
+void fragment() {
+	vec2 c = UV - vec2(0.5);
+	float d = length(c);
+	float ring = smoothstep(0.35, 0.4, d) * (1.0 - smoothstep(0.45, 0.5, d));
+	float fill = (1.0 - smoothstep(0.0, 0.5, d)) * 0.25;
+	float a = (ring * 0.8 + fill) * COLOR.a;
+	COLOR = vec4(COLOR.rgb, a);
+}
+"
+	var shield_mat := ShaderMaterial.new()
+	shield_mat.shader = shield_shader
+	pulse.material = shield_mat
+	add_child(pulse)
+	var ptw := pulse.create_tween()
+	ptw.tween_property(pulse, "color:a", 0.7, 0.15).set_delay(0.15)
+	ptw.tween_property(pulse, "scale", Vector2(8.0, 8.0), 0.35).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	ptw.parallel().tween_property(pulse, "position", center - Vector2(10, 10) * 8.0, 0.35).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	ptw.parallel().tween_property(pulse, "color:a", 0.0, 0.2).set_delay(0.15)
+	ptw.tween_callback(pulse.queue_free)
+
+## Rift-tear summon effect: vertical crack splits open with green energy pouring out
 func _play_summon_card_vfx() -> void:
-	# 光柱出现在战场召唤物区域（前排位置附近）
 	var pillar_x: float = play_zone.position.x + 340.0
 	var pillar_y: float = play_zone.position.y + 110.0
-	var pillar := ColorRect.new()
-	pillar.size = Vector2(40, 300)
-	pillar.position = Vector2(pillar_x, pillar_y)
-	pillar.color = Color(0.1, 1.0, 0.3, 0.0)
-	pillar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pillar.z_index = 50
-	add_child(pillar)
-	var tw := create_tween()
-	tw.tween_property(pillar, "color:a", 0.7, 0.2)
-	tw.tween_property(pillar, "color:a", 0.0, 0.2)
-	tw.tween_callback(pillar.queue_free)
-	# Rising particles
-	for i in range(6):
+	var rift_center: Vector2 = Vector2(pillar_x + 20.0, pillar_y + 140.0)
+
+	# --- Phase 1: Dark rift line splits open vertically ---
+	var rift_left := ColorRect.new()
+	rift_left.size = Vector2(3, 120)
+	rift_left.pivot_offset = Vector2(3, 60)
+	rift_left.position = rift_center - Vector2(1.5, 60)
+	rift_left.color = Color(0.0, 0.0, 0.0, 0.95)
+	rift_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rift_left.z_index = 54
+	add_child(rift_left)
+	var rift_right := ColorRect.new()
+	rift_right.size = Vector2(3, 120)
+	rift_right.pivot_offset = Vector2(0, 60)
+	rift_right.position = rift_center - Vector2(1.5, 60)
+	rift_right.color = Color(0.0, 0.0, 0.0, 0.95)
+	rift_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rift_right.z_index = 54
+	add_child(rift_right)
+
+	# Split apart
+	var split_tw_l := rift_left.create_tween()
+	split_tw_l.tween_property(rift_left, "position:x", rift_center.x - 22.0, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	split_tw_l.tween_property(rift_left, "color:a", 0.0, 0.4)
+	split_tw_l.tween_callback(rift_left.queue_free)
+	var split_tw_r := rift_right.create_tween()
+	split_tw_r.tween_property(rift_right, "position:x", rift_center.x + 19.0, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	split_tw_r.tween_property(rift_right, "color:a", 0.0, 0.4)
+	split_tw_r.tween_callback(rift_right.queue_free)
+
+	# --- Phase 2: Green energy glow between rift halves ---
+	var glow := ColorRect.new()
+	glow.size = Vector2(6, 120)
+	glow.position = rift_center - Vector2(3, 60)
+	glow.color = Color(0.1, 1.0, 0.4, 0.0)
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.z_index = 53
+	add_child(glow)
+	var glow_tw := glow.create_tween()
+	glow_tw.tween_property(glow, "color:a", 0.9, 0.12).set_delay(0.08)
+	glow_tw.parallel().tween_property(glow, "size:x", 36.0, 0.25)
+	glow_tw.parallel().tween_property(glow, "position:x", rift_center.x - 18.0, 0.25)
+	glow_tw.tween_property(glow, "color:a", 0.0, 0.3)
+	glow_tw.tween_callback(glow.queue_free)
+
+	# --- Phase 3: Particles erupting from rift ---
+	for i in range(12):
 		var particle := ColorRect.new()
-		particle.size = Vector2(4, 4)
-		particle.color = Color(0.2, 1.0, 0.4, 0.8)
-		particle.position = Vector2(pillar_x + randf_range(5, 35), pillar_y + 280.0 - float(i) * 30.0)
+		var psize: float = randf_range(3.0, 6.0)
+		particle.size = Vector2(psize, psize)
+		particle.position = rift_center + Vector2(randf_range(-4, 4), randf_range(-50, 50))
+		var green_var: float = randf_range(0.6, 1.0)
+		particle.color = Color(0.1, green_var, randf_range(0.2, 0.5), 0.9)
 		particle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		particle.z_index = 50
+		particle.z_index = 55
 		add_child(particle)
-		var ptw := create_tween()
-		ptw.set_parallel(true)
-		ptw.tween_property(particle, "position:y", particle.position.y - 80.0, 0.4).set_delay(float(i) * 0.05)
-		ptw.tween_property(particle, "color:a", 0.0, 0.3).set_delay(float(i) * 0.05 + 0.15)
+		var scatter_x: float = randf_range(-60.0, 60.0)
+		var scatter_y: float = randf_range(-70.0, -20.0)
+		var pdelay: float = randf_range(0.1, 0.25)
+		var ptw := particle.create_tween().set_parallel(true)
+		ptw.tween_property(particle, "position", particle.position + Vector2(scatter_x, scatter_y), 0.4).set_delay(pdelay).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		ptw.tween_property(particle, "color:a", 0.0, 0.25).set_delay(pdelay + 0.2)
 		ptw.chain().tween_callback(particle.queue_free)
 
-## Rotating rune circle of purple/gold dots at screen center
+	# --- Phase 4: Brief white flash at rift center ---
+	var flash := ColorRect.new()
+	flash.size = Vector2(60, 60)
+	flash.pivot_offset = Vector2(30, 30)
+	flash.position = rift_center - Vector2(30, 30)
+	flash.color = Color(0.8, 1.0, 0.9, 0.0)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.z_index = 56
+	add_child(flash)
+	var ftw := flash.create_tween()
+	ftw.tween_property(flash, "color:a", 0.75, 0.06).set_delay(0.18)
+	ftw.tween_property(flash, "scale", Vector2(2.0, 2.0), 0.12)
+	ftw.parallel().tween_property(flash, "position", rift_center - Vector2(60, 60), 0.12)
+	ftw.parallel().tween_property(flash, "color:a", 0.0, 0.12)
+	ftw.tween_callback(flash.queue_free)
+
+## Dual magic circle + rune dots + energy burst at screen center
 func _play_spell_card_vfx() -> void:
 	var center := Vector2(640, 210)
-	var ring_container := Control.new()
-	ring_container.position = center
-	ring_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ring_container.z_index = 50
-	add_child(ring_container)
-	for i in range(12):
-		var angle: float = float(i) * TAU / 12.0
+
+	# --- Phase 1: Outer ring (16 dots, clockwise) ---
+	var outer_container := Control.new()
+	outer_container.position = center
+	outer_container.pivot_offset = Vector2.ZERO
+	outer_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outer_container.z_index = 50
+	add_child(outer_container)
+	for i in range(16):
+		var angle: float = float(i) * TAU / 16.0
 		var dot := ColorRect.new()
-		dot.size = Vector2(6, 6)
-		dot.position = Vector2(cos(angle) * 60.0 - 3.0, sin(angle) * 60.0 - 3.0)
-		if i % 2 == 0:
-			dot.color = Color(0.6, 0.15, 0.9, 1.0)
-		else:
-			dot.color = Color(0.9, 0.75, 0.2, 1.0)
+		var dot_size: float = 5.0 if i % 2 == 0 else 3.0
+		dot.size = Vector2(dot_size, dot_size)
+		dot.position = Vector2(cos(angle) * 70.0 - dot_size / 2.0, sin(angle) * 70.0 - dot_size / 2.0)
+		dot.color = Color(0.6, 0.15, 0.9, 0.0) if i % 2 == 0 else Color(0.9, 0.75, 0.2, 0.0)
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ring_container.add_child(dot)
-	ring_container.pivot_offset = Vector2.ZERO
-	var tw := create_tween()
-	tw.tween_property(ring_container, "rotation", TAU, 0.5)
-	tw.tween_property(ring_container, "modulate:a", 0.0, 0.2)
-	tw.tween_callback(ring_container.queue_free)
+		outer_container.add_child(dot)
+		# Staggered fade in
+		var dtw := dot.create_tween()
+		dtw.tween_property(dot, "color:a", 1.0, 0.08).set_delay(float(i) * 0.02)
+
+	# --- Phase 2: Inner ring (8 dots, counter-clockwise) ---
+	var inner_container := Control.new()
+	inner_container.position = center
+	inner_container.pivot_offset = Vector2.ZERO
+	inner_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inner_container.z_index = 51
+	add_child(inner_container)
+	for i in range(8):
+		var angle: float = float(i) * TAU / 8.0
+		var dot := ColorRect.new()
+		dot.size = Vector2(7, 7)
+		dot.position = Vector2(cos(angle) * 35.0 - 3.5, sin(angle) * 35.0 - 3.5)
+		dot.color = Color(0.85, 0.6, 1.0, 0.0)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner_container.add_child(dot)
+		var dtw := dot.create_tween()
+		dtw.tween_property(dot, "color:a", 0.9, 0.1).set_delay(0.1 + float(i) * 0.015)
+
+	# --- Phase 3: Rotate both rings (opposite directions) ---
+	var outer_tw := outer_container.create_tween()
+	outer_tw.tween_property(outer_container, "rotation", TAU * 0.6, 0.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	outer_tw.tween_property(outer_container, "modulate:a", 0.0, 0.15)
+	outer_tw.tween_callback(outer_container.queue_free)
+
+	var inner_tw := inner_container.create_tween()
+	inner_tw.tween_property(inner_container, "rotation", -TAU * 0.4, 0.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	inner_tw.tween_property(inner_container, "modulate:a", 0.0, 0.15)
+	inner_tw.tween_callback(inner_container.queue_free)
+
+	# --- Phase 4: Center energy gather + burst ---
+	var core := ColorRect.new()
+	core.size = Vector2(12, 12)
+	core.pivot_offset = Vector2(6, 6)
+	core.position = center - Vector2(6, 6)
+	core.color = Color(0.9, 0.7, 1.0, 0.0)
+	core.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	core.z_index = 53
+	add_child(core)
+	var core_tw := core.create_tween()
+	core_tw.tween_property(core, "color:a", 0.9, 0.2).set_delay(0.15)
+	core_tw.tween_property(core, "scale", Vector2(5.0, 5.0), 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	core_tw.parallel().tween_property(core, "position", center - Vector2(30, 30), 0.12)
+	core_tw.tween_property(core, "color:a", 0.0, 0.15)
+	core_tw.tween_callback(core.queue_free)
+
+	# --- Phase 5: Burst particles outward from center ---
+	for k in range(8):
+		var spark := ColorRect.new()
+		spark.size = Vector2(4, 4)
+		spark.position = center - Vector2(2, 2)
+		spark.color = Color(0.8, 0.5, 1.0, 0.85)
+		spark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		spark.z_index = 52
+		add_child(spark)
+		var burst_angle: float = float(k) * TAU / 8.0 + randf_range(-0.2, 0.2)
+		var burst_dist: float = randf_range(50.0, 90.0)
+		var burst_target: Vector2 = center + Vector2(cos(burst_angle), sin(burst_angle)) * burst_dist
+		var stw := spark.create_tween().set_parallel(true)
+		stw.tween_property(spark, "position", burst_target, 0.25).set_delay(0.38).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		stw.tween_property(spark, "color:a", 0.0, 0.15).set_delay(0.5)
+		stw.chain().tween_callback(spark.queue_free)
 
 ## Boss enhanced attack effect: strong screen shake + red flash overlay
 func _play_boss_attack_vfx() -> void:
