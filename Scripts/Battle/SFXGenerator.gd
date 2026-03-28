@@ -988,3 +988,116 @@ static func generate_boss_hurt_sfx() -> AudioStreamWAV:
 		mix += _square(float(i) * sweep_freq / float(SR), 0.25) * exp(-p * 20.0) * 0.12
 		data[i] = _to_byte(clampf(mix, -1.0, 1.0) * 0.8)
 	return _make_stream(data)
+
+# ============================================================
+# 19. PLAYER HURT SFX - 玩家受击: 低沉撞击 + 数字碎裂
+# ============================================================
+static func generate_player_hurt_sfx() -> AudioStreamWAV:
+	var duration: float = 0.3
+	var num_samples: int = int(duration * SR)
+	var data := PackedByteArray()
+	data.resize(num_samples)
+	var phase1: float = 0.0
+	var phase2: float = 0.0
+	for i in num_samples:
+		var p: float = float(i) / float(num_samples)
+		# 低频撞击
+		phase1 += lerpf(180.0, 60.0, p) / float(SR)
+		var impact: float = _sine(phase1) * exp(-p * 10.0) * 0.4
+		# 高频数字碎裂噪声
+		var glitch: float = _noise_from_index(i * 3) * exp(-p * 15.0) * 0.2
+		# 中频下降呻吟
+		phase2 += lerpf(350.0, 120.0, p * p) / float(SR)
+		var groan: float = _tri(phase2) * exp(-p * 8.0) * 0.15
+		var mix: float = impact + glitch + groan
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.7)
+	return _make_stream(data)
+
+# ============================================================
+# 20. CARD PLAY SFX - 卡牌打出: 爽快的甩牌 + 能量释放
+# ============================================================
+static func generate_card_play_sfx() -> AudioStreamWAV:
+	var duration: float = 0.2
+	var num_samples: int = int(duration * SR)
+	var data := PackedByteArray()
+	data.resize(num_samples)
+	var phase1: float = 0.0
+	for i in num_samples:
+		var p: float = float(i) / float(num_samples)
+		# 快速上扫音（甩牌感）
+		var sweep_freq: float = lerpf(300.0, 1800.0, minf(p * 3.0, 1.0))
+		phase1 += sweep_freq / float(SR)
+		var sweep: float = _tri(phase1) * exp(-p * 10.0) * 0.3
+		# 短促噪声打击（纸牌甩出的"啪"）
+		var snap: float = _noise_from_index(i * 7) * exp(-p * 45.0) * 0.35
+		# 尾部微弱能量音
+		var tail: float = _sine(phase1 * 0.3) * exp(-p * 6.0) * 0.08
+		var mix: float = sweep + snap + tail
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.7)
+	return _make_stream(data)
+
+# ============================================================
+# 21. TURN START SFX - 回合开始: 道钟轻响 + 能量涌入
+# ============================================================
+static func generate_turn_start_sfx() -> AudioStreamWAV:
+	var duration: float = 0.5
+	var num_samples: int = int(duration * SR)
+	var data := PackedByteArray()
+	data.resize(num_samples)
+	var phase1: float = 0.0
+	var phase2: float = 0.0
+	for i in num_samples:
+		var t: float = float(i) / float(SR)
+		var p: float = float(i) / float(num_samples)
+		# 钟声基音（正弦 + 泛音）
+		phase1 += 440.0 / float(SR)
+		var bell: float = _sine(phase1) * exp(-p * 4.0) * 0.2
+		bell += _sine(phase1 * 2.76) * exp(-p * 6.0) * 0.1
+		bell += _sine(phase1 * 5.4) * exp(-p * 10.0) * 0.05
+		# 能量涌入上扫
+		phase2 += lerpf(200.0, 600.0, p) / float(SR)
+		var rise: float = _tri(phase2) * _adsr(t, duration, 0.05, 0.1, 0.3, 0.2) * 0.12
+		var mix: float = bell + rise
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.6)
+	return _make_stream(data)
+
+# ============================================================
+# 22. ENEMY HURT SFX - 敌人受击: 金属碎裂 + 数据崩坏
+# ============================================================
+static func generate_enemy_hurt_sfx() -> AudioStreamWAV:
+	var duration: float = 0.22
+	var num_samples: int = int(duration * SR)
+	var data := PackedByteArray()
+	data.resize(num_samples)
+	var phase1: float = 0.0
+	for i in num_samples:
+		var p: float = float(i) / float(num_samples)
+		# 金属碎裂（高频三角波急降）
+		var freq: float = lerpf(1200.0, 200.0, p * p)
+		phase1 += freq / float(SR)
+		var metal: float = _tri(phase1) * exp(-p * 12.0) * 0.3
+		# 数据崩坏噪声
+		var noise_env: float = exp(-p * 20.0) * 0.25
+		var noise: float = _noise_from_index(i * 5) * noise_env
+		# bitcrush效果
+		var crush: float = _square(phase1 * 0.5, 0.3) * exp(-p * 16.0) * 0.1
+		var mix: float = metal + noise + crush
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.65)
+	return _make_stream(data)
+
+# ============================================================
+# 23. END TURN SFX - 结束回合: 短促确认音
+# ============================================================
+static func generate_end_turn_sfx() -> AudioStreamWAV:
+	var duration: float = 0.15
+	var num_samples: int = int(duration * SR)
+	var data := PackedByteArray()
+	data.resize(num_samples)
+	var phase1: float = 0.0
+	for i in num_samples:
+		var p: float = float(i) / float(num_samples)
+		var freq: float = 600.0 if p < 0.4 else 450.0
+		phase1 += freq / float(SR)
+		var tone: float = _sine(phase1) * _adsr(float(i) / float(SR), duration, 0.005, 0.03, 0.5, 0.05) * 0.3
+		data[i] = _to_byte(clampf(tone, -0.95, 0.95) * 0.5)
+	return _make_stream(data)

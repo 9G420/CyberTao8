@@ -847,6 +847,7 @@ func _start_player_turn() -> void:
 
 	end_turn_btn.disabled = false
 	_update_all_ui()
+	AudioManager.play_sfx_generated("turn_start")
 	_add_log("[color=cyan]--- 回合 " + str(turn_number) + " · 玩家回合 ---[/color]")
 
 ## 添加卡牌到手牌
@@ -1049,7 +1050,7 @@ func _hide_drag_arrow() -> void:
 	if _drag_arrow_head:
 		_drag_arrow_head.visible = false
 
-## 更新目标高亮（边缘发光效果）
+## 更新目标高亮（脉冲圆环 + 角色发光）
 func _update_target_highlight(target: String) -> void:
 	# 清除旧高亮
 	if _highlight_rect:
@@ -1058,15 +1059,12 @@ func _update_target_highlight(target: String) -> void:
 	# 重置所有精灵调制
 	if enemy_sprite:
 		enemy_sprite.modulate = Color.WHITE
-		enemy_sprite.material = null
 	if player_sprite:
 		player_sprite.modulate = Color.WHITE
-		player_sprite.material = null
 	if play_zone:
 		for child in play_zone.get_children():
 			if child is Control:
 				child.modulate = Color.WHITE
-				child.material = null
 
 	if target == "":
 		return
@@ -1076,10 +1074,10 @@ func _update_target_highlight(target: String) -> void:
 
 	if target == "enemy" and enemy_sprite:
 		target_node = enemy_sprite
-		glow_color = Color(1.0, 0.25, 0.15)
+		glow_color = Color(1.0, 0.3, 0.15)
 	elif target == "self" and player_sprite:
 		target_node = player_sprite
-		glow_color = Color(0.2, 0.7, 1.0)
+		glow_color = Color(0.2, 0.8, 1.0)
 	elif target.begins_with("summon_") and play_zone:
 		var idx_str: String = target.replace("summon_", "")
 		var summon_node: Node = play_zone.get_node_or_null("summon_" + idx_str)
@@ -1088,59 +1086,68 @@ func _update_target_highlight(target: String) -> void:
 			glow_color = Color(0.2, 1, 0.5)
 
 	if target_node:
-		# 应用边缘发光着色器
-		_apply_edge_glow(target_node, glow_color)
+		_apply_target_ring(target_node, glow_color)
 
-## 给目标节点应用边缘发光shader
-func _apply_edge_glow(node: Control, glow_color: Color) -> void:
-	# 使用ColorRect叠加层模拟发光边缘（兼容所有节点类型）
+## 给目标节点应用圆环脉冲高亮（替代丑陋矩形）
+func _apply_target_ring(node: Control, glow_color: Color) -> void:
+	# 目标精灵脉冲发光（直接调制颜色，无矩形覆盖）
+	var bright := Color(
+		minf(glow_color.r * 0.3 + 1.0, 1.4),
+		minf(glow_color.g * 0.3 + 1.0, 1.4),
+		minf(glow_color.b * 0.3 + 1.0, 1.4)
+	)
+	node.modulate = bright
+
+	# 脚底圆环指示器（椭圆脉冲环，不是矩形）
 	_highlight_rect = ColorRect.new()
 	_highlight_rect.color = Color(0, 0, 0, 0)
 	_highlight_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_highlight_rect.z_index = 50
+	_highlight_rect.z_index = 45
 
-	var glow_expand: float = 6.0
-	_highlight_rect.global_position = node.global_position - Vector2(glow_expand, glow_expand)
-	_highlight_rect.size = node.size * node.scale + Vector2(glow_expand * 2, glow_expand * 2)
+	# 圆环位于角色脚底，宽椭圆形
+	var ring_w: float = maxf(node.size.x * node.scale.x, 80.0) + 30.0
+	var ring_h: float = 36.0
+	var node_center_x: float = node.global_position.x + node.size.x * node.scale.x * 0.5
+	var node_bottom_y: float = node.global_position.y + node.size.y * node.scale.y
+	_highlight_rect.global_position = Vector2(node_center_x - ring_w * 0.5, node_bottom_y - ring_h * 0.5 + 4.0)
+	_highlight_rect.size = Vector2(ring_w, ring_h)
 
-	# 边缘发光shader
 	var shader := Shader.new()
 	shader.code = "
 shader_type canvas_item;
-uniform vec4 glow_color : source_color = vec4(1.0, 0.3, 0.2, 1.0);
-uniform float time_offset = 0.0;
+uniform vec4 ring_color : source_color = vec4(1.0, 0.3, 0.2, 1.0);
 void fragment() {
-	vec2 uv = UV;
-	// 到边缘的最小距离
-	float dx = min(uv.x, 1.0 - uv.x);
-	float dy = min(uv.y, 1.0 - uv.y);
-	float edge_dist = min(dx, dy);
-	// 外发光带 - 边缘渐变
-	float glow_width = 0.12;
-	float glow = smoothstep(0.0, glow_width, edge_dist);
-	float edge_glow = (1.0 - glow) * 0.85;
-	// 脉冲动画
-	float pulse = 0.7 + 0.3 * sin(TIME * 3.0 + time_offset);
-	edge_glow *= pulse;
-	// 角落额外亮度
-	float corner = (1.0 - smoothstep(0.0, 0.18, dx)) * (1.0 - smoothstep(0.0, 0.18, dy));
-	edge_glow += corner * 0.3 * pulse;
-	COLOR = vec4(glow_color.rgb, edge_glow * glow_color.a);
+	vec2 c = UV - vec2(0.5);
+	// 椭圆距离（水平宽，垂直窄）
+	float d = length(c * vec2(1.0, 2.2));
+	// 双层环
+	float ring1 = smoothstep(0.42, 0.38, d) * smoothstep(0.30, 0.34, d);
+	float ring2 = smoothstep(0.48, 0.44, d) * smoothstep(0.36, 0.40, d);
+	// 脉冲
+	float pulse = 0.6 + 0.4 * sin(TIME * 4.0);
+	float pulse2 = 0.7 + 0.3 * sin(TIME * 4.0 + 1.5);
+	// 内部淡光填充
+	float fill = (1.0 - smoothstep(0.0, 0.4, d)) * 0.08 * pulse;
+	float a = ring1 * 0.9 * pulse + ring2 * 0.4 * pulse2 + fill;
+	COLOR = vec4(ring_color.rgb, a * ring_color.a);
 }
 "
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
-	mat.set_shader_parameter("glow_color", Color(glow_color.r, glow_color.g, glow_color.b, 1.0))
-	mat.set_shader_parameter("time_offset", randf() * 6.28)
+	mat.set_shader_parameter("ring_color", Color(glow_color.r, glow_color.g, glow_color.b, 1.0))
 	_highlight_rect.material = mat
 
 	add_child(_highlight_rect)
 
-	# 同时轻微提亮目标精灵
-	node.modulate = Color(1.2, 1.2, 1.2)
+	# 目标节点脉冲缩放动画
+	if node.is_inside_tree():
+		var tween: Tween = node.create_tween().set_loops()
+		tween.tween_property(node, "modulate", bright, 0.3)
+		tween.tween_property(node, "modulate", Color(1.05, 1.05, 1.05), 0.3)
 
 ## 执行卡牌效果（target: "enemy", "self", "summon_0", "summon_1" 等）
 func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: String) -> void:
+	AudioManager.play_sfx_generated("card_play")
 	var result: EffectResult = EffectSystem.execute_card(data, player_hp, player_shield)
 
 	# 道境共鸣伤害加成
@@ -1239,6 +1246,7 @@ func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: 
 			_flash_enemy_hit(total_damage)
 			_play_player_attack_anim()
 			AudioManager.play_sfx_generated("attack", randf_range(-5.0, -1.0))
+			AudioManager.play_sfx_generated("enemy_hurt", randf_range(-6.0, -2.0))
 
 	if result.shield_gained > 0:
 		if target.begins_with("summon_"):
@@ -1483,6 +1491,7 @@ func _execute_card_effect(card: Card, data: CardData, actual_cost: int, target: 
 func _on_end_turn_pressed() -> void:
 	if state != BattleState.PLAYER_TURN:
 		return
+	AudioManager.play_sfx_generated("end_turn")
 	end_turn_btn.disabled = true
 	_start_enemy_turn()
 
@@ -1535,6 +1544,7 @@ func _start_enemy_turn() -> void:
 				if actual_dmg > 0:
 					_flash_player_hit(actual_dmg)
 					_play_player_hurt_anim()
+					AudioManager.play_sfx_generated("player_hurt")
 			else:
 				var per_hit: int = total_enemy_dmg
 				for _i in range(enemy_hits):
@@ -1542,6 +1552,7 @@ func _start_enemy_turn() -> void:
 					if actual_dmg > 0:
 						_flash_player_hit(actual_dmg)
 						_play_player_hurt_anim()
+						AudioManager.play_sfx_generated("player_hurt", -5.0)
 			_play_enemy_attack_anim()
 			if enemy_type_key == "boss":
 				_play_boss_attack_vfx()

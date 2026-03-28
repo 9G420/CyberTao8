@@ -99,6 +99,11 @@ func _generate_all_audio() -> void:
 	_sfx_cache["spell"] = SFXGenerator.generate_spell_sfx()
 	_sfx_cache["boss_attack"] = SFXGenerator.generate_boss_attack_sfx()
 	_sfx_cache["boss_hurt"] = SFXGenerator.generate_boss_hurt_sfx()
+	_sfx_cache["player_hurt"] = SFXGenerator.generate_player_hurt_sfx()
+	_sfx_cache["card_play"] = SFXGenerator.generate_card_play_sfx()
+	_sfx_cache["turn_start"] = SFXGenerator.generate_turn_start_sfx()
+	_sfx_cache["enemy_hurt"] = SFXGenerator.generate_enemy_hurt_sfx()
+	_sfx_cache["end_turn"] = SFXGenerator.generate_end_turn_sfx()
 
 ## 播放BGM — AI音频优先，程序化回退
 func play_bgm_generated(bgm_id: String, volume_db: float = -8.0) -> void:
