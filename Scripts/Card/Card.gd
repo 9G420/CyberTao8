@@ -305,12 +305,22 @@ func _update_display() -> void:
 	match card_data.yinyang:
 		CardData.YinYang.YIN:
 			_yinyang_label.add_theme_color_override("font_color", Color(0.5, 0.3, 1.0))
-			_art_rect.color = Color(0.15, 0.1, 0.35)
+			_art_rect.color = Color(
+				card_data.card_color.r * 0.15 + 0.05,
+				card_data.card_color.g * 0.1 + 0.05,
+				card_data.card_color.b * 0.15 + 0.15)
 		CardData.YinYang.YANG:
 			_yinyang_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
-			_art_rect.color = Color(0.35, 0.25, 0.1)
+			_art_rect.color = Color(
+				card_data.card_color.r * 0.2 + 0.15,
+				card_data.card_color.g * 0.15 + 0.1,
+				card_data.card_color.b * 0.08 + 0.05)
 		_:
 			_yinyang_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+			_art_rect.color = Color(
+				card_data.card_color.r * 0.12 + 0.08,
+				card_data.card_color.g * 0.12 + 0.08,
+				card_data.card_color.b * 0.12 + 0.08)
 
 	# 数值显示
 	match card_data.card_type:
