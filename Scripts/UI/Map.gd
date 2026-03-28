@@ -283,15 +283,20 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	var base_color: Color = TYPE_COLORS.get(ntype, Color(0.5, 0.5, 0.5))
 	var icon_text: String = TYPE_ICONS.get(ntype, "?")
 
-	# ── 外圈光晕 (reachable/current 才显示) ──
-	var outer_glow: ColorRect = null
+	# ── 外圈光晕 (reachable/current 才显示, 用圆形Panel代替方形ColorRect) ──
+	var outer_glow: Panel = null
 	if is_reachable or is_current:
-		outer_glow = ColorRect.new()
+		outer_glow = Panel.new()
 		var glow_r: int = NODE_RADIUS + 8
 		outer_glow.position = Vector2(pos.x - glow_r, pos.y - glow_r)
 		outer_glow.size = Vector2(glow_r * 2, glow_r * 2)
 		var glow_col: Color = base_color if is_reachable else Color(1, 0.85, 0.3)
-		outer_glow.color = Color(glow_col.r, glow_col.g, glow_col.b, 0.15)
+		var glow_sb := StyleBoxFlat.new()
+		glow_sb.bg_color = Color(glow_col.r, glow_col.g, glow_col.b, 0.12)
+		glow_sb.set_corner_radius_all(glow_r)
+		glow_sb.border_color = Color(glow_col.r, glow_col.g, glow_col.b, 0.08)
+		glow_sb.set_border_width_all(0)
+		outer_glow.add_theme_stylebox_override("panel", glow_sb)
 		outer_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		map_canvas.add_child(outer_glow)
 
@@ -419,7 +424,9 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 			type_lbl.add_theme_font_size_override("font_size", 14)
 			# 外圈光晕增强
 			if outer_glow and is_instance_valid(outer_glow):
-				outer_glow.color.a = 0.35
+				var g_sb: StyleBoxFlat = outer_glow.get_theme_stylebox("panel") as StyleBoxFlat
+				if g_sb:
+					g_sb.bg_color.a = 0.3
 			# 更新信息文字
 			if info_label and is_instance_valid(info_label):
 				info_label.text = TYPE_NAMES.get(ntype, "") + " — 点击进入"
@@ -438,7 +445,9 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 			type_lbl.add_theme_font_size_override("font_size", 13)
 			# 外圈光晕恢复
 			if outer_glow and is_instance_valid(outer_glow):
-				outer_glow.color.a = 0.15
+				var g_sb: StyleBoxFlat = outer_glow.get_theme_stylebox("panel") as StyleBoxFlat
+				if g_sb:
+					g_sb.bg_color.a = 0.12
 			# 恢复信息文字
 			if info_label and is_instance_valid(info_label):
 				info_label.text = "选择下一个节点继续探索..."
