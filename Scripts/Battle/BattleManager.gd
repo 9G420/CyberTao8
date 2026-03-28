@@ -1036,6 +1036,8 @@ func _update_drag_targeting() -> void:
 	var dragging_card: Card = null
 	if hand_node:
 		for c in hand_node.cards:
+			if not is_instance_valid(c):
+				continue
 			if c.is_dragging:
 				dragging_card = c
 				break
@@ -1762,11 +1764,17 @@ func _end_turn_discard() -> void:
 
 	for c in cards_to_discard:
 		deck.discard(c.card_data.resource_path if c.card_data else "")
-	hand_node.clear_hand()
 
-	# Re-add retained cards
+	# Remove discarded cards from hand and free them (NOT retained cards)
+	for c in cards_to_discard:
+		hand_node.remove_card(c)
+		c.queue_free()
+
+	# Retained cards stay in hand — just rebuild layout
+	hand_node.cards.clear()
 	for c in cards_to_keep:
-		hand_node.add_card(c)
+		hand_node.cards.append(c)
+	hand_node._arrange_hand(true)
 
 ## 弃牌触发效果
 func _trigger_discard_effect(card: Card) -> void:

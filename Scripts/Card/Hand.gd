@@ -77,8 +77,8 @@ func _arrange_hand(animated: bool = true) -> void:
 
 	for i in count:
 		var card: Card = cards[i]
-		if card.is_dragging:
-			continue  # 正在拖拽的卡牌不参与排列
+		if not is_instance_valid(card) or card.is_dragging:
+			continue  # 跳过已释放或正在拖拽的卡牌
 
 		# 计算该卡牌的角度（度）
 		var angle_deg: float = start_angle + (total_angle * float(i) / maxf(float(count - 1), 1.0)) if count > 1 else 0.0
