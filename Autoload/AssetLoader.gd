@@ -112,13 +112,13 @@ func get_character_sprite(char_type: String, frame: int = 0) -> ImageTexture:
 	var tex: ImageTexture = null
 	for folder in folders:
 		# 先找带帧后缀的: grunt_attack.png
-		var path_with_frame := BASE + folder + "/" + char_type + suffix + ".png"
+		var path_with_frame: String = BASE + folder + "/" + char_type + suffix + ".png"
 		tex = _try_load(path_with_frame, 144, 192)
 		if tex:
 			break
 		# 再找不带帧后缀的(单图): grunt.png（仅idle帧回退）
 		if frame == 0:
-			var path_no_frame := BASE + folder + "/" + char_type + ".png"
+			var path_no_frame: String = BASE + folder + "/" + char_type + ".png"
 			tex = _try_load(path_no_frame, 144, 192)
 			if tex:
 				break
@@ -268,7 +268,7 @@ func _try_load_raw(path: String) -> ImageTexture:
 	if res == null:
 		return null
 	if res is Texture2D:
-		var img := res.get_image()
+		var img: Image = res.get_image()
 		if img == null:
 			return null
 		return ImageTexture.create_from_image(img)
