@@ -848,6 +848,7 @@ func _start_player_turn() -> void:
 	end_turn_btn.disabled = false
 	_update_all_ui()
 	AudioManager.play_sfx_generated("turn_start")
+	_show_turn_banner("玩 家 回 合", Color(0, 0.9, 1.0))
 	_add_log("[color=cyan]--- 回合 " + str(turn_number) + " · 玩家回合 ---[/color]")
 
 ## 添加卡牌到手牌
@@ -1498,6 +1499,7 @@ func _on_end_turn_pressed() -> void:
 ## 敌人回合
 func _start_enemy_turn() -> void:
 	state = BattleState.ENEMY_TURN
+	_show_turn_banner("敌 方 回 合", Color(1.0, 0.3, 0.2))
 	_add_log("[color=red]--- 敌方回合 ---[/color]")
 
 	# Process enemy turn-start statuses (corruption damage, burn, etc.)
@@ -1545,6 +1547,7 @@ func _start_enemy_turn() -> void:
 					_flash_player_hit(actual_dmg)
 					_play_player_hurt_anim()
 					AudioManager.play_sfx_generated("player_hurt")
+					_screen_shake(maxf(float(actual_dmg) * 1.5, 5.0), 0.25)
 			else:
 				var per_hit: int = total_enemy_dmg
 				for _i in range(enemy_hits):
@@ -1553,6 +1556,7 @@ func _start_enemy_turn() -> void:
 						_flash_player_hit(actual_dmg)
 						_play_player_hurt_anim()
 						AudioManager.play_sfx_generated("player_hurt", -5.0)
+				_screen_shake(maxf(float(total_enemy_dmg) * 1.0, 4.0), 0.3)
 			_play_enemy_attack_anim()
 			if enemy_type_key == "boss":
 				_play_boss_attack_vfx()
@@ -2724,6 +2728,7 @@ func _update_all_ui() -> void:
 	discard_count_label.text = "弃牌: " + str(deck.discard_count())
 
 	_update_summon_display()
+	_update_shield_visuals()
 
 ## 战斗日志 — 浮动文字（v5重写）
 func _add_log(text: String) -> void:
@@ -2894,3 +2899,161 @@ func _play_turn_start_ink_burst() -> void:
 		if is_instance_valid(ink_ref) and ink_ref.material is ShaderMaterial:
 			(ink_ref.material as ShaderMaterial).set_shader_parameter("spread_radius", v)
 	, 1.2, 0.0, 0.3)
+
+# ============================================================
+# === 回合横幅 + 屏幕震动 + 护盾视觉 (STS风格升级) ===
+# ============================================================
+
+## 回合切换横幅（杀戮尖塔风格：大字居中淡入淡出）
+func _show_turn_banner(text: String, color: Color) -> void:
+	# 背景暗条
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0, 0, 0, 0.0)
+	backdrop.size = Vector2(1280, 80)
+	backdrop.position = Vector2(0, 190)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backdrop.z_index = 95
+	add_child(backdrop)
+
+	# 主文字
+	var banner := Label.new()
+	banner.text = text
+	banner.add_theme_font_size_override("font_size", 42)
+	banner.add_theme_color_override("font_color", color)
+	banner.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	banner.add_theme_constant_override("shadow_offset_x", 2)
+	banner.add_theme_constant_override("shadow_offset_y", 2)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	banner.size = Vector2(1280, 80)
+	banner.position = Vector2(0, 190)
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.z_index = 96
+	banner.modulate.a = 0.0
+	banner.scale = Vector2(0.6, 0.6)
+	banner.pivot_offset = Vector2(640, 40)
+	add_child(banner)
+
+	# 动画：淡入+缩放→保持→淡出
+	var tw: Tween = create_tween()
+	# 背景暗条淡入
+	tw.tween_property(backdrop, "color:a", 0.5, 0.2)
+	tw.parallel().tween_property(banner, "modulate:a", 1.0, 0.15)
+	tw.parallel().tween_property(banner, "scale", Vector2(1.0, 1.0), 0.25).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	# 保持
+	tw.tween_interval(0.6)
+	# 淡出
+	tw.tween_property(banner, "modulate:a", 0.0, 0.25)
+	tw.parallel().tween_property(backdrop, "color:a", 0.0, 0.3)
+	tw.parallel().tween_property(banner, "scale", Vector2(1.15, 1.15), 0.25)
+	# 清理
+	tw.tween_callback(backdrop.queue_free)
+	tw.tween_callback(banner.queue_free)
+
+## 屏幕震动（受击反馈）
+func _screen_shake(intensity: float = 8.0, duration: float = 0.3) -> void:
+	var original_pos: Vector2 = position
+	var tw: Tween = create_tween()
+	var steps: int = int(duration / 0.03)
+	for i in steps:
+		var offset := Vector2(
+			randf_range(-intensity, intensity),
+			randf_range(-intensity * 0.6, intensity * 0.6)
+		)
+		# 强度递减
+		var decay: float = 1.0 - float(i) / float(steps)
+		tw.tween_property(self, "position", original_pos + offset * decay, 0.03)
+	tw.tween_property(self, "position", original_pos, 0.03)
+
+## 护盾视觉覆盖（角色身上显示蓝色护盾图标+数值）
+var _player_shield_visual: Control = null
+var _enemy_shield_visual: Control = null
+
+func _update_shield_visuals() -> void:
+	# --- 玩家护盾 ---
+	if player_shield > 0:
+		if not _player_shield_visual or not is_instance_valid(_player_shield_visual):
+			_player_shield_visual = _create_shield_badge()
+			add_child(_player_shield_visual)
+		if player_sprite and is_instance_valid(player_sprite):
+			_player_shield_visual.global_position = Vector2(
+				player_sprite.global_position.x + player_sprite.size.x * player_sprite.scale.x * 0.5 - 18,
+				player_sprite.global_position.y - 10
+			)
+		_player_shield_visual.visible = true
+		var shield_lbl: Label = _player_shield_visual.get_node_or_null("val")
+		if shield_lbl:
+			shield_lbl.text = str(player_shield)
+	else:
+		if _player_shield_visual and is_instance_valid(_player_shield_visual):
+			_player_shield_visual.visible = false
+
+	# --- 敌人护盾 ---
+	if enemy and enemy.shield > 0:
+		if not _enemy_shield_visual or not is_instance_valid(_enemy_shield_visual):
+			_enemy_shield_visual = _create_shield_badge()
+			add_child(_enemy_shield_visual)
+		if enemy_sprite and is_instance_valid(enemy_sprite):
+			_enemy_shield_visual.global_position = Vector2(
+				enemy_sprite.global_position.x + enemy_sprite.size.x * enemy_sprite.scale.x * 0.5 - 18,
+				enemy_sprite.global_position.y - 10
+			)
+		_enemy_shield_visual.visible = true
+		var shield_lbl: Label = _enemy_shield_visual.get_node_or_null("val")
+		if shield_lbl:
+			shield_lbl.text = str(enemy.shield)
+	else:
+		if _enemy_shield_visual and is_instance_valid(_enemy_shield_visual):
+			_enemy_shield_visual.visible = false
+
+func _create_shield_badge() -> Control:
+	var badge := Control.new()
+	badge.z_index = 60
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# 盾牌底色（圆角蓝色底）
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0)
+	bg.size = Vector2(36, 36)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var shield_shader := Shader.new()
+	shield_shader.code = "
+shader_type canvas_item;
+void fragment() {
+	vec2 c = UV - vec2(0.5);
+	float d = length(c);
+	// 盾牌形状（上半圆+下尖角）
+	float shape = smoothstep(0.5, 0.44, d);
+	if (UV.y > 0.55) {
+		float taper = (UV.y - 0.55) / 0.45;
+		float w = 0.5 - taper * 0.4;
+		shape *= smoothstep(w + 0.05, w, abs(UV.x - 0.5));
+	}
+	float pulse = 0.85 + 0.15 * sin(TIME * 3.0);
+	vec3 col = mix(vec3(0.1, 0.3, 0.7), vec3(0.3, 0.6, 1.0), UV.y);
+	float border = smoothstep(0.38, 0.42, d) * shape;
+	col = mix(col, vec3(0.5, 0.8, 1.0), border * 0.5);
+	COLOR = vec4(col * pulse, shape * 0.85);
+}
+"
+	var mat := ShaderMaterial.new()
+	mat.shader = shield_shader
+	bg.material = mat
+	badge.add_child(bg)
+
+	# 数值文字
+	var lbl := Label.new()
+	lbl.name = "val"
+	lbl.size = Vector2(36, 36)
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(1, 1, 1))
+	lbl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	lbl.add_theme_constant_override("shadow_offset_x", 1)
+	lbl.add_theme_constant_override("shadow_offset_y", 1)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(lbl)
+
+	return badge

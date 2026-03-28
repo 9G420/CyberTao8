@@ -463,12 +463,16 @@ func _hide_hover_tooltip() -> void:
 			_hover_tooltip.queue_free()
 		_hover_tooltip = null
 
-## 播放打出动画
+## 播放打出动画（STS风格：飞向目标+旋转+缩放+闪光）
 func play_cast_animation(target_pos: Vector2) -> void:
-	var tween: Tween = create_tween().set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(self, "global_position", target_pos, 0.3)
-	tween.parallel().tween_property(self, "scale", Vector2(0.5, 0.5), 0.3)
-	tween.parallel().tween_property(self, "modulate:a", 0.0, 0.3)
+	# 先短暂放大（蓄力感）
+	var tween: Tween = create_tween()
+	tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.06).set_ease(Tween.EASE_OUT)
+	# 然后飞向目标+旋转+缩小+淡出
+	tween.tween_property(self, "global_position", target_pos, 0.25).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tween.parallel().tween_property(self, "scale", Vector2(0.3, 0.3), 0.25).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(self, "rotation_degrees", randf_range(-15.0, 15.0), 0.25)
+	tween.parallel().tween_property(self, "modulate:a", 0.0, 0.2).set_delay(0.05)
 	await tween.finished
 
 ## 播放抽牌动画（从牌库飞入手牌位置）
