@@ -133,7 +133,7 @@ func _build_ui() -> void:
 
 	# 战斗统计
 	var stats := Label.new()
-	stats.text = "战斗胜利: " + str(GameState.battles_won) + " | 探索深度: " + str(GameState.current_node_index)
+	stats.text = "战斗胜利: " + str(GameState.battles_won) + " | 探索深度: " + str(GameState.map_current_floor + 1)
 	stats.position = Vector2(0, 490)
 	stats.size = Vector2(1280, 40)
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -151,15 +151,18 @@ func _build_ui() -> void:
 	btn_container.z_index = 20
 	add_child(btn_container)
 
-	var retry_btn := _make_defeat_button("传承重试", Color(0, 0.9, 1), Color(0, 0.5, 0.8, 0.6))
+	var retry_btn: Button = UIFactory.make_cyan_button("传承重试", 200, 56)
+	retry_btn.add_theme_font_size_override("font_size", 20)
 	retry_btn.pressed.connect(_on_retry_legacy)
 	btn_container.add_child(retry_btn)
 
-	var restart_btn := _make_defeat_button("重新开始", Color(0.8, 0.8, 0.8), Color(0.4, 0.4, 0.4, 0.5))
+	var restart_btn: Button = UIFactory.make_dim_button("重新开始", 200, 56)
+	restart_btn.add_theme_font_size_override("font_size", 20)
 	restart_btn.pressed.connect(_on_restart)
 	btn_container.add_child(restart_btn)
 
-	var title_btn := _make_defeat_button("返回标题", Color(0.5, 0.5, 0.5), Color(0.3, 0.3, 0.3, 0.4))
+	var title_btn: Button = UIFactory.make_dim_button("返回标题", 200, 56)
+	title_btn.add_theme_font_size_override("font_size", 20)
 	title_btn.pressed.connect(_on_title)
 	btn_container.add_child(title_btn)
 

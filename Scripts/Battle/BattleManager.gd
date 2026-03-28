@@ -476,32 +476,10 @@ void fragment() {
 	discard_count_label = _make_label(Vector2(10, 51), 260, 16, Color(0.8, 0.5, 0.5))
 	info_panel.add_child(discard_count_label)
 
-	# 结束回合按钮 (STS-style prominent button)
-	end_turn_btn = Button.new()
-	end_turn_btn.text = "结束回合"
+	# 结束回合按钮 (STS银灰金属风格)
+	end_turn_btn = UIFactory.make_metal_button("结束回合", 160, 50)
 	end_turn_btn.position = Vector2(1100, 440)
-	end_turn_btn.size = Vector2(160, 50)
 	end_turn_btn.add_theme_font_size_override("font_size", 22)
-	var etb_normal := StyleBoxFlat.new()
-	etb_normal.bg_color = Color(0.06, 0.08, 0.14, 0.95)
-	etb_normal.border_color = Color(0, 0.85, 1, 0.7)
-	etb_normal.set_border_width_all(2)
-	etb_normal.set_corner_radius_all(6)
-	end_turn_btn.add_theme_stylebox_override("normal", etb_normal)
-	var etb_hover := StyleBoxFlat.new()
-	etb_hover.bg_color = Color(0.1, 0.14, 0.22, 0.95)
-	etb_hover.border_color = Color(0, 1, 1, 0.9)
-	etb_hover.set_border_width_all(3)
-	etb_hover.set_corner_radius_all(6)
-	end_turn_btn.add_theme_stylebox_override("hover", etb_hover)
-	var etb_pressed := StyleBoxFlat.new()
-	etb_pressed.bg_color = Color(0.02, 0.04, 0.1, 0.95)
-	etb_pressed.border_color = Color(0, 0.6, 0.8, 0.8)
-	etb_pressed.set_border_width_all(2)
-	etb_pressed.set_corner_radius_all(6)
-	end_turn_btn.add_theme_stylebox_override("pressed", etb_pressed)
-	end_turn_btn.add_theme_color_override("font_color", Color(0, 0.9, 1))
-	end_turn_btn.add_theme_color_override("font_hover_color", Color(0.5, 1, 1))
 	end_turn_btn.pressed.connect(_on_end_turn_pressed)
 	add_child(end_turn_btn)
 
@@ -2220,10 +2198,9 @@ func _on_enemy_defeated() -> void:
 	GameState.battles_won += 1
 	GameState.player_hp = player_hp
 
-	# 奖励金币
-	var gold_reward: int = 15 + randi() % 10
-	GameState.player_gold += gold_reward
-	_add_log("[color=yellow]获得 " + str(gold_reward) + " 金币[/color]")
+	# 奖励金币 (CardReward界面会处理金币动画，这里只做基础记录)
+	# 注: 金币奖励已移至CardReward.gd中统一处理，此处不再重复加
+	_add_log("[color=yellow]战斗胜利！[/color]")
 
 	# Victory transition
 	await _play_victory_transition()
@@ -2239,9 +2216,9 @@ func _on_enemy_defeated() -> void:
 		get_tree().change_scene_to_file(Global.SCENE_VICTORY)
 	else:
 		await get_tree().create_timer(1.0).timeout
-		GameState.advance_node()
+		# 非Boss: 进入STS式卡牌奖励界面
 		Global.is_transitioning = false
-		get_tree().change_scene_to_file(Global.SCENE_EVENT)
+		get_tree().change_scene_to_file(Global.SCENE_CARD_REWARD)
 
 func _on_player_defeated() -> void:
 	state = BattleState.DEFEAT

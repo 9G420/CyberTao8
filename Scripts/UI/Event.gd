@@ -246,27 +246,22 @@ func _build_ui() -> void:
 	add_child(gold_label)
 
 	# 继续按钮
-	continue_btn = _make_event_button("继续前进", Color(0, 0.9, 1), Color(0, 0.5, 0.8, 0.5))
+	continue_btn = UIFactory.make_ribbon_button("继续前进", 280, 50)
 	continue_btn.position = Vector2(500, 656)
-	continue_btn.size = Vector2(280, 50)
 	continue_btn.visible = false
 	continue_btn.pressed.connect(_on_continue)
 	add_child(continue_btn)
 
 	# 删卡按钮
-	var remove_btn := _make_event_button("删除一张卡 (免费)", Color(0.8, 0.3, 0.3), Color(0.5, 0.15, 0.15, 0.4))
+	var remove_btn: Button = UIFactory.make_arrow_button("删除一张卡 (免费)", 300, 50)
 	remove_btn.position = Vector2(900, 656)
-	remove_btn.size = Vector2(300, 50)
-	remove_btn.add_theme_font_size_override("font_size", 16)
 	remove_btn.pressed.connect(_on_remove_card)
 	add_child(remove_btn)
 
 	# 跳过奖励按钮（仅在奖励模式显示）
-	var skip_btn := _make_event_button("跳过奖励", Color(0.5, 0.5, 0.6), Color(0.3, 0.3, 0.4, 0.4))
+	var skip_btn: Button = UIFactory.make_cyan_button("跳过奖励", 200, 50)
 	skip_btn.name = "SkipRewardBtn"
 	skip_btn.position = Vector2(80, 656)
-	skip_btn.size = Vector2(200, 50)
-	skip_btn.add_theme_font_size_override("font_size", 16)
 	skip_btn.visible = false
 	skip_btn.pressed.connect(_on_skip_reward)
 	add_child(skip_btn)
@@ -698,10 +693,21 @@ func _on_remove_card() -> void:
 func _on_continue() -> void:
 	GameState.save_game()
 	var node_data: Dictionary = GameState.get_current_node()
-	if node_data.get("type", "") == "event_then_battle":
-		Global.change_scene(Global.SCENE_BATTLE)
+	var ntype: String = node_data.get("type", "")
+	if ntype == "event_then_battle" or ntype == "event":
+		# 事件节点: 事件对话/商店后进入战斗（如果是event_then_battle）
+		# 对于纯event类型，直接回地图
+		if ntype == "event_then_battle":
+			Global.change_scene(Global.SCENE_BATTLE)
+		else:
+			GameState.advance_node()
+			Global.change_scene(Global.SCENE_MAP)
+	elif ntype == "shop":
+		# 商店节点完成，回地图
+		GameState.advance_node()
+		Global.change_scene(Global.SCENE_MAP)
 	elif node_data.get("_reward_mode", false):
-		# 从Victory奖励模式进入，不再推进节点（Boss已在BattleManager中advance过）
+		# 从Victory奖励模式进入，不再推进节点
 		Global.change_scene(Global.SCENE_MAP)
 	else:
 		GameState.advance_node()

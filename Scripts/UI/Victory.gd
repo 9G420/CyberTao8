@@ -319,15 +319,15 @@ func _show_buttons() -> void:
 	add_child(btn_container)
 
 	# 战斗奖励按钮（3选1选卡）
-	var reward_btn := _make_victory_button("选择奖励卡牌", Color(0.3, 1, 0.5))
+	var reward_btn: Button = UIFactory.make_gold_button("选择奖励卡牌", 280, 50)
 	reward_btn.pressed.connect(_on_claim_reward)
 	btn_container.add_child(reward_btn)
 
-	var next_btn := _make_victory_button("继续下一轮（传承）", Color(1, 0.85, 0.3))
+	var next_btn: Button = UIFactory.make_ribbon_button("继续下一轮（传承）", 280, 50)
 	next_btn.pressed.connect(_on_next_run)
 	btn_container.add_child(next_btn)
 
-	var title_btn := _make_victory_button("返回标题", Color(0.6, 0.6, 0.7))
+	var title_btn: Button = UIFactory.make_dim_button("返回标题", 200, 50)
 	title_btn.pressed.connect(_on_title)
 	btn_container.add_child(title_btn)
 

@@ -13,6 +13,7 @@ const SCENE_DECK_BUILDER := "res://Scenes/DeckBuilder.tscn"
 const SCENE_EVENT := "res://Scenes/Event.tscn"
 const SCENE_VICTORY := "res://Scenes/Victory.tscn"
 const SCENE_DEFEAT := "res://Scenes/Defeat.tscn"
+const SCENE_CARD_REWARD := "res://Scenes/CardReward.tscn"
 
 ## 过渡效果信号
 signal scene_transition_started
