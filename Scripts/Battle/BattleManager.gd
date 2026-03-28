@@ -12,7 +12,8 @@ static func _ai_sprite(char_type: String, frame: int = 0) -> ImageTexture:
 	var ai_tex := AssetLoader.get_character_sprite(char_type, frame)
 	if ai_tex:
 		return ai_tex
-	return null
+	# Fallback to programmatic pixel art
+	return PixelArtGenerator.generate_character_sprite(char_type, frame)
 
 # --- 战斗状态枚举 ---
 enum BattleState {

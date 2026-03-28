@@ -93,9 +93,36 @@ static func generate_square_wave(frequency: float, duration: float, volume: floa
 	return stream
 
 # ============================================================
-# 1. ATTACK SFX - Impactful: freq sweep + distortion + punch
+# 1. ATTACK SFX - Clean hit: quick pitch drop + soft punch
 # ============================================================
 static func generate_attack_sfx() -> AudioStreamWAV:
+	var duration: float = 0.25
+	var num_samples: int = int(duration * SR)
+	var data := PackedByteArray()
+	data.resize(num_samples)
+	var phase1: float = 0.0
+	var phase2: float = 0.0
+	for i in num_samples:
+		var t: float = float(i) / float(SR)
+		var p: float = float(i) / float(num_samples)
+		# Quick pitch-drop tone (triangle, warm)
+		var freq: float = lerpf(600.0, 150.0, p * p)
+		phase1 += freq / float(SR)
+		var tone_env: float = exp(-p * 12.0)
+		var tone: float = _tri(phase1) * tone_env * 0.35
+		# Soft click transient (very short noise)
+		var click: float = _noise_from_index(i) * exp(-p * 40.0) * 0.15
+		# Sub punch (sine, low)
+		phase2 += lerpf(120.0, 60.0, p) / float(SR)
+		var punch: float = _sine(phase2) * exp(-p * 15.0) * 0.2
+		var mix: float = tone + click + punch
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.6)
+	return _make_stream(data)
+
+# ============================================================
+# 2. DEFENSE SFX - Clean shield: gentle rising chime
+# ============================================================
+static func generate_defense_sfx() -> AudioStreamWAV:
 	var duration: float = 0.3
 	var num_samples: int = int(duration * SR)
 	var data := PackedByteArray()
@@ -105,55 +132,16 @@ static func generate_attack_sfx() -> AudioStreamWAV:
 	for i in num_samples:
 		var t: float = float(i) / float(SR)
 		var p: float = float(i) / float(num_samples)
-		# Punch: fast exponential decay on low freq
-		var punch_env: float = exp(-p * 20.0)
-		var punch_freq: float = lerpf(180.0, 50.0, minf(p * 3.0, 1.0))
-		phase1 += punch_freq / float(SR)
-		var punch: float = _sine(phase1) * punch_env * 0.5
-		# Main sweep: 900Hz -> 120Hz square with PWM
-		var sweep_freq: float = lerpf(900.0, 120.0, p * p)
-		phase2 += sweep_freq / float(SR)
-		var duty: float = lerpf(0.5, 0.2, p)
-		var sweep_env: float = _adsr(t, duration, 0.005, 0.05, 0.6, 0.1)
-		var sweep: float = _pulse(phase2, duty) * sweep_env * 0.35
-		# Noise burst at start
-		var noise_env: float = exp(-p * 15.0)
-		var noise: float = _noise_from_index(i) * noise_env * 0.25
-		# Distorted mix
-		var mix: float = _saturate(punch + sweep + noise, 2.0)
-		data[i] = _to_byte(mix * 0.7)
-	return _make_stream(data)
-
-# ============================================================
-# 2. DEFENSE SFX - Resonant shield: rising harmonics + metallic ring
-# ============================================================
-static func generate_defense_sfx() -> AudioStreamWAV:
-	var duration: float = 0.35
-	var num_samples: int = int(duration * SR)
-	var data := PackedByteArray()
-	data.resize(num_samples)
-	var phase1: float = 0.0
-	var phase2: float = 0.0
-	var phase3: float = 0.0
-	for i in num_samples:
-		var t: float = float(i) / float(SR)
-		var p: float = float(i) / float(num_samples)
-		var env: float = _adsr(t, duration, 0.01, 0.08, 0.5, 0.15)
-		# Rising fundamental
-		var freq1: float = lerpf(300.0, 800.0, p * p)
+		var env: float = _adsr(t, duration, 0.008, 0.06, 0.4, 0.12)
+		# Gentle rising tone (triangle)
+		var freq1: float = lerpf(400.0, 700.0, p)
 		phase1 += freq1 / float(SR)
 		var osc1: float = _tri(phase1) * 0.3
-		# Metallic harmonic (inharmonic ratio ~2.76)
-		var freq2: float = freq1 * 2.76
-		phase2 += freq2 / float(SR)
-		var osc2: float = _sine(phase2) * 0.15 * exp(-p * 5.0)
-		# High shimmer
-		var freq3: float = freq1 * 5.04
-		phase3 += freq3 / float(SR)
-		var osc3: float = _sine(phase3) * 0.08 * exp(-p * 8.0)
-		# Resonant filter simulation via feedback
-		var mix: float = (osc1 + osc2 + osc3) * env
-		data[i] = _to_byte(mix * 0.8)
+		# Octave harmonic (sine, soft)
+		phase2 += (freq1 * 2.0) / float(SR)
+		var osc2: float = _sine(phase2) * 0.1 * exp(-p * 4.0)
+		var mix: float = (osc1 + osc2) * env
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.55)
 	return _make_stream(data)
 
 # ============================================================
@@ -254,7 +242,7 @@ static func generate_backlash_sfx() -> AudioStreamWAV:
 		var gate: float = 1.0 if fmod(float(i), 800.0) < 500.0 else 0.2
 		var mix: float = (noise + dissonance + alarm) * env * gate
 		# Extra distortion
-		mix = _saturate(mix, 3.0)
+		mix = _saturate(mix, 1.5)
 		data[i] = _to_byte(mix * 0.7)
 	return _make_stream(data)
 
@@ -955,20 +943,20 @@ static func generate_boss_attack_sfx() -> AudioStreamWAV:
 		var _t: float = float(i) / float(SR)
 		var p: float = float(i) / float(num_samples)
 		var mix: float = 0.0
-		var boom_freq: float = lerpf(200.0, 35.0, minf(p * 2.0, 1.0))
+		# Deep boom (sine, pitch drop)
+		var boom_freq: float = lerpf(180.0, 40.0, minf(p * 2.0, 1.0))
 		phase_boom += boom_freq / float(SR)
-		var boom_env: float = exp(-p * 6.0) * 0.5
+		var boom_env: float = exp(-p * 5.0) * 0.4
 		mix += _sine(phase_boom) * boom_env
-		mix += _sine(phase_boom * 0.5) * boom_env * 0.4
-		var hit_freq: float = lerpf(600.0, 80.0, minf(p * 5.0, 1.0))
+		# Mid hit (triangle, softer than square)
+		var hit_freq: float = lerpf(500.0, 100.0, minf(p * 4.0, 1.0))
 		phase_hit += hit_freq / float(SR)
-		var hit_env: float = exp(-p * 15.0) * 0.4
-		mix += _square(phase_hit, 0.3) * hit_env
-		var crack_env: float = exp(-p * 25.0) * 0.35
+		var hit_env: float = exp(-p * 12.0) * 0.25
+		mix += _tri(phase_hit) * hit_env
+		# Short noise crack
+		var crack_env: float = exp(-p * 30.0) * 0.2
 		mix += _noise_from_index(i) * crack_env
-		mix = _saturate(mix, 2.5)
-		mix += _sine(float(i) * 30.0 / float(SR)) * exp(-p * 4.0) * 0.1
-		data[i] = _to_byte(clampf(mix, -1.0, 1.0) * 0.75)
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.6)
 	return _make_stream(data)
 
 # ============================================================
