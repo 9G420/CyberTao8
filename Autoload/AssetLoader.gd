@@ -69,7 +69,7 @@
 extends Node
 
 ## 是否启用自定义资产（false = 全部用程序化生成）
-var use_ai_assets := true
+var use_ai_assets := false
 
 ## 资产缓存（避免重复从磁盘加载）
 var _cache := {}
