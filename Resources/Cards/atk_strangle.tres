@@ -6,7 +6,7 @@
 script = ExtResource("1")
 card_id = "atk_strangle"
 card_name = "绞杀协议"
-description = "造成10伤害；本回合每打出1张牌敌人额外失去3HP"
+description = "造成10伤害；本回合每多出1牌敌额外-2HP"
 cost = 3
 card_type = 0
 yinyang = 0

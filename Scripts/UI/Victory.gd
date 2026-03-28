@@ -27,24 +27,31 @@ func _build_ui() -> void:
 	add_child(bg)
 
 	# Glitch shader overlay for crack effect (starts hidden)
+	# ★ 安全: 先设透明色再赋material，防止shader失败时白屏
 	glitch_overlay = ColorRect.new()
 	glitch_overlay.set_anchors_preset(PRESET_FULL_RECT)
+	glitch_overlay.color = Color(0, 0, 0, 0)
 	glitch_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	glitch_overlay.z_index = 85
-	var glitch_mat := ShaderMaterial.new()
-	glitch_mat.shader = load("res://Shaders/glitch.gdshader")
-	glitch_mat.set_shader_parameter("glitch_intensity", 0.0)
-	glitch_overlay.material = glitch_mat
+	glitch_overlay.z_index = 5
+	var glitch_shader = load("res://Shaders/glitch.gdshader")
+	if glitch_shader:
+		var glitch_mat := ShaderMaterial.new()
+		glitch_mat.shader = glitch_shader
+		glitch_mat.set_shader_parameter("glitch_intensity", 0.0)
+		glitch_overlay.material = glitch_mat
 	add_child(glitch_overlay)
 
-	# CRT overlay
+	# CRT overlay — 安全处理
 	crt_overlay = ColorRect.new()
 	crt_overlay.set_anchors_preset(PRESET_FULL_RECT)
-	crt_overlay.z_index = 90
+	crt_overlay.color = Color(0, 0, 0, 0)
+	crt_overlay.z_index = 6
 	crt_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var crt_mat := ShaderMaterial.new()
-	crt_mat.shader = load("res://Shaders/crt.gdshader")
-	crt_overlay.material = crt_mat
+	var crt_shader = load("res://Shaders/crt.gdshader")
+	if crt_shader:
+		var crt_mat := ShaderMaterial.new()
+		crt_mat.shader = crt_shader
+		crt_overlay.material = crt_mat
 	add_child(crt_overlay)
 
 func _start_sequence() -> void:

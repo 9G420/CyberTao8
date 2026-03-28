@@ -160,7 +160,7 @@ static func execute_card(card_data: CardData, _caster_hp: int = 0, _caster_shiel
 
 		"strangle_protocol":
 			result.damage_dealt = 10
-			result.special_text = "本回合每打出1张牌，敌人额外失去3HP（BattleManager处理）"
+			result.special_text = "本回合每打出1张牌，敌人额外失去2HP（BattleManager处理）"
 
 		"elegant_finish":
 			result.damage_dealt = 30
@@ -334,7 +334,8 @@ static func execute_card(card_data: CardData, _caster_hp: int = 0, _caster_shiel
 			result.special_text = "不可打出；弃牌时抽2张牌"
 
 		"terror_data":
-			result.apply_statuses_to_enemy.append({"type": "vulnerable", "value": 99, "turns": 99})
+			result.apply_statuses_to_enemy.append({"type": "vulnerable", "value": 3, "turns": 3})
+			result.exhaust = true
 
 		"crazy_compile":
 			result.random_zero_cost = 2

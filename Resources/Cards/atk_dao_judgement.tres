@@ -6,12 +6,12 @@
 script = ExtResource("1")
 card_id = "atk_dao_judgement"
 card_name = "道审"
-description = "造成5x5伤害"
+description = "造成4x5伤害"
 cost = 3
 card_type = 0
 yinyang = 1
 yinyang_value = 2
-attack_power = 5
+attack_power = 4
 effect_id = "dao_judgement_multi"
 rarity = 2
 shop_price = 35

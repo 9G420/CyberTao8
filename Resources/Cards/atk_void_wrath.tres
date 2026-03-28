@@ -6,12 +6,12 @@
 script = ExtResource("1")
 card_id = "atk_void_wrath"
 card_name = "虚空之怒"
-description = "造成40伤害。消耗"
+description = "造成35伤害。消耗"
 cost = 4
 card_type = 0
 yinyang = 0
 yinyang_value = -3
-attack_power = 40
+attack_power = 35
 effect_id = "void_wrath"
 rarity = 2
 shop_price = 40

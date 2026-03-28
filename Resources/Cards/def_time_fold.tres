@@ -6,12 +6,13 @@
 script = ExtResource("1")
 card_id = "def_time_fold"
 card_name = "时间折叠"
-description = "获得8护盾，获得额外回合"
-cost = 4
+description = "获得4护盾，获得额外回合。消耗"
+cost = 5
 card_type = 1
 yinyang = 2
-defense_power = 8
+defense_power = 4
 effect_id = "time_fold"
 rarity = 2
 shop_price = 40
 card_color = Color(0.3, 0.5, 0.9, 1)
+exhaust = true

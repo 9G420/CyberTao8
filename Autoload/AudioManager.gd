@@ -1,6 +1,6 @@
 # ============================================================
 # AudioManager.gd - 音频管理器（BGM + SFX）
-# 使用SFXGenerator程序化生成8bit音效，无需外部文件
+# ★ 双轨机制: AI生成MP3优先 → 程序化8bit回退
 # Autoload名称: AudioManager
 # ============================================================
 extends Node
@@ -16,8 +16,23 @@ var current_bgm_id: String = ""
 
 ## 预生成的音效缓存
 var _sfx_cache: Dictionary = {}
-## 预生成的BGM缓存
+## 预生成的BGM缓存（程序化）
 var _bgm_cache: Dictionary = {}
+## AI生成的BGM缓存（MP3）
+var _ai_bgm_cache: Dictionary = {}
+
+## 是否优先使用AI生成的音频（与AssetLoader.use_ai_assets联动）
+var use_ai_audio := true
+
+## AI BGM 文件路径映射
+const AI_BGM_PATHS := {
+	"battle": "res://Assets/Audio/battle_bgm.mp3",
+	"title": "res://Assets/Audio/title_bgm.mp3",
+	"map": "res://Assets/Audio/map_bgm.mp3",
+	"boss": "res://Assets/Audio/boss_bgm.mp3",
+	"opening": "res://Assets/Audio/opening_bgm.mp3",
+	"victory": "res://Assets/Audio/victory_bgm.mp3",
+}
 
 ## 用于crossfade的辅助BGM播放器
 var _bgm_fade_player: AudioStreamPlayer
@@ -41,10 +56,20 @@ func _ready() -> void:
 		p.volume_db = -3.0
 		add_child(p)
 		sfx_players.append(p)
-	# 预生成所有音效
+	# 预加载AI BGM + 程序化音效
+	_load_ai_bgm()
 	_generate_all_audio()
 
-## 预生成所有音效和BGM
+## 预加载AI生成的BGM（MP3文件）
+func _load_ai_bgm() -> void:
+	for bgm_id in AI_BGM_PATHS:
+		var path: String = AI_BGM_PATHS[bgm_id]
+		if ResourceLoader.exists(path):
+			var stream = load(path)
+			if stream is AudioStream:
+				_ai_bgm_cache[bgm_id] = stream
+
+## 预生成所有程序化音效和BGM（作为回退）
 func _generate_all_audio() -> void:
 	_sfx_cache["attack"] = SFXGenerator.generate_attack_sfx()
 	_sfx_cache["defense"] = SFXGenerator.generate_defense_sfx()
@@ -70,15 +95,27 @@ func _generate_all_audio() -> void:
 	_sfx_cache["boss_hurt"] = SFXGenerator.generate_boss_hurt_sfx()
 	_bgm_cache["opening"] = SFXGenerator.generate_opening_bgm_loop()
 
-## 播放预生成的BGM
+## 播放BGM — AI音频优先，程序化回退
 func play_bgm_generated(bgm_id: String, volume_db: float = -8.0) -> void:
 	if current_bgm_id == bgm_id and bgm_player.playing:
 		return
-	if bgm_id not in _bgm_cache:
+
+	var stream: AudioStream = null
+
+	# 优先使用AI生成的MP3
+	if use_ai_audio and bgm_id in _ai_bgm_cache:
+		stream = _ai_bgm_cache[bgm_id]
+
+	# 回退到程序化生成
+	if stream == null and bgm_id in _bgm_cache:
+		stream = _bgm_cache[bgm_id]
+
+	if stream == null:
 		push_warning("AudioManager: BGM ID不存在 - " + bgm_id)
 		return
+
 	current_bgm_id = bgm_id
-	bgm_player.stream = _bgm_cache[bgm_id]
+	bgm_player.stream = stream
 	bgm_player.volume_db = volume_db
 	bgm_player.play()
 
@@ -111,7 +148,12 @@ func stop_bgm(fade_time: float = 1.0) -> void:
 func crossfade_bgm(bgm_id: String, fade_time: float = 1.0) -> void:
 	if current_bgm_id == bgm_id and bgm_player.playing:
 		return
-	if bgm_id not in _bgm_cache:
+	var stream: AudioStream = null
+	if use_ai_audio and bgm_id in _ai_bgm_cache:
+		stream = _ai_bgm_cache[bgm_id]
+	if stream == null and bgm_id in _bgm_cache:
+		stream = _bgm_cache[bgm_id]
+	if stream == null:
 		push_warning("AudioManager: BGM ID不存在 - " + bgm_id)
 		return
 	# Swap players: move current into fade player, use main for new track
@@ -125,7 +167,7 @@ func crossfade_bgm(bgm_id: String, fade_time: float = 1.0) -> void:
 		bgm_player.stop()
 	# Start new BGM on main player at silent volume, then fade in
 	current_bgm_id = bgm_id
-	bgm_player.stream = _bgm_cache[bgm_id]
+	bgm_player.stream = stream
 	bgm_player.volume_db = -40.0
 	bgm_player.play()
 	# Create crossfade tween

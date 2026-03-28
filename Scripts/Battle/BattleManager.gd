@@ -1047,7 +1047,7 @@ func _on_card_played(card: Card) -> void:
 
 	# Strangle protocol: damage per card played (handled via cards_played_this_turn at end)
 	if data.effect_id == "strangle_protocol" and enemy and not enemy.is_dead():
-		var strangle_dmg: int = cards_played_this_turn * 3
+		var strangle_dmg: int = cards_played_this_turn * 2
 		if strangle_dmg > 0:
 			enemy.take_damage(strangle_dmg)
 			_add_log("[color=red]  绞杀协议：额外造成" + str(strangle_dmg) + "伤害[/color]")
