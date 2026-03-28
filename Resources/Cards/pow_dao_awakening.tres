@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "pow_dao_awakening"
+card_name = "道之觉醒"
+description = "永久：所有卡牌效果+30%。消耗"
+cost = 3
+card_type = 4
+yinyang = 2
+effect_id = "power_dao_awakening"
+rarity = 2
+shop_price = 40
+card_color = Color(1, 0.85, 0.3, 1)
+exhaust = true

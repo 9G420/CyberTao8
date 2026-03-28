@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "sum_cyber_fox"
+card_name = "赛博狐"
+description = "召唤赛博狐（攻3/血8）"
+cost = 2
+card_type = 2
+yinyang = 1
+yinyang_value = 1
+attack_power = 3
+summon_hp = 8
+effect_id = ""
+rarity = 0
+shop_price = 12
+card_color = Color(1, 0.6, 0.2, 1)

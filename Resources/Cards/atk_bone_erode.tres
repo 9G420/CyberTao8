@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_bone_erode"
+card_name = "蚀骨"
+description = "造成6伤害，额外施加等同敌方侵蚀层数的侵蚀"
+cost = 2
+card_type = 0
+yinyang = 0
+yinyang_value = -2
+attack_power = 6
+effect_id = "bone_erode"
+rarity = 1
+shop_price = 18
+card_color = Color(0.4, 0.6, 0.2, 1)

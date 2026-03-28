@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "pow_essential_tools"
+card_name = "百宝箱"
+description = "永久：每回合多抽1张，多弃1张"
+cost = 1
+card_type = 4
+yinyang = 2
+effect_id = "power_essential_tools"
+rarity = 1
+shop_price = 20
+card_color = Color(0.6, 0.6, 0.4, 1)

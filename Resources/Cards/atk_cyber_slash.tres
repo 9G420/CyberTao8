@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_cyber_slash"
+card_name = "赛博斩"
+description = "斩出数据流，造成4伤害并施加2层侵蚀"
+cost = 1
+card_type = 0
+yinyang = 1
+yinyang_value = 1
+attack_power = 4
+effect_id = "cyber_slash_corrode"
+rarity = 0
+shop_price = 8
+card_color = Color(1, 0.3, 0.4, 1)

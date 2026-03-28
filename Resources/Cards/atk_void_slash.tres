@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_void_slash"
+card_name = "虚空斩"
+description = "造成10伤害；击杀时返还2算力"
+cost = 2
+card_type = 0
+yinyang = 0
+yinyang_value = -2
+attack_power = 10
+effect_id = "void_slash_kill_refund"
+rarity = 1
+shop_price = 20
+card_color = Color(0.3, 0.1, 0.5, 1)

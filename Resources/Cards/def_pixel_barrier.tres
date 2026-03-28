@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_pixel_barrier"
+card_name = "像素屏障"
+description = "获得8护盾，获得4反伤（1回合）"
+cost = 2
+card_type = 1
+yinyang = 2
+defense_power = 8
+effect_id = "pixel_barrier_reflect"
+rarity = 1
+shop_price = 18
+card_color = Color(0.4, 0.3, 1, 1)

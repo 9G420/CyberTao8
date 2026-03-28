@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_dao_heart_cycle"
+card_name = "道心循环"
+description = "不可打出；弃牌时获得1算力"
+cost = 0
+card_type = 3
+yinyang = 2
+effect_id = "dao_heart_cycle"
+rarity = 0
+shop_price = 8
+card_color = Color(0.6, 0.5, 0.8, 1)
+unplayable = true

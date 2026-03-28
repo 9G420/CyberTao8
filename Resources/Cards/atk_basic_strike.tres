@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_basic_strike"
+card_name = "基础打击"
+description = "造成6伤害"
+cost = 1
+card_type = 0
+yinyang = 2
+attack_power = 6
+effect_id = ""
+rarity = 0
+shop_price = 5
+card_color = Color(0.8, 0.3, 0.3, 1)

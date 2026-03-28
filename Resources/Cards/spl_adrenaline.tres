@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_adrenaline"
+card_name = "肾上腺素"
+description = "获得1算力，抽2张牌。消耗"
+cost = 0
+card_type = 3
+yinyang = 2
+effect_id = "adrenaline"
+rarity = 1
+shop_price = 18
+card_color = Color(1, 0.4, 0.2, 1)
+exhaust = true

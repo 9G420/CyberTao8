@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_deflect"
+card_name = "偏转"
+description = "获得3护盾"
+cost = 0
+card_type = 1
+yinyang = 2
+defense_power = 3
+effect_id = "deflect_free"
+rarity = 0
+shop_price = 6
+card_color = Color(0.6, 0.6, 0.8, 1)

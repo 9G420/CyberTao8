@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_system_reboot"
+card_name = "系统重启"
+description = "将弃牌堆洗入牌库"
+cost = 1
+card_type = 3
+yinyang = 2
+effect_id = "system_reboot_shuffle"
+rarity = 1
+shop_price = 15
+card_color = Color(0.3, 0.5, 0.8, 1)

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_overclock"
+card_name = "超频"
+description = "获得2算力。消耗"
+cost = 0
+card_type = 3
+yinyang = 2
+effect_id = ""
+rarity = 1
+shop_price = 15
+card_color = Color(1, 0.6, 0.1, 1)
+exhaust = true

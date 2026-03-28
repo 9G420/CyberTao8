@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "pow_poison_protocol"
+card_name = "毒素协议"
+description = "永久：每次攻击附加1层侵蚀"
+cost = 1
+card_type = 4
+yinyang = 0
+yinyang_value = -1
+effect_id = "power_poison_protocol"
+rarity = 1
+shop_price = 20
+card_color = Color(0.3, 0.7, 0.2, 1)

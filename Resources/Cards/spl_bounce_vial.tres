@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_bounce_vial"
+card_name = "弹射毒瓶"
+description = "随机对敌方施加3次侵蚀（每次3层）"
+cost = 2
+card_type = 3
+yinyang = 0
+yinyang_value = -1
+effect_id = "bounce_vial"
+rarity = 1
+shop_price = 18
+card_color = Color(0.3, 0.6, 0.3, 1)

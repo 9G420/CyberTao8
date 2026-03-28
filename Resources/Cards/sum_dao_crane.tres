@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "sum_dao_crane"
+card_name = "道鹤"
+description = "召唤道鹤（攻2/血6），每回合治疗玩家1HP"
+cost = 2
+card_type = 2
+yinyang = 1
+yinyang_value = 1
+attack_power = 2
+summon_hp = 6
+effect_id = ""
+rarity = 0
+shop_price = 12
+card_color = Color(0.8, 0.8, 0.4, 1)
+summon_passive = "heal_1_per_turn"

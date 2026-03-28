@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "pow_infinite_blade"
+card_name = "无尽之刃"
+description = "永久：每回合开始获得1张数据碎片"
+cost = 1
+card_type = 4
+yinyang = 2
+effect_id = "power_infinite_blade"
+rarity = 1
+shop_price = 20
+card_color = Color(0.7, 0.7, 0.7, 1)

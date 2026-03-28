@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_corpse_explode"
+card_name = "尸爆"
+description = "对敌方施加6层侵蚀；敌方死亡时侵蚀伤害扩散"
+cost = 2
+card_type = 3
+yinyang = 0
+yinyang_value = -2
+effect_id = "corpse_explode_spell"
+rarity = 2
+shop_price = 30
+card_color = Color(0.5, 0.3, 0.1, 1)

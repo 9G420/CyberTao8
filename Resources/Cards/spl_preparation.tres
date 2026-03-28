@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_preparation"
+card_name = "备战"
+description = "抽1张牌，弃1张牌"
+cost = 0
+card_type = 3
+yinyang = 2
+effect_id = "preparation"
+rarity = 0
+shop_price = 6
+card_color = Color(0.5, 0.5, 0.5, 1)

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_spirit_scatter"
+card_name = "灵散"
+description = "获得5护盾，弃1张牌"
+cost = 1
+card_type = 1
+yinyang = 0
+yinyang_value = -1
+defense_power = 5
+effect_id = "spirit_scatter_discard"
+rarity = 0
+shop_price = 8
+card_color = Color(0.5, 0.4, 0.6, 1)

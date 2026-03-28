@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "sum_neon_golem"
+card_name = "霓虹魔像"
+description = "召唤霓虹魔像（攻4/血10）"
+cost = 2
+card_type = 2
+yinyang = 2
+attack_power = 4
+summon_hp = 10
+effect_id = ""
+rarity = 1
+shop_price = 20
+card_color = Color(0.3, 1, 0.8, 1)

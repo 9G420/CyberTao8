@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_apocalypse"
+card_name = "末日审判"
+description = "对所有敌人造成20伤害。消耗"
+cost = 4
+card_type = 0
+yinyang = 2
+attack_power = 20
+effect_id = "apocalypse_aoe"
+rarity = 2
+shop_price = 40
+card_color = Color(0.8, 0.1, 0.1, 1)
+exhaust = true

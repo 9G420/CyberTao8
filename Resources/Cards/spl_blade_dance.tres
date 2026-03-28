@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_blade_dance"
+card_name = "刃之舞"
+description = "生成3张数据碎片到手牌"
+cost = 1
+card_type = 3
+yinyang = 2
+effect_id = "blade_dance"
+rarity = 1
+shop_price = 15
+card_color = Color(0.7, 0.7, 0.7, 1)

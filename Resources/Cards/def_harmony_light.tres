@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_harmony_light"
+card_name = "调和之光"
+description = "获得7护盾，阴阳差值-2"
+cost = 1
+card_type = 1
+yinyang = 2
+defense_power = 7
+effect_id = "harmony_light"
+rarity = 1
+shop_price = 15
+card_color = Color(0.8, 0.8, 0.4, 1)

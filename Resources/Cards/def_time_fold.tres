@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_time_fold"
+card_name = "时间折叠"
+description = "获得8护盾，获得额外回合"
+cost = 4
+card_type = 1
+yinyang = 2
+defense_power = 8
+effect_id = "time_fold"
+rarity = 2
+shop_price = 40
+card_color = Color(0.3, 0.5, 0.9, 1)

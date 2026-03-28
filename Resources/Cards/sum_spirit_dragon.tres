@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "sum_spirit_dragon"
+card_name = "灵龙"
+description = "召唤灵龙（攻5/血12）"
+cost = 3
+card_type = 2
+yinyang = 1
+yinyang_value = 2
+attack_power = 5
+summon_hp = 12
+effect_id = ""
+rarity = 1
+shop_price = 25
+card_color = Color(0.3, 0.5, 1, 1)

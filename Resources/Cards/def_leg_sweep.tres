@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_leg_sweep"
+card_name = "横扫"
+description = "获得12护盾，敌人虚弱2层（2回合）"
+cost = 2
+card_type = 1
+yinyang = 1
+yinyang_value = 1
+defense_power = 12
+effect_id = "leg_sweep"
+rarity = 1
+shop_price = 20
+card_color = Color(0.8, 0.6, 0.2, 1)

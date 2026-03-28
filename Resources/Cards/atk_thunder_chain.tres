@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_thunder_chain"
+card_name = "雷锁链"
+description = "造成4x3伤害"
+cost = 2
+card_type = 0
+yinyang = 1
+yinyang_value = 1
+attack_power = 4
+effect_id = "thunder_chain_multi"
+rarity = 1
+shop_price = 18
+card_color = Color(1, 0.9, 0.2, 1)
+multi_hit = 3

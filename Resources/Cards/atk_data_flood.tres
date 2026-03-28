@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_data_flood"
+card_name = "数据洪流"
+description = "X费：消耗所有算力，造成8*X伤害"
+cost = -1
+card_type = 0
+yinyang = 2
+effect_id = "data_flood_x"
+rarity = 2
+shop_price = 30
+card_color = Color(0.2, 0.4, 1, 1)

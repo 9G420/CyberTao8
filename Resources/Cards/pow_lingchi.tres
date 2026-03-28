@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "pow_lingchi"
+card_name = "凌迟"
+description = "永久：每打出1张牌对随机敌人造成2伤害"
+cost = 2
+card_type = 4
+yinyang = 0
+yinyang_value = -1
+effect_id = "power_lingchi"
+rarity = 2
+shop_price = 30
+card_color = Color(0.7, 0.2, 0.2, 1)

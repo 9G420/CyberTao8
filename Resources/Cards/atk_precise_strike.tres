@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_precise_strike"
+card_name = "精确打击"
+description = "造成8伤害；本回合未受伤则伤害翻倍"
+cost = 2
+card_type = 0
+yinyang = 2
+attack_power = 8
+effect_id = "precise_strike_conditional"
+rarity = 1
+shop_price = 18
+card_color = Color(0.9, 0.9, 0.9, 1)

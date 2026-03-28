@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_delayed"
+card_name = "延迟防御"
+description = "获得4护盾，下回合开始额外获得4护盾"
+cost = 1
+card_type = 1
+yinyang = 2
+defense_power = 4
+effect_id = "delayed_defense"
+rarity = 0
+shop_price = 10
+card_color = Color(0.4, 0.4, 0.7, 1)

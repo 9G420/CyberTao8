@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "tok_data_shard"
+card_name = "数据碎片"
+description = "造成4伤害。消耗"
+cost = 0
+card_type = 0
+yinyang = 2
+attack_power = 4
+effect_id = ""
+rarity = 0
+shop_price = 0
+card_color = Color(0.5, 0.5, 0.5, 1)
+exhaust = true

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_universal_balance"
+card_name = "万物调和"
+description = "阴阳重置，治疗5HP，召唤物治疗3HP"
+cost = 2
+card_type = 3
+yinyang = 2
+effect_id = "universal_balance"
+rarity = 1
+shop_price = 20
+card_color = Color(0.7, 0.9, 0.6, 1)

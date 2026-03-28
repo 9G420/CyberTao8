@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_dark_pulse"
+card_name = "暗脉冲"
+description = "不可打出；弃牌时对随机敌人造成7伤害"
+cost = 0
+card_type = 0
+yinyang = 0
+yinyang_value = -1
+effect_id = "dark_pulse_discard_trigger"
+rarity = 1
+shop_price = 12
+card_color = Color(0.4, 0.1, 0.5, 1)
+unplayable = true

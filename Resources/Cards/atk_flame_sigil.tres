@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_flame_sigil"
+card_name = "火印"
+description = "造成5伤害，施加1层灼烧（2回合）"
+cost = 1
+card_type = 0
+yinyang = 1
+yinyang_value = 1
+attack_power = 5
+effect_id = "flame_sigil_burn"
+rarity = 0
+shop_price = 10
+card_color = Color(1, 0.5, 0.1, 1)

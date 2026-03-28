@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_thorn_armor"
+card_name = "荆棘甲"
+description = "获得4护盾，获得3反伤（1回合）"
+cost = 1
+card_type = 1
+yinyang = 0
+yinyang_value = -1
+defense_power = 4
+effect_id = "thorn_armor"
+rarity = 1
+shop_price = 15
+card_color = Color(0.5, 0.8, 0.3, 1)

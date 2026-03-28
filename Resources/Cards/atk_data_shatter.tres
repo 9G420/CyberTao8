@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_data_shatter"
+card_name = "数据破碎"
+description = "造成8伤害，下回合获得1额外算力"
+cost = 2
+card_type = 0
+yinyang = 1
+yinyang_value = 1
+attack_power = 8
+effect_id = "data_shatter_refund"
+rarity = 1
+shop_price = 15
+card_color = Color(0.2, 0.5, 1, 1)

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_settle_accounts"
+card_name = "清算"
+description = "将当前护盾转化为对所有敌人的伤害。消耗"
+cost = 2
+card_type = 1
+yinyang = 2
+effect_id = "settle_accounts"
+rarity = 2
+shop_price = 30
+card_color = Color(0.9, 0.7, 0.2, 1)
+exhaust = true

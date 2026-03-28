@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "spl_yinyang_reverse"
+card_name = "阴阳逆转"
+description = "阴阳值互换，抽1张牌"
+cost = 1
+card_type = 3
+yinyang = 2
+effect_id = "yinyang_reverse"
+rarity = 1
+shop_price = 15
+card_color = Color(0.6, 0.4, 0.9, 1)

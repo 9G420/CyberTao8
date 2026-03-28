@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "sum_pixel_sprite"
+card_name = "像素精灵"
+description = "召唤像素精灵（攻2/血4）"
+cost = 1
+card_type = 2
+yinyang = 2
+attack_power = 2
+summon_hp = 4
+effect_id = ""
+rarity = 0
+shop_price = 8
+card_color = Color(0.7, 0.5, 1, 1)

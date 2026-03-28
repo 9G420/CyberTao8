@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_disaster_algo"
+card_name = "灾厄算法"
+description = "造成7伤害；若敌方有侵蚀，额外+7伤害"
+cost = 2
+card_type = 0
+yinyang = 0
+yinyang_value = -1
+attack_power = 7
+effect_id = "disaster_algorithm"
+rarity = 1
+shop_price = 18
+card_color = Color(0.5, 0.1, 0.3, 1)

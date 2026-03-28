@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "def_afterimage"
+card_name = "残影"
+description = "获得6护盾（不衰减）。保留"
+cost = 1
+card_type = 1
+yinyang = 2
+defense_power = 6
+effect_id = "afterimage_retain_shield"
+rarity = 1
+shop_price = 18
+card_color = Color(0.6, 0.6, 0.9, 1)
+retain = true

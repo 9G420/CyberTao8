@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "sum_swarm"
+card_name = "蜂群"
+description = "召唤蜂群（攻1x3/血3），攻击时施加1层侵蚀"
+cost = 2
+card_type = 2
+yinyang = 0
+yinyang_value = -1
+attack_power = 1
+summon_hp = 3
+effect_id = ""
+rarity = 1
+shop_price = 18
+card_color = Color(0.6, 0.5, 0.1, 1)
+multi_hit = 3
+summon_passive = "poison_1_on_attack"

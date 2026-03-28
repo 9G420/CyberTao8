@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_finisher"
+card_name = "终结协议"
+description = "造成2伤害；本回合每打出1张攻击牌多击1次"
+cost = 1
+card_type = 0
+yinyang = 2
+attack_power = 2
+effect_id = "finisher_protocol"
+rarity = 1
+shop_price = 18
+card_color = Color(0.9, 0.3, 0.1, 1)

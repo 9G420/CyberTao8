@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Card/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "atk_neon_flash"
+card_name = "霓虹闪"
+description = "造成3x2伤害"
+cost = 1
+card_type = 0
+yinyang = 1
+yinyang_value = 1
+attack_power = 3
+effect_id = "neon_flash_multi"
+rarity = 0
+shop_price = 10
+card_color = Color(0.3, 1, 0.8, 1)
+multi_hit = 2
