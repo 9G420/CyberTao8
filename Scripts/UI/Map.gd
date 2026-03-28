@@ -47,6 +47,17 @@ const TYPE_NAMES: Dictionary = {
 	"boss": "Boss",
 }
 
+# ── 节点类型中文描述 (hover时显示) ──
+const TYPE_DESCRIPTIONS: Dictionary = {
+	"battle": "普通战斗",
+	"elite": "精英战斗",
+	"rest": "休息站",
+	"shop": "商店",
+	"event": "未知事件",
+	"treasure": "宝箱",
+	"boss": "Boss战",
+}
+
 # ── 内部状态 ──
 var scroll_offset: float = 0.0
 var target_scroll: float = 0.0
@@ -55,6 +66,7 @@ var node_buttons: Array = []  # [{btn, floor_idx, node_idx, pos}]
 var player_marker: TextureRect
 var info_label: Label
 var is_scrolling: bool = false
+var hover_tooltip: Panel = null  # hover tooltip panel
 
 func _ready() -> void:
 	_build_ui()
@@ -89,6 +101,7 @@ func _build_ui() -> void:
 	_draw_connections()
 	_draw_nodes()
 	_draw_player_marker()
+	_draw_current_node_ring()
 
 	# ── 右侧图例面板 ──
 	_build_legend_panel()
@@ -118,6 +131,30 @@ func _build_ui() -> void:
 	info_label.add_theme_font_size_override("font_size", 14)
 	info_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6))
 	add_child(info_label)
+
+	# ── Hover tooltip (initially hidden) ──
+	hover_tooltip = Panel.new()
+	hover_tooltip.size = Vector2(160, 36)
+	hover_tooltip.visible = false
+	hover_tooltip.z_index = 100
+	hover_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tt_sb := StyleBoxFlat.new()
+	tt_sb.bg_color = Color(0.05, 0.03, 0.12, 0.92)
+	tt_sb.border_color = Color(0, 0.8, 1, 0.7)
+	tt_sb.set_border_width_all(1)
+	tt_sb.set_corner_radius_all(6)
+	hover_tooltip.add_theme_stylebox_override("panel", tt_sb)
+	var tt_lbl := Label.new()
+	tt_lbl.name = "TTLabel"
+	tt_lbl.position = Vector2(4, 2)
+	tt_lbl.size = Vector2(152, 32)
+	tt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tt_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tt_lbl.add_theme_font_size_override("font_size", 14)
+	tt_lbl.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	tt_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hover_tooltip.add_child(tt_lbl)
+	add_child(hover_tooltip)
 
 	# ── CRT overlay ──
 	var crt_overlay := ColorRect.new()
@@ -151,10 +188,23 @@ func _get_node_pos(floor_idx: int, col: int) -> Vector2:
 	return Vector2(x, y)
 
 # ============================================================
-# 绘制连接线 (虚线)
+# 绘制连接线 (虚线) - 高亮可达路径
 # ============================================================
 
 func _draw_connections() -> void:
+	# Pre-compute reachable connection set for bright highlighting
+	var reachable_set: Dictionary = {}
+	if GameState.map_current_floor >= 0:
+		var reachable_nodes: Array[int] = GameState.get_reachable_next_nodes()
+		var next_fl: int = GameState.map_current_floor + 1
+		for rn in reachable_nodes:
+			var key: String = str(GameState.map_current_floor) + "," + str(GameState.map_current_node) + ">" + str(next_fl) + "," + str(rn)
+			reachable_set[key] = true
+	elif GameState.map_current_floor < 0:
+		# Initial state: highlight connections from floor 0 nodes (all reachable)
+		# No specific "reachable" connections to highlight from a virtual start
+		pass
+
 	for floor_idx in range(GameState.MAP_FLOORS - 1):
 		var cur_floor: Array = GameState.map_graph[floor_idx]
 		var next_floor: Array = GameState.map_graph[floor_idx + 1]
@@ -171,13 +221,14 @@ func _draw_connections() -> void:
 
 				# 判断是否是玩家已走过的路径
 				var is_walked := _is_path_walked(floor_idx, ni, floor_idx + 1, conn_idx)
-				# 判断是否是当前可选的路径
-				var is_available := _is_path_available(floor_idx, ni, floor_idx + 1, conn_idx)
+				# 判断是否是当前可选的路径 (bright glow)
+				var conn_key: String = str(floor_idx) + "," + str(ni) + ">" + str(floor_idx + 1) + "," + str(conn_idx)
+				var is_reachable_path: bool = reachable_set.has(conn_key)
 
-				_draw_dashed_line(from_pos, to_pos, is_walked, is_available)
+				_draw_dashed_line(from_pos, to_pos, is_walked, is_reachable_path)
 
-## 绘制虚线
-func _draw_dashed_line(from: Vector2, to: Vector2, is_walked: bool, is_available: bool) -> void:
+## 绘制虚线 - 可达路径明亮发光，其他暗淡
+func _draw_dashed_line(from: Vector2, to: Vector2, is_walked: bool, is_reachable_path: bool) -> void:
 	var direction: Vector2 = (to - from)
 	var length: float = direction.length()
 	if length < 1.0:
@@ -192,12 +243,14 @@ func _draw_dashed_line(from: Vector2, to: Vector2, is_walked: bool, is_available
 	if is_walked:
 		color = Color(0.8, 0.7, 0.3, 0.7)
 		width = 4.0
-	elif is_available:
-		color = Color(0, 0.7, 0.9, 0.6)
-		width = 3.0
+	elif is_reachable_path:
+		# Bright glowing cyan for reachable paths
+		color = Color(0.3, 0.95, 1.0, 0.9)
+		width = 3.5
 	else:
-		color = Color(0.3, 0.2, 0.4, 0.3)
-		width = 2.0
+		# Dim unreachable paths
+		color = Color(0.2, 0.15, 0.3, 0.18)
+		width = 1.5
 
 	while traveled < length:
 		var seg_start: Vector2 = from + direction * traveled
@@ -247,7 +300,7 @@ func _is_path_available(from_floor: int, from_node: int, _to_floor: int, _to_nod
 	return from_floor == GameState.map_current_floor and from_node == GameState.map_current_node
 
 # ============================================================
-# 绘制节点
+# 绘制节点 - 可达节点明亮+脉冲, 不可达暗淡, 已访问略暗
 # ============================================================
 
 func _draw_nodes() -> void:
@@ -274,11 +327,18 @@ func _draw_nodes() -> void:
 			elif floor_idx == next_floor and ni in reachable:
 				is_reachable = true
 
+			# 判断是否曾经访问过 (在visited_path中)
+			var is_visited := false
+			for vp in GameState.map_visited_path:
+				if vp.get("floor", -1) == floor_idx and vp.get("node", -1) == ni:
+					is_visited = true
+					break
+
 			# 节点视觉
-			_create_node_visual(pos, node, floor_idx, ni, is_completed, is_current, is_reachable)
+			_create_node_visual(pos, node, floor_idx, ni, is_completed, is_current, is_reachable, is_visited)
 
 func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_idx: int,
-		is_completed: bool, is_current: bool, is_reachable: bool) -> void:
+		is_completed: bool, is_current: bool, is_reachable: bool, is_visited: bool) -> void:
 	var ntype: String = node.get("type", "battle")
 	var base_color: Color = TYPE_COLORS.get(ntype, Color(0.5, 0.5, 0.5))
 	var icon_text: String = TYPE_ICONS.get(ntype, "?")
@@ -373,6 +433,13 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	btn.pressed.connect(_on_map_node_pressed.bind(f_idx, n_idx))
 	map_canvas.add_child(btn)
 
+	# ── Dimming: unreachable nodes get low alpha, visited slightly dimmed ──
+	if not is_reachable and not is_current:
+		if is_visited or is_completed:
+			btn.modulate.a = 0.55
+		else:
+			btn.modulate.a = 0.35
+
 	# ── 图标文字 (在按钮上方叠加) ──
 	var icon_lbl := Label.new()
 	icon_lbl.text = icon_text
@@ -381,9 +448,12 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	icon_lbl.add_theme_font_size_override("font_size", 24)
-	var icon_alpha: float = 0.3 if (not is_reachable and not is_current and not is_completed) else 1.0
-	if is_completed:
-		icon_alpha = 0.45
+	var icon_alpha: float = 1.0
+	if not is_reachable and not is_current:
+		if is_visited or is_completed:
+			icon_alpha = 0.55
+		else:
+			icon_alpha = 0.35
 	icon_lbl.add_theme_color_override("font_color", Color(1, 1, 1, icon_alpha))
 	icon_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_canvas.add_child(icon_lbl)
@@ -398,17 +468,20 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 	type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if is_reachable or is_current:
 		type_lbl.add_theme_color_override("font_color", Color(base_color.r, base_color.g, base_color.b, 0.9))
+	elif is_visited or is_completed:
+		type_lbl.add_theme_color_override("font_color", Color(base_color.r * 0.5, base_color.g * 0.5, base_color.b * 0.5, 0.5))
 	else:
-		type_lbl.add_theme_color_override("font_color", Color(base_color.r * 0.5, base_color.g * 0.5, base_color.b * 0.5, 0.4))
+		type_lbl.add_theme_color_override("font_color", Color(base_color.r * 0.4, base_color.g * 0.4, base_color.b * 0.4, 0.3))
 	map_canvas.add_child(type_lbl)
 
-	# ── Hover 交互反馈: 放大 + 图标亮度 + 外圈光晕增强 + 信息提示 ──
+	# ── Hover 交互反馈: 放大 + 图标亮度 + 外圈光晕增强 + 信息提示 + tooltip ──
 	if is_reachable:
 		var orig_btn_pos := btn.position
 		var orig_btn_size := btn.size
 		var orig_icon_pos := icon_lbl.position
 		var orig_icon_size := icon_lbl.size
 		var orig_type_color := Color(base_color.r, base_color.g, base_color.b, 0.9)
+		var desc_text: String = TYPE_DESCRIPTIONS.get(ntype, "")
 		btn.mouse_entered.connect(func():
 			if not is_instance_valid(btn):
 				return
@@ -427,9 +500,22 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 				var g_sb: StyleBoxFlat = outer_glow.get_theme_stylebox("panel") as StyleBoxFlat
 				if g_sb:
 					g_sb.bg_color.a = 0.3
+			# Extra modulate brightness on hover
+			btn.modulate = Color(1.3, 1.3, 1.3, 1.0)
 			# 更新信息文字
 			if info_label and is_instance_valid(info_label):
-				info_label.text = TYPE_NAMES.get(ntype, "") + " — 点击进入"
+				info_label.text = desc_text + " — 点击进入"
+			# Show tooltip near the node
+			if hover_tooltip and is_instance_valid(hover_tooltip):
+				var tt_label: Label = hover_tooltip.get_node("TTLabel") as Label
+				if tt_label:
+					tt_label.text = desc_text
+				# Position tooltip above the node in screen space
+				# The node pos is in map_canvas coordinates; convert through scroll
+				var screen_x: float = pos.x + 100.0 - 80.0  # clip offset + centering
+				var screen_y: float = pos.y + 50.0 - scroll_offset - 48.0  # clip offset - scroll - above node
+				hover_tooltip.position = Vector2(screen_x, screen_y)
+				hover_tooltip.visible = true
 		)
 		btn.mouse_exited.connect(func():
 			if not is_instance_valid(btn):
@@ -448,26 +534,105 @@ func _create_node_visual(pos: Vector2, node: Dictionary, floor_idx: int, node_id
 				var g_sb: StyleBoxFlat = outer_glow.get_theme_stylebox("panel") as StyleBoxFlat
 				if g_sb:
 					g_sb.bg_color.a = 0.12
+			# Reset modulate
+			btn.modulate = Color(1, 1, 1, 1)
 			# 恢复信息文字
 			if info_label and is_instance_valid(info_label):
 				info_label.text = "选择下一个节点继续探索..."
+			# Hide tooltip
+			if hover_tooltip and is_instance_valid(hover_tooltip):
+				hover_tooltip.visible = false
 		)
 
-	# ── 呼吸动画 (可达节点) ──
+	# ── 呼吸动画 (可达节点 - pulsing bright) ──
 	if is_reachable:
 		var glow_tween: Tween = btn.create_tween().set_loops()
 		glow_tween.tween_method(func(v: float):
 			if is_instance_valid(btn):
-				sb.shadow_size = int(6 + v * 8)
-				sb.shadow_color.a = 0.4 + v * 0.4
+				sb.shadow_size = int(6 + v * 10)
+				sb.shadow_color.a = 0.4 + v * 0.5
+				sb.border_color.a = 0.7 + v * 0.3
 		, 0.0, 1.0, 0.8)
 		glow_tween.tween_method(func(v: float):
 			if is_instance_valid(btn):
-				sb.shadow_size = int(6 + v * 8)
-				sb.shadow_color.a = 0.4 + v * 0.4
+				sb.shadow_size = int(6 + v * 10)
+				sb.shadow_color.a = 0.4 + v * 0.5
+				sb.border_color.a = 0.7 + v * 0.3
 		, 1.0, 0.0, 0.8)
 
+	# ── Outer glow pulse for reachable nodes ──
+	if is_reachable and outer_glow:
+		var oglow_tween: Tween = outer_glow.create_tween().set_loops()
+		oglow_tween.tween_method(func(v: float):
+			if is_instance_valid(outer_glow):
+				var g_sb: StyleBoxFlat = outer_glow.get_theme_stylebox("panel") as StyleBoxFlat
+				if g_sb:
+					g_sb.bg_color.a = 0.08 + v * 0.14
+		, 0.0, 1.0, 1.0)
+		oglow_tween.tween_method(func(v: float):
+			if is_instance_valid(outer_glow):
+				var g_sb: StyleBoxFlat = outer_glow.get_theme_stylebox("panel") as StyleBoxFlat
+				if g_sb:
+					g_sb.bg_color.a = 0.08 + v * 0.14
+		, 1.0, 0.0, 1.0)
+
 	node_buttons.append({"btn": btn, "floor": floor_idx, "node": node_idx, "pos": pos})
+
+# ============================================================
+# "You are here" ring on the current node
+# ============================================================
+
+func _draw_current_node_ring() -> void:
+	if GameState.map_current_floor < 0:
+		return
+	var cur_floor: Array = GameState.map_graph[GameState.map_current_floor]
+	if GameState.map_current_node < 0 or GameState.map_current_node >= cur_floor.size():
+		return
+	var node: Dictionary = cur_floor[GameState.map_current_node]
+	var pos: Vector2 = _get_node_pos(GameState.map_current_floor, node["col"])
+
+	# Outer pulsing ring (larger than node)
+	var ring := Panel.new()
+	var ring_r: int = NODE_RADIUS + 14
+	ring.position = Vector2(pos.x - ring_r, pos.y - ring_r)
+	ring.size = Vector2(ring_r * 2, ring_r * 2)
+	var ring_sb := StyleBoxFlat.new()
+	ring_sb.bg_color = Color(0, 0, 0, 0)  # transparent center
+	ring_sb.set_corner_radius_all(ring_r)
+	ring_sb.border_color = Color(1, 0.85, 0.2, 0.8)
+	ring_sb.set_border_width_all(3)
+	ring.add_theme_stylebox_override("panel", ring_sb)
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_canvas.add_child(ring)
+
+	# "你在这里" label above the ring
+	var here_lbl := Label.new()
+	here_lbl.text = "▼ 你在这里"
+	here_lbl.position = Vector2(pos.x - 50, pos.y - NODE_RADIUS - 38)
+	here_lbl.size = Vector2(100, 22)
+	here_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	here_lbl.add_theme_font_size_override("font_size", 12)
+	here_lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.3, 0.9))
+	here_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_canvas.add_child(here_lbl)
+
+	# Pulsing animation for the ring
+	var ring_tween: Tween = ring.create_tween().set_loops()
+	ring_tween.tween_method(func(v: float):
+		if is_instance_valid(ring):
+			ring_sb.border_color.a = 0.4 + v * 0.6
+			ring_sb.set_border_width_all(int(2 + v * 2))
+	, 0.0, 1.0, 0.7)
+	ring_tween.tween_method(func(v: float):
+		if is_instance_valid(ring):
+			ring_sb.border_color.a = 0.4 + v * 0.6
+			ring_sb.set_border_width_all(int(2 + v * 2))
+	, 1.0, 0.0, 0.7)
+
+	# Pulse the "你在这里" label alpha too
+	var lbl_tween: Tween = here_lbl.create_tween().set_loops()
+	lbl_tween.tween_property(here_lbl, "modulate:a", 0.4, 0.7).set_trans(Tween.TRANS_SINE)
+	lbl_tween.tween_property(here_lbl, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
 
 # ============================================================
 # 层数标签 (左侧)

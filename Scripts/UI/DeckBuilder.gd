@@ -13,6 +13,17 @@ var back_btn: Button
 var summary_label: Label
 var card_panels: Array[PanelContainer] = []
 
+# 悬停预览面板
+var hover_preview: PanelContainer
+var _preview_art: TextureRect
+var _preview_name: Label
+var _preview_info: Label
+var _preview_desc: Label
+var _preview_stats: Label
+var _preview_keywords: Label
+var _preview_effect: Label
+var _preview_border_sb: StyleBoxFlat
+
 # 筛选/排序状态
 var current_filter: int = -1  # -1=全部, 0=ATTACK, 1=DEFENSE, 2=SUMMON, 3=SPELL, 4=POWER
 var current_sort: int = 0     # 0=费用升序, 1=稀有度降序, 2=类型分组
@@ -152,6 +163,9 @@ func _build_ui() -> void:
 	back_btn.position = Vector2(960, 620)
 	back_btn.pressed.connect(_on_back)
 	add_child(back_btn)
+
+	# 悬停预览面板 (Slay the Spire 风格大卡预览)
+	_create_hover_preview()
 
 	# CRT shader overlay — 必须先设透明color再赋material
 	var crt_overlay := ColorRect.new()
@@ -426,21 +440,27 @@ func _create_card_display(card_data: CardData, card_path: String) -> PanelContai
 
 	panel.add_theme_stylebox_override("panel", sb)
 
-	# ── Hover: 用该卡的独特色高亮 ──
+	# ── Hover: 用该卡的独特色高亮 + 预览面板 ──
 	var normal_border := sb.border_color
 	var hover_col := Color(
 		clampf(border_r + 0.3, 0.0, 1.0),
 		clampf(border_g + 0.3, 0.0, 1.0),
 		clampf(border_b + 0.3, 0.0, 1.0), 0.95)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var _cd_ref: CardData = card_data
+	var _path_ref: String = card_path
+	var _accent_ref: Color = accent
 	panel.mouse_entered.connect(func():
 		sb.border_color = hover_col
 		sb.shadow_size = shadow_sz + 5
 		sb.shadow_color = Color(hover_col.r, hover_col.g, hover_col.b, 0.35)
+		_show_hover_preview(_cd_ref, _path_ref, _accent_ref, panel)
 	)
 	panel.mouse_exited.connect(func():
 		sb.border_color = normal_border
 		sb.shadow_size = shadow_sz
 		sb.shadow_color = Color(border_r, border_g, border_b, 0.15 + float(card_data.rarity) * 0.1)
+		_hide_hover_preview()
 	)
 
 	# ── 点击查看详情 ──
@@ -881,6 +901,172 @@ func _make_deck_button(text: String, font_color: Color, border_color: Color) -> 
 	sb_h.shadow_size = 6
 	btn.add_theme_stylebox_override("hover", sb_h)
 	return btn
+
+func _create_hover_preview() -> void:
+	hover_preview = PanelContainer.new()
+	hover_preview.custom_minimum_size = Vector2(400, 520)
+	hover_preview.size = Vector2(400, 520)
+	hover_preview.z_index = 50
+	hover_preview.visible = false
+	hover_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	_preview_border_sb = StyleBoxFlat.new()
+	_preview_border_sb.bg_color = Color(0.04, 0.03, 0.09, 0.96)
+	_preview_border_sb.border_color = Color(0, 0.9, 1, 0.8)
+	_preview_border_sb.set_border_width_all(3)
+	_preview_border_sb.border_width_top = 4
+	_preview_border_sb.set_corner_radius_all(8)
+	_preview_border_sb.shadow_color = Color(0, 0.4, 0.6, 0.4)
+	_preview_border_sb.shadow_size = 10
+	_preview_border_sb.content_margin_left = 14
+	_preview_border_sb.content_margin_top = 12
+	_preview_border_sb.content_margin_right = 14
+	_preview_border_sb.content_margin_bottom = 12
+	hover_preview.add_theme_stylebox_override("panel", _preview_border_sb)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# 卡面图片
+	_preview_art = TextureRect.new()
+	_preview_art.custom_minimum_size = Vector2(280, 180)
+	_preview_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_preview_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_preview_art)
+
+	# 卡名
+	_preview_name = Label.new()
+	_preview_name.add_theme_font_size_override("font_size", 22)
+	_preview_name.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	_preview_name.add_theme_constant_override("shadow_offset_x", 1)
+	_preview_name.add_theme_constant_override("shadow_offset_y", 1)
+	_preview_name.clip_text = true
+	_preview_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_preview_name)
+
+	# 类型 | 阴阳 | 费用
+	_preview_info = Label.new()
+	_preview_info.add_theme_font_size_override("font_size", 14)
+	_preview_info.add_theme_color_override("font_color", Color(0.55, 0.55, 0.65))
+	_preview_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_preview_info)
+
+	# 描述
+	_preview_desc = Label.new()
+	_preview_desc.add_theme_font_size_override("font_size", 15)
+	_preview_desc.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	_preview_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_preview_desc.custom_minimum_size = Vector2(370, 0)
+	_preview_desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_preview_desc)
+
+	# 数值行
+	_preview_stats = Label.new()
+	_preview_stats.add_theme_font_size_override("font_size", 16)
+	_preview_stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_preview_stats)
+
+	# 关键词
+	_preview_keywords = Label.new()
+	_preview_keywords.add_theme_font_size_override("font_size", 13)
+	_preview_keywords.add_theme_color_override("font_color", Color(1, 0.85, 0.3, 0.9))
+	_preview_keywords.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_preview_keywords)
+
+	# 效果ID
+	_preview_effect = Label.new()
+	_preview_effect.add_theme_font_size_override("font_size", 12)
+	_preview_effect.add_theme_color_override("font_color", Color(0.4, 0.8, 0.5, 0.7))
+	_preview_effect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(_preview_effect)
+
+	hover_preview.add_child(vbox)
+	add_child(hover_preview)
+
+func _show_hover_preview(cd: CardData, card_path: String, accent: Color, panel: PanelContainer) -> void:
+	if cd == null:
+		return
+
+	# 更新边框色为卡牌主色
+	_preview_border_sb.border_color = Color(accent.r, accent.g, accent.b, 0.85)
+	_preview_border_sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.35)
+
+	# 卡面图片
+	var art_seed: int = cd.card_id.hash() if cd.card_id != "" else card_path.hash()
+	var ai_art = AssetLoader.get_card_art(cd.card_type, cd.yinyang, cd.rarity, art_seed, cd.card_id)
+	_preview_art.texture = ai_art if ai_art else PixelArtGenerator.generate_card_art(
+		cd.card_type, cd.yinyang, cd.rarity, art_seed
+	)
+
+	# 卡名 (稀有度颜色)
+	_preview_name.text = cd.card_name
+	_preview_name.add_theme_color_override("font_color", cd.get_rarity_color())
+
+	# 类型 | 阴阳 | 费用
+	var cost_text: String = "X(全算力)" if cd.cost == -1 else str(cd.cost) + "算力"
+	_preview_info.text = cd.get_type_text() + " | " + cd.get_yinyang_text() + " | " + cost_text
+
+	# 描述
+	_preview_desc.text = cd.description
+
+	# 数值
+	var stats_text: String = ""
+	match cd.card_type:
+		CardData.CardType.ATTACK:
+			if cd.multi_hit > 0:
+				stats_text = "伤害: " + str(cd.attack_power) + " x" + str(cd.multi_hit) + "段"
+			else:
+				stats_text = "伤害: " + str(cd.attack_power)
+		CardData.CardType.DEFENSE:
+			stats_text = "护盾: " + str(cd.defense_power)
+		CardData.CardType.SUMMON:
+			stats_text = "攻击: " + str(cd.attack_power) + "  生命: " + str(cd.summon_hp)
+			if cd.summon_passive != "":
+				stats_text = stats_text + "  被动: " + cd.summon_passive
+		CardData.CardType.SPELL:
+			stats_text = "术法效果"
+		CardData.CardType.POWER:
+			stats_text = "永久增益"
+	_preview_stats.text = stats_text
+	_preview_stats.add_theme_color_override("font_color", Color(
+		clampf(accent.r + 0.3, 0.5, 1.0),
+		clampf(accent.g + 0.25, 0.4, 1.0),
+		clampf(accent.b + 0.2, 0.35, 1.0)))
+
+	# 关键词
+	var kw: String = cd.get_keywords_text()
+	_preview_keywords.text = kw
+	_preview_keywords.visible = kw != ""
+
+	# 效果ID
+	if cd.effect_id != "":
+		_preview_effect.text = "效果: " + cd.effect_id
+		_preview_effect.visible = true
+	else:
+		_preview_effect.visible = false
+
+	# 定位: 在卡牌右侧, 如果太靠右则放左侧
+	var panel_rect: Rect2 = panel.get_global_rect()
+	var preview_x: float = panel_rect.position.x + panel_rect.size.x + 12
+	var preview_y: float = panel_rect.position.y
+
+	# 如果右侧放不下 (超出1280), 放左侧
+	if preview_x + 400 > 1280:
+		preview_x = panel_rect.position.x - 400 - 12
+
+	# 垂直方向限制在屏幕内
+	preview_y = clampf(preview_y, 4, 720 - 520 - 4)
+
+	# 转换为本控件的本地坐标
+	var local_pos: Vector2 = Vector2(preview_x, preview_y)
+	var parent_global: Vector2 = get_global_position()
+	hover_preview.position = local_pos - parent_global
+
+	hover_preview.visible = true
+
+func _hide_hover_preview() -> void:
+	hover_preview.visible = false
 
 func _on_back() -> void:
 	Global.change_scene(Global.SCENE_MAP)

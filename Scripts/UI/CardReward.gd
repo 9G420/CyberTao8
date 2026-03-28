@@ -376,6 +376,37 @@ func _create_reward_card(cd: CardData, card_path: String, _idx: int) -> Panel:
 	pick_btn.pressed.connect(_on_pick_card.bind(path_copy, panel))
 	panel.add_child(pick_btn)
 
+	# ── 悬停缩放效果 (STS风格) ──
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var _sb_ref: StyleBoxFlat = sb
+	var _normal_border: Color = sb.border_color
+	var _bright_border := Color(
+		clampf(accent.r + 0.3, 0.0, 1.0),
+		clampf(accent.g + 0.3, 0.0, 1.0),
+		clampf(accent.b + 0.3, 0.0, 1.0), 1.0)
+	var _hover_active: Array[bool] = [false]
+	var _rest_y: Array[float] = [250.0]
+	panel.mouse_entered.connect(func():
+		if not _hover_active[0]:
+			_rest_y[0] = panel.position.y
+		_hover_active[0] = true
+		var tw: Tween = panel.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(panel, "scale", Vector2(1.08, 1.08), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "position:y", _rest_y[0] - 10, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_sb_ref.border_color = _bright_border
+		_sb_ref.shadow_size = 12
+	)
+	panel.mouse_exited.connect(func():
+		_hover_active[0] = false
+		var tw: Tween = panel.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(panel, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "position:y", _rest_y[0], 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_sb_ref.border_color = _normal_border
+		_sb_ref.shadow_size = 6
+	)
+
 	return panel
 
 func _on_pick_card(card_path: String, _panel: Panel) -> void:
