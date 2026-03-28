@@ -22,7 +22,12 @@ from pathlib import Path
 # 配置
 # ============================================================
 
-SUNO_API_KEY = os.environ.get("SUNO_API_KEY", "cf30fb4b4ecfbf40342fb8590f577307")
+SUNO_API_KEY = os.environ.get("SUNO_API_KEY", "")
+if not SUNO_API_KEY:
+    print("ERROR: 请设置环境变量 SUNO_API_KEY，例如：")
+    print("  export SUNO_API_KEY='your-api-key-here'")
+    print("  python suno_generate.py")
+    sys.exit(1)
 BASE_URL = "https://api.sunoapi.org"
 MODEL = "V4_5"  # 可选: V4, V4_5, V5, V5_5
 
