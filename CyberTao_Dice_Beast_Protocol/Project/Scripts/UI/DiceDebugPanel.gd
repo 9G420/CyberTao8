@@ -51,7 +51,7 @@ func _build_ui() -> void:
 	add_theme_stylebox_override("panel", bg)
 
 	var title := Label.new()
-	title.text = "Dice Debug"
+	title.text = "战斗调试"
 	title.position = Vector2(0, 10)
 	title.size = Vector2(280, 28)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -60,7 +60,7 @@ func _build_ui() -> void:
 	add_child(title)
 
 	round_label = Label.new()
-	round_label.text = "Round: 1"
+	round_label.text = "回合：1"
 	round_label.position = Vector2(20, 42)
 	round_label.size = Vector2(240, 22)
 	round_label.add_theme_font_size_override("font_size", 16)
@@ -68,7 +68,7 @@ func _build_ui() -> void:
 	add_child(round_label)
 
 	phase_label = Label.new()
-	phase_label.text = "Phase: PLAYER_ROLL"
+	phase_label.text = "阶段：玩家掷骰"
 	phase_label.position = Vector2(20, 64)
 	phase_label.size = Vector2(240, 22)
 	phase_label.add_theme_font_size_override("font_size", 15)
@@ -76,7 +76,7 @@ func _build_ui() -> void:
 	add_child(phase_label)
 
 	selected_label = Label.new()
-	selected_label.text = "Selected: none"
+	selected_label.text = "选中：无"
 	selected_label.position = Vector2(20, 86)
 	selected_label.size = Vector2(240, 22)
 	selected_label.add_theme_font_size_override("font_size", 14)
@@ -84,14 +84,14 @@ func _build_ui() -> void:
 	add_child(selected_label)
 
 	roll_button = Button.new()
-	roll_button.text = "Roll Dice"
+	roll_button.text = "掷骰"
 	roll_button.position = Vector2(20, 116)
 	roll_button.size = Vector2(240, 40)
 	roll_button.pressed.connect(_on_roll_pressed)
 	add_child(roll_button)
 
 	end_turn_button = Button.new()
-	end_turn_button.text = "End Turn"
+	end_turn_button.text = "结束回合"
 	end_turn_button.position = Vector2(20, 162)
 	end_turn_button.size = Vector2(240, 40)
 	end_turn_button.disabled = true
@@ -99,14 +99,14 @@ func _build_ui() -> void:
 	add_child(end_turn_button)
 
 	var path_button := Button.new()
-	path_button.text = "Spawn Demo Path"
+	path_button.text = "生成测试路径"
 	path_button.position = Vector2(20, 210)
 	path_button.size = Vector2(240, 36)
 	path_button.pressed.connect(_on_spawn_path_pressed)
 	add_child(path_button)
 
 	roll_label = Label.new()
-	roll_label.text = "Last roll: -"
+	roll_label.text = "上次掷骰：-"
 	roll_label.position = Vector2(20, 256)
 	roll_label.size = Vector2(240, 44)
 	roll_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -134,23 +134,23 @@ func _on_spawn_path_pressed() -> void:
 		battle_flow.spawn_demo_path()
 
 func _on_phase_changed(phase_name: String) -> void:
-	phase_label.text = "Phase: " + phase_name
+	phase_label.text = "阶段：" + _phase_label_text(phase_name)
 	roll_button.disabled = phase_name != "PLAYER_ROLL"
 	end_turn_button.disabled = phase_name != "PLAYER_ACTION"
 	_refresh_crest_pool()
 
 func _on_round_changed(round_number: int) -> void:
-	round_label.text = "Round: " + str(round_number)
+	round_label.text = "回合：" + str(round_number)
 
 func _on_dice_rolled(results: Array[String], next_crest_pool: Dictionary) -> void:
-	roll_label.text = "Last roll: " + ", ".join(results)
+	roll_label.text = "上次掷骰：" + ", ".join(results)
 	_refresh_crest_pool(next_crest_pool)
 
 func _on_unit_selected(unit_id: String) -> void:
-	selected_label.text = "Selected: " + unit_id
+	selected_label.text = "选中：" + unit_id
 
 func _on_unit_deselected() -> void:
-	selected_label.text = "Selected: none"
+	selected_label.text = "选中：无"
 
 func _on_move_completed(_unit_id: String, _from_cell: Vector2i, _to_cell: Vector2i) -> void:
 	_refresh_crest_pool()
@@ -163,9 +163,25 @@ func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	if pool.is_empty() and dice_manager:
 		pool = dice_manager.crest_pool
 	crest_label.clear()
-	crest_label.append_text("summon: " + str(pool.get("summon", 0)) + "\n")
-	crest_label.append_text("move: " + str(pool.get("move", 0)) + "\n")
-	crest_label.append_text("attack: " + str(pool.get("attack", 0)) + "\n")
-	crest_label.append_text("defend: " + str(pool.get("defend", 0)) + "\n")
-	crest_label.append_text("skill: " + str(pool.get("skill", 0)) + "\n")
-	crest_label.append_text("trick: " + str(pool.get("trick", 0)) + "\n")
+	crest_label.append_text("显化： " + str(pool.get("summon", 0)) + "\n")
+	crest_label.append_text("步进： " + str(pool.get("move", 0)) + "\n")
+	crest_label.append_text("杀伐： " + str(pool.get("attack", 0)) + "\n")
+	crest_label.append_text("护持： " + str(pool.get("defend", 0)) + "\n")
+	crest_label.append_text("术式： " + str(pool.get("skill", 0)) + "\n")
+	crest_label.append_text("机巧： " + str(pool.get("trick", 0)) + "\n")
+
+func _phase_label_text(phase_name: String) -> String:
+	match phase_name:
+		"PLAYER_ROLL":
+			return "玩家掷骰"
+		"PLAYER_ACTION":
+			return "玩家行动"
+		"ENEMY_ROLL":
+			return "敌方掷骰"
+		"ENEMY_ACTION":
+			return "敌方行动"
+		"VICTORY":
+			return "胜利"
+		"DEFEAT":
+			return "失败"
+	return phase_name

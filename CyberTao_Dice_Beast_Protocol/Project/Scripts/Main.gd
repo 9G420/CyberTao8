@@ -21,29 +21,38 @@ func _build_debug_view() -> void:
 	add_child(bg)
 
 	var title := Label.new()
-	title.text = "CyberTao: Dice Beast Protocol"
-	title.position = Vector2(0, 56)
-	title.size = Vector2(1280, 44)
+	title.text = "CyberTao：骰兽协议"
+	title.position = Vector2(0, 72)
+	title.size = Vector2(1920, 52)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", 34)
 	title.add_theme_color_override("font_color", Color(1.0, 0.56, 0.26))
 	add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Parallel rebuild scaffold active"
-	subtitle.position = Vector2(0, 104)
-	subtitle.size = Vector2(1280, 28)
+	subtitle.text = "原型战斗沙盒已启动：掷骰、移动、攻击、结束回合"
+	subtitle.position = Vector2(0, 126)
+	subtitle.size = Vector2(1920, 32)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 16)
+	subtitle.add_theme_font_size_override("font_size", 18)
 	subtitle.add_theme_color_override("font_color", Color(0.7, 0.9, 0.86))
 	add_child(subtitle)
 
+	var hint := Label.new()
+	hint.text = "左侧棋盘：点击我方单位，再点击青色格移动或红色格攻击"
+	hint.position = Vector2(0, 156)
+	hint.size = Vector2(1920, 28)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 15)
+	hint.add_theme_color_override("font_color", Color(0.98, 0.86, 0.58))
+	add_child(hint)
+
 	_board_view = BoardView.new()
-	_board_view.position = Vector2(80, 170)
+	_board_view.position = Vector2(220, 220)
 	add_child(_board_view)
 
 	_dice_panel = DiceDebugPanel.new()
-	_dice_panel.position = Vector2(920, 170)
+	_dice_panel.position = Vector2(1260, 220)
 	add_child(_dice_panel)
 
 func _wire_debug_views() -> void:
