@@ -17,6 +17,7 @@ func spawn_unit(unit_id: String, payload: Dictionary, cell: Vector2i) -> void:
 		"atk": int(payload.get("atk", 0)),
 		"def": int(payload.get("def", 0)),
 		"move_range": int(payload.get("move_range", 1)),
+		"attack_range": int(payload.get("attack_range", 1)),
 		"owner": String(payload.get("owner", "player")),
 		"tags": payload.get("tags", []),
 	}

@@ -151,3 +151,16 @@
 - no HP display on units yet
 - no enemy turn or enemy AI
 - no victory/defeat check on kill
+
+## v0.1.5 - 2026-03-29
+
+### Fixed
+
+- `UnitManager.spawn_unit()` now stores `attack_range` in unit state (was missing, causing `ActionResolver.get_attackable_cells()` to always fall back to default)
+- `BattleFlowController._spawn_debug_units()` now passes `attack_range` from `UnitData` resource for player unit and from hardcoded payload for enemy unit
+
+### Notes
+
+- this is a data-link fix only; no new features or behavior changes
+- all units already defaulted to `attack_range = 1` via fallback, so visible behavior is unchanged for the current prototype
+- the fix ensures future units with non-default attack_range will work correctly

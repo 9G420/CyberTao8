@@ -111,6 +111,7 @@ func _spawn_debug_units() -> void:
 			"atk": dog_data.atk,
 			"def": dog_data.def,
 			"move_range": dog_data.move_range,
+			"attack_range": dog_data.attack_range,
 			"owner": "player",
 			"tags": dog_data.meme_tags,
 		}, Vector2i(0, 6))
@@ -119,6 +120,7 @@ func _spawn_debug_units() -> void:
 		"atk": 2,
 		"def": 0,
 		"move_range": 1,
+		"attack_range": 1,
 		"owner": "enemy",
 		"tags": ["grunt"],
 	}
