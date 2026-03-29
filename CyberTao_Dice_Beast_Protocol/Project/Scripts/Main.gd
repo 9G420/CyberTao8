@@ -48,4 +48,14 @@ func _build_debug_view() -> void:
 
 func _wire_debug_views() -> void:
 	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
+	_board_view.bind_battle_flow(_battle_flow)
+	_board_view.move_requested.connect(_on_move_requested)
 	_dice_panel.bind_battle_flow(_battle_flow)
+	_dice_panel.bind_board_view(_board_view)
+
+func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
+	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
+	if success:
+		# Refresh highlights after move (unit position changed)
+		_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+		_board_view.queue_redraw()

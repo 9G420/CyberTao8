@@ -1,6 +1,6 @@
 # CyberTao: Dice Beast Protocol Migration Snapshot
 **Generated**: 2026-03-29
-**Version**: v0.1.0
+**Version**: v0.1.1
 **Branch**: `codex/dice-beast-protocol`
 
 ---
@@ -33,7 +33,7 @@ Main active directory:
 
 ## 2. Current State
 
-Current state at v0.1.0:
+Current state at v0.1.1:
 
 - a separate Godot subproject has been created
 - the new project has its own `project.godot`
@@ -43,10 +43,13 @@ Current state at v0.1.0:
 - a visible board prototype now exists in the main scene
 - a dice debug panel now exists for roll testing
 - a first prototype unit resource exists: blade shield dog
+- board is now interactive: clicking player units selects them
+- selected unit shows gold ring and cyan-highlighted reachable cells
+- clicking a highlighted cell moves the unit, consuming 1 MOVE crest
+- BoardManager and UnitManager are synced via occupied_cells
+- debug panel shows currently selected unit
 
-This is not yet a playable combat prototype.
-
-It is the architectural foundation for the new mode.
+The board is now minimally interactive. The next step toward a playable loop is attack resolution.
 
 ---
 
@@ -133,14 +136,14 @@ First recommended prototype factions:
 
 Highest priority implementation targets:
 
-1. turn the visual board prototype into clickable board interaction
-2. let dice resources drive at least one real summon or move action
+1. ~~turn the visual board prototype into clickable board interaction~~ (done in v0.1.1)
+2. ~~let dice resources drive at least one real summon or move action~~ (MOVE done in v0.1.1)
 3. create the first prototype unit set, starting with blade-shield dog
 4. make the minimum combat loop work:
    - roll dice
    - gain resources
    - summon or place path
-   - move
+   - ~~move~~ (done)
    - attack
    - end turn
 
@@ -159,11 +162,11 @@ Highest priority implementation targets:
 
 ## 8. Current Risks
 
-- the new project is still scaffold-level and not validated in-editor yet
-- no board rendering exists yet
-- no unit scene pipeline exists yet
-- no UI for dice, crests, or board actions exists yet
-- no actual data assets exist yet, only resource classes
+- the new project has not been validated in-editor yet
+- no unit scene pipeline exists yet (units are drawn as colored rectangles)
+- no attack or damage UI exists yet
+- no turn-end or phase-advance button exists yet
+- no actual data assets exist beyond blade_shield_dog.tres
 
 ---
 

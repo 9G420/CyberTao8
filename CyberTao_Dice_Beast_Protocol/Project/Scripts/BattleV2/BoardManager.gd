@@ -50,3 +50,28 @@ func get_neighbors(cell: Vector2i) -> Array[Vector2i]:
 		if is_in_bounds(next_cell):
 			result.append(next_cell)
 	return result
+
+## BFS reachable cells within move_range, excluding occupied cells.
+func get_reachable_cells(origin: Vector2i, move_range: int) -> Array[Vector2i]:
+	var reachable: Array[Vector2i] = []
+	if move_range <= 0:
+		return reachable
+	var visited: Dictionary = {}
+	visited[origin] = 0
+	var frontier: Array[Vector2i] = [origin]
+	while frontier.size() > 0:
+		var current: Vector2i = frontier[0]
+		frontier.remove_at(0)
+		var current_dist: int = int(visited[current])
+		if current_dist >= move_range:
+			continue
+		var neighbors: Array[Vector2i] = get_neighbors(current)
+		for nb in neighbors:
+			if visited.has(nb):
+				continue
+			if occupied_cells.has(nb):
+				continue
+			visited[nb] = current_dist + 1
+			frontier.append(nb)
+			reachable.append(nb)
+	return reachable
