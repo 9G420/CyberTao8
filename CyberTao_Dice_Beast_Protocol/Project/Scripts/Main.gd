@@ -25,6 +25,7 @@ func _build_debug_view() -> void:
 	var bg := ColorRect.new()
 	bg.set_anchors_preset(PRESET_FULL_RECT)
 	bg.color = Color(0.05, 0.06, 0.1)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	var title := Label.new()
@@ -34,6 +35,7 @@ func _build_debug_view() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 34)
 	title.add_theme_color_override("font_color", Color(1.0, 0.56, 0.26))
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
 
 	var subtitle := Label.new()
@@ -43,6 +45,7 @@ func _build_debug_view() -> void:
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.add_theme_font_size_override("font_size", 18)
 	subtitle.add_theme_color_override("font_color", Color(0.7, 0.9, 0.86))
+	subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(subtitle)
 
 	var hint := Label.new()
@@ -52,6 +55,7 @@ func _build_debug_view() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.add_theme_color_override("font_color", Color(0.98, 0.86, 0.58))
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hint)
 
 	_board_view = BoardView.new()
@@ -79,6 +83,7 @@ func _build_debug_view() -> void:
 	_result_label.size = Vector2(1280, 40)
 	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_result_label.add_theme_font_size_override("font_size", 32)
+	_result_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_result_label.visible = false
 	add_child(_result_label)
 

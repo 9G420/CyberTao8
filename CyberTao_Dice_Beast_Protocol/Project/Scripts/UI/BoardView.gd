@@ -59,6 +59,7 @@ func _gui_input(event: InputEvent) -> void:
 	if not _is_valid_cell(cell):
 		return
 	_handle_cell_click(cell)
+	accept_event()
 
 func _pixel_to_cell(pixel_pos: Vector2) -> Vector2i:
 	var cx: int = int(pixel_pos.x) / CELL_SIZE

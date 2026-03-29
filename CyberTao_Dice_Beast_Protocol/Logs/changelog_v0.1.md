@@ -236,3 +236,17 @@
 
 - no logic or layout changes; identical behavior to v0.1.8
 - rewrite approach used to eliminate any possible encoding layer corruption
+
+## v0.1.10 - 2026-03-29
+
+### Fixed
+
+- board click interaction restored: `bg` ColorRect, title/subtitle/hint labels, and `_result_label` now set `mouse_filter = MOUSE_FILTER_IGNORE` so they never intercept clicks meant for the board
+- `SettingsPanel` now starts with `mouse_filter = MOUSE_FILTER_IGNORE` (was `MOUSE_FILTER_STOP`); toggles to `STOP` only when opened, back to `IGNORE` on close — prevents invisible panel from blocking board clicks in its overlapping region
+- `BoardView._gui_input()` now calls `accept_event()` after handling a click to properly consume the input event
+
+### Notes
+
+- root cause: Controls in Godot 4 default to `MOUSE_FILTER_STOP`, which can intercept mouse events even for purely decorative nodes; the full-screen `bg` ColorRect and full-width labels were potential input blockers
+- `SettingsPanel` at position (440,200) size 400x320 overlapped the board at (40,160) size 576x576 — with `MOUSE_FILTER_STOP` while invisible, it could block clicks in the overlap zone [440,200]-[616,520]
+- no logic, layout, or feature changes — interaction-only fix
