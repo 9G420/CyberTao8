@@ -7,18 +7,21 @@ var board_size: Vector2i = Vector2i.ZERO
 var occupied_cells: Dictionary = {}
 var path_cells: Dictionary = {}
 var item_cells: Dictionary = {}
+var terrain_cells: Dictionary = {}  # cell -> String ("high_ground" / "trap")
 
 func build_test_board(size: Vector2i) -> void:
 	board_size = size
 	occupied_cells.clear()
 	path_cells.clear()
 	item_cells.clear()
+	terrain_cells.clear()
 	emit_signal("board_changed")
 
 func clear_board() -> void:
 	occupied_cells.clear()
 	path_cells.clear()
 	item_cells.clear()
+	terrain_cells.clear()
 	emit_signal("board_changed")
 
 func is_in_bounds(cell: Vector2i) -> bool:
@@ -43,6 +46,22 @@ func add_item_cell(cell: Vector2i, item_id: String) -> void:
 		item_cells[cell] = item_id
 		emit_signal("board_changed")
 
+## 添加地形格（high_ground / trap），地形与路径格可共存
+func add_terrain_cell(cell: Vector2i, terrain_type: String) -> void:
+	if is_in_bounds(cell):
+		terrain_cells[cell] = terrain_type
+		emit_signal("board_changed")
+
+## 获取指定格子的地形类型，无地形返回空字符串
+func get_terrain_type(cell: Vector2i) -> String:
+	return String(terrain_cells.get(cell, ""))
+
+## 获取进入指定格的移动消耗（默认 1，高台 +1）
+func get_move_cost(cell: Vector2i) -> int:
+	if get_terrain_type(cell) == "high_ground":
+		return 2
+	return 1
+
 func get_neighbors(cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var offsets: Array[Vector2i] = [
@@ -58,6 +77,7 @@ func get_neighbors(cell: Vector2i) -> Array[Vector2i]:
 	return result
 
 ## BFS reachable cells within move_range, excluding occupied cells.
+## 高台格消耗 2 移动点，普通格消耗 1 移动点。
 func get_reachable_cells(origin: Vector2i, move_range: int) -> Array[Vector2i]:
 	var reachable: Array[Vector2i] = []
 	if move_range <= 0:
@@ -69,15 +89,17 @@ func get_reachable_cells(origin: Vector2i, move_range: int) -> Array[Vector2i]:
 		var current: Vector2i = frontier[0]
 		frontier.remove_at(0)
 		var current_dist: int = int(visited[current])
-		if current_dist >= move_range:
-			continue
 		var neighbors: Array[Vector2i] = get_neighbors(current)
 		for nb in neighbors:
 			if visited.has(nb):
 				continue
 			if occupied_cells.has(nb):
 				continue
-			visited[nb] = current_dist + 1
+			var cost: int = get_move_cost(nb)
+			var total: int = current_dist + cost
+			if total > move_range:
+				continue
+			visited[nb] = total
 			frontier.append(nb)
 			reachable.append(nb)
 	return reachable

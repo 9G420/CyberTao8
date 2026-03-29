@@ -1,23 +1,24 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-29
-**版本**: v0.1.14
+**版本**: v0.1.15
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 实现 summon / path-building 第一版原型
-- 验证"召唤即铺路"核心概念
+- 实现高台格 + 陷阱格地形系统第一版
+- 地形与路径格共存
+- BFS 移动消耗支持不同地形 cost
 
 ---
 
 ## 根因/目标
 
-- 当前战斗原型已有移动、攻击、敌方 AI，但缺少"骰兽协议"的核心辨识度
-- summon + path-building 是区别于普通战棋的关键玩法
-- 本轮只做最小可运行原型，不追求完整卡牌召唤系统
+- 当前棋盘缺少空间策略维度，所有格子效果相同
+- 高台 + 陷阱是最简单的两种地形原型，可以验证"地形影响战斗规则"的核心概念
+- 本轮只做最小可运行版本，不做地形编辑器或复杂地形系统
 
 ---
 
@@ -25,80 +26,92 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 添加 summon_completed 信号、get_summon_cells_for()、try_summon()、_summon_counter |
-| `Project/Scripts/BattleV2/BoardManager.gd` | 添加 get_free_neighbors() 辅助方法 |
-| `Project/Scripts/UI/BoardView.gd` | 添加 summon_requested 信号、summon_highlight_cells 紫色高亮、改进 _draw_paths() 区分玩家/其他路径颜色 |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | "生成测试路径"改为"测试召唤"按钮、连接 summon_completed 信号、添加 _selected_unit_id_cache |
-| `Project/Scripts/Main.gd` | 连接 summon_requested / summon_completed 信号、刷新召唤高亮、更新提示文字 |
+| `Project/Scripts/BattleV2/BoardManager.gd` | 添加 terrain_cells 字典、add_terrain_cell()、get_terrain_type()、get_move_cost()；BFS 重写支持不同地形移动消耗；build_test_board/clear_board 清空 terrain |
+| `Project/Scripts/BattleV2/ActionResolver.gd` | get_attackable_cells() 添加高台加成：站在 high_ground 上 attack_range += 1 |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | 添加 terrain_damage_triggered 信号、_spawn_debug_terrain()、_check_terrain_trap()；玩家/敌方移动后触发陷阱检查；restart 时重新放置地形 |
+| `Project/Scripts/UI/BoardView.gd` | 添加 _draw_terrain()：高台金色、陷阱暗红，带文字标记；_draw() 顺序中插入地形层 |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | 连接 terrain_damage_triggered 信号，地形伤害后刷新 crest 池 |
+| `Project/Scripts/Main.gd` | 连接 terrain_damage_triggered 信号、添加 _on_terrain_damage_triggered 反馈处理、更新提示文字 |
 | `Logs/Mulerun_Work_Report.md` | 本报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.14 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.15 条目 |
 
 ---
 
 ## 实现内容
 
-1. **召唤入口（两种方式）**
-   - 棋盘点击：选中玩家单位后，如果有 SUMMON crest，相邻空格显示紫色高亮，点击即可召唤
-   - 调试面板按钮："测试召唤（需选中单位+显化）"，点击后自动选择第一个可用格召唤
+1. **高台格（high_ground）**
+   - 进入消耗 2 移动点（普通格 1 点）
+   - 站在高台上的单位攻击范围 +1（Manhattan 距离）
+   - 金色填充 + 金色边框 + "HIGH" 文字标记
 
-2. **路径格生成**
-   - 召唤时自动在目标格铺设 1 个路径格（player 所属）
-   - 然后向远离原点方向再延伸 1 格路径（共 2 格路径）
-   - 路径格有明确视觉区分：
-     - 玩家路径：青色发光边框 + 半透明填充
-     - 其他路径：橙色风格（兼容旧 spawn_demo_path）
+2. **陷阱格（trap）**
+   - 单位进入时立即受到 1 点伤害
+   - 可致死（触发胜负判定）
+   - 可重复触发（每次进入都受伤）
+   - 暗红填充 + 红色边框 + "TRAP" 文字标记
+   - 触发时显示白色闪光 + 红色飘字反馈
 
-3. **召唤单位放置**
-   - 在目标格（第 1 格路径）上生成一个测试召唤单位（summoned_fox）
-   - 属性：HP 4 / ATK 2 / DEF 0 / 移动范围 2 / 攻击范围 1
-   - 归属 player 阵营，可正常选中、移动、攻击
-   - 每次召唤生成唯一 ID（summoned_fox_1, summoned_fox_2, ...）
+3. **BFS 移动消耗重写**
+   - 原来所有格子 cost=1，现在调用 get_move_cost() 获取实际消耗
+   - 高台格 cost=2，普通格/陷阱格 cost=1
+   - 保证 BFS 正确计算带权移动范围
 
-4. **资源消耗**
-   - 每次召唤消耗 1 SUMMON（显化）crest
-   - 面板实时刷新显示
+4. **调试地形布局**
+   - 高台格：(2,4) (2,5) — 棋盘中部，玩家需要绕路或花更多移动点通过
+   - 陷阱格：(1,5) (3,6) — 玩家前进路线上，需要注意规避
+
+5. **地形与路径共存**
+   - terrain_cells 和 path_cells 是独立字典
+   - 同一格可以同时有地形和路径标记
 
 ---
 
 ## 关键逻辑
 
-### 召唤流程
+### 高台移动消耗
 ```
-玩家选中己方单位 →
-  如果 SUMMON crest > 0 →
-    相邻空格（非占据、非路径）显示紫色高亮 →
-      点击紫色格 →
-        支付 1 SUMMON →
-        目标格标记为 player 路径 →
-        向远离原点方向延伸 1 格路径 →
-        在目标格生成 summoned_fox 单位
+BoardManager.get_move_cost(cell):
+  如果 terrain_type == "high_ground" → 返回 2
+  否则 → 返回 1
+
+BFS 中：total = current_dist + get_move_cost(neighbor)
+  如果 total > move_range → 跳过（不可达）
 ```
 
-### 可召唤格判定
-- BoardManager.get_free_neighbors()：返回四方向相邻的空闲格（in_bounds && !occupied && !path）
-- 只有 SUMMON crest > 0 时才返回可召唤格
+### 高台攻击加成
+```
+ActionResolver.get_attackable_cells():
+  attack_range = unit.attack_range
+  如果 board_manager.get_terrain_type(origin) == "high_ground":
+    attack_range += 1
+```
 
-### 路径延伸方向
-- 在目标格的空闲相邻格中，选择曼哈顿距离离原点最远的格子
-- 体现"向外展开路径"的概念
+### 陷阱触发
+```
+_check_terrain_trap(unit_id, cell):
+  如果 terrain_type == "trap":
+    apply_damage(unit_id, 1)
+    emit terrain_damage_triggered 信号
+    如果单位死亡 → _check_battle_outcome()
+```
 
 ---
 
 ## 当前剩余问题
 
-- **召唤单位是固定数据** — 未接入 UnitData 资源，hardcoded summoned_fox
-- **路径格目前不影响移动规则** — 路径只是视觉标记，未限制"只能在路径上移动"
-- **无召唤动画** — 单位和路径瞬间出现
-- **无召唤数量限制** — 只要有 SUMMON crest 就能无限召唤
-- **路径形状固定** — 总是 2 格直线延伸，无 L 形 / T 形等变体
+- **地形布局为 hardcoded** — 无地形编辑器或随机生成
+- **高台不影响防御** — 只加攻击范围，不加 DEF 或减伤
+- **陷阱无视觉预警** — 进入前无额外提示
+- **敌方 AI 不考虑地形** — AI 不会主动占高台或规避陷阱
+- **无地形动画** — 高台/陷阱无进入动画或特效
 - **未在编辑器中验证运行**
 
 ---
 
 ## 建议下一步
 
-1. **路径限制移动** — 让某些单位只能在路径格上行动，或路径格提供移动加成
-2. **召唤来源接入 UnitData** — 从 hacker_fox.tres / crow_caster.tres 读取数据
-3. **多种路径形状** — L 形、T 形、十字形等可选路径模板
-4. **召唤数量限制** — 每场战斗最多 N 个召唤单位
+1. **AI 地形感知** — 敌方 AI 在移动决策中考虑高台优势和陷阱规避
+2. **更多地形类型** — 冰面（滑行）、毒沼（持续伤害）等
+3. **地形与路径联动** — 路径格上的地形效果是否减弱/增强
+4. **地形随机生成** — 每局战斗随机放置地形
 5. **移动动画** — Tween 位移替代瞬移

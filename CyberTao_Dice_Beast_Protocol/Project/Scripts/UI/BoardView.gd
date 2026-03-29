@@ -154,6 +154,7 @@ func _deselect() -> void:
 
 func _draw() -> void:
 	_draw_board()
+	_draw_terrain()
 	_draw_highlights()
 	_draw_attack_highlights()
 	_draw_summon_highlights()
@@ -179,6 +180,31 @@ func _draw_highlights() -> void:
 		draw_rect(Rect2(pos, sz), Color(0.2, 0.8, 1.0, 0.22), true)
 		# Border highlight
 		draw_rect(Rect2(pos, sz), Color(0.2, 0.85, 1.0, 0.65), false, 2.0)
+
+## 绘制地形格：高台（金色）、陷阱（暗红尖刺风格）
+func _draw_terrain() -> void:
+	if board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 10
+	for cell in board_manager.terrain_cells.keys():
+		var terrain_type: String = String(board_manager.terrain_cells[cell])
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
+		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
+		if terrain_type == "high_ground":
+			# 高台：金色填充 + 金色边框
+			draw_rect(Rect2(pos, sz), Color(0.85, 0.7, 0.2, 0.25), true)
+			draw_rect(Rect2(pos, sz), Color(0.9, 0.75, 0.25, 0.7), false, 2.0)
+			# 标记文字
+			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
+			draw_string(font, text_pos, "HIGH", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(0.95, 0.85, 0.3, 0.8))
+		elif terrain_type == "trap":
+			# 陷阱：暗红填充 + 红色边框
+			draw_rect(Rect2(pos, sz), Color(0.7, 0.15, 0.1, 0.3), true)
+			draw_rect(Rect2(pos, sz), Color(0.85, 0.2, 0.15, 0.75), false, 2.0)
+			# 标记文字
+			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
+			draw_string(font, text_pos, "TRAP", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(1.0, 0.35, 0.25, 0.8))
 
 func _draw_attack_highlights() -> void:
 	for cell in attack_highlight_cells:

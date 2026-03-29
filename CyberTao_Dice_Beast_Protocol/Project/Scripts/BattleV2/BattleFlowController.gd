@@ -8,6 +8,7 @@ signal attack_completed(attacker_id: String, defender_id: String, damage: int, k
 signal enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i)
 signal summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i)
 signal round_changed(round_number: int)
+signal terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -69,6 +70,7 @@ func _bootstrap() -> void:
 
 	board_manager.build_test_board(Vector2i(8, 8))
 	_spawn_debug_units()
+	_spawn_debug_terrain()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -135,6 +137,25 @@ func _spawn_debug_units() -> void:
 	}
 	unit_manager.spawn_unit("enemy_debug_grunt", enemy_data, Vector2i(3, 4))
 
+## 放置调试用地形格
+func _spawn_debug_terrain() -> void:
+	# 高台格：棋盘中部偏上，2 格
+	board_manager.add_terrain_cell(Vector2i(2, 4), "high_ground")
+	board_manager.add_terrain_cell(Vector2i(2, 5), "high_ground")
+	# 陷阱格：玩家前进路线上，2 格
+	board_manager.add_terrain_cell(Vector2i(1, 5), "trap")
+	board_manager.add_terrain_cell(Vector2i(3, 6), "trap")
+
+## 单位进入格子后检查陷阱地形，触发 1 点伤害
+func _check_terrain_trap(unit_id: String, cell: Vector2i) -> void:
+	if board_manager.get_terrain_type(cell) != "trap":
+		return
+	var trap_damage: int = 1
+	var killed: bool = unit_manager.apply_damage(unit_id, trap_damage)
+	emit_signal("terrain_damage_triggered", unit_id, cell, trap_damage, "trap")
+	if killed:
+		_check_battle_outcome()
+
 ## 结束玩家回合：清空资源池，进入敌方回合。
 func end_player_turn() -> void:
 	if current_phase != BattlePhase.PLAYER_ACTION:
@@ -193,6 +214,8 @@ func _execute_enemy_actions() -> void:
 				if move_cell.x >= 0:
 					dice_manager.pay({"move": 1})
 					unit_manager.move_unit(uid, move_cell)
+					# 敌方移动后检查陷阱地形
+					_check_terrain_trap(uid, move_cell)
 					await get_tree().create_timer(0.3).timeout
 					if is_battle_over():
 						break
@@ -261,6 +284,8 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 	var old_cell: Vector2i = unit["cell"]
 	unit_manager.move_unit(unit_id, target_cell)
 	emit_signal("move_completed", unit_id, old_cell, target_cell)
+	# 检查陷阱地形
+	_check_terrain_trap(unit_id, target_cell)
 	return true
 
 ## Return attackable cells for a player unit. Empty if no ATTACK crest available.
@@ -417,6 +442,7 @@ func restart_battle() -> void:
 	board_manager.build_test_board(Vector2i(8, 8))
 	_summon_counter = 0
 	_spawn_debug_units()
+	_spawn_debug_terrain()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

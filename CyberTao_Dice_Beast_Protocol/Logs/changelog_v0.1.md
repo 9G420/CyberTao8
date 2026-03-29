@@ -351,3 +351,36 @@
 - 路径格目前不影响移动规则（仅视觉标记）
 - 无召唤动画、无召唤数量限制
 - 路径形状固定为 2 格直线延伸
+
+## v0.1.15 - 2026-03-29
+
+### 新增
+
+- 地形系统原型（高台格 + 陷阱格 第一版）
+- `BoardManager` 添加 `terrain_cells` 字典、`add_terrain_cell()`、`get_terrain_type()`、`get_move_cost()` 方法
+- 高台格规则：进入高台格消耗 2 移动点（普通格 1 点）；站在高台上攻击范围 +1
+- 陷阱格规则：单位进入陷阱格时立即受到 1 点伤害，可致死并触发胜负判定
+- `BattleFlowController` 添加 `terrain_damage_triggered` 信号和 `_check_terrain_trap()` 方法
+- `BattleFlowController._spawn_debug_terrain()`：预置 2 个高台格 (2,4)(2,5) 和 2 个陷阱格 (1,5)(3,6)
+- `ActionResolver.get_attackable_cells()` 高台加成：检测单位是否站在高台上，是则 attack_range += 1
+- `BoardView._draw_terrain()`：高台格金色填充+边框+"HIGH"标记文字，陷阱格暗红填充+边框+"TRAP"标记文字
+- 地形与路径格可共存（terrain_cells 和 path_cells 独立存储）
+- 陷阱伤害触发攻击反馈（白色闪光 + 红色飘字）
+- 提示文字更新："金色=高台 暗红=陷阱"
+
+### 修改
+
+- `BoardManager.get_reachable_cells()` BFS 重写：从固定 cost=1 改为使用 `get_move_cost()` 计算每格移动消耗
+- `BoardManager.build_test_board()` 和 `clear_board()` 现在清空 `terrain_cells`
+- `BattleFlowController.try_move_unit()` 移动后检查陷阱地形
+- `BattleFlowController._execute_enemy_actions()` 敌方移动后检查陷阱地形
+- `BattleFlowController.restart_battle()` 重开时重新放置调试地形
+- `DiceDebugPanel` 连接 `terrain_damage_triggered` 信号，地形伤害后刷新 crest 池显示
+
+### 备注
+
+- 地形格为纯数据标记，不阻挡移动（高台只是消耗更多，不是不可进入）
+- 陷阱格可重复触发（每次进入都受伤）
+- 当前只有 hardcoded 调试布局，无地形编辑器
+- 高台攻击加成对玩家和敌方均生效（ActionResolver 不区分阵营）
+- 无地形相关动画或音效

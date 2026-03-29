@@ -35,6 +35,9 @@ func get_attackable_cells(unit_id: String) -> Array[Vector2i]:
 		return cells
 	var origin: Vector2i = unit.get("cell", Vector2i(-1, -1))
 	var attack_range: int = int(unit.get("attack_range", 1))
+	# 高台加成：站在高台上攻击范围 +1
+	if board_manager.get_terrain_type(origin) == "high_ground":
+		attack_range += 1
 	if attack_range <= 0:
 		return cells
 	var owner: String = String(unit.get("owner", "player"))
