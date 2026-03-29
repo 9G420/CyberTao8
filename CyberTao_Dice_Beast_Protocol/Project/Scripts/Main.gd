@@ -32,56 +32,56 @@ func _build_debug_view() -> void:
 
 	var title := Label.new()
 	title.text = "CyberTao：骰兽协议"
-	title.position = Vector2(0, 42)
-	title.size = Vector2(1280, 52)
+	title.position = Vector2(0, 4)
+	title.size = Vector2(1280, 42)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_font_size_override("font_size", 30)
 	title.add_theme_color_override("font_color", Color(1.0, 0.56, 0.26))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
 
 	var subtitle := Label.new()
 	subtitle.text = "原型战斗沙盒已启动：掷骰、移动、攻击、结束回合"
-	subtitle.position = Vector2(0, 96)
-	subtitle.size = Vector2(1280, 32)
+	subtitle.position = Vector2(0, 44)
+	subtitle.size = Vector2(1280, 26)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 18)
+	subtitle.add_theme_font_size_override("font_size", 16)
 	subtitle.add_theme_color_override("font_color", Color(0.7, 0.9, 0.86))
 	subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(subtitle)
 
 	var hint := Label.new()
 	hint.text = "左侧棋盘：点击单位后 青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱"
-	hint.position = Vector2(0, 126)
-	hint.size = Vector2(1280, 28)
+	hint.position = Vector2(0, 68)
+	hint.size = Vector2(1280, 22)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size", 15)
+	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.98, 0.86, 0.58))
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hint)
 
 	_board_view = BoardView.new()
-	_board_view.position = Vector2(40, 160)
+	_board_view.position = Vector2(40, 94)
 	add_child(_board_view)
 
 	_dice_panel = DiceDebugPanel.new()
-	_dice_panel.position = Vector2(660, 160)
+	_dice_panel.position = Vector2(660, 94)
 	add_child(_dice_panel)
 
 	var settings_btn := Button.new()
 	settings_btn.text = "设置"
-	settings_btn.position = Vector2(1180, 10)
+	settings_btn.position = Vector2(1180, 4)
 	settings_btn.size = Vector2(80, 32)
 	settings_btn.pressed.connect(_on_settings_pressed)
 	add_child(settings_btn)
 
 	_settings_panel = SettingsPanel.new()
-	_settings_panel.position = Vector2(440, 200)
+	_settings_panel.position = Vector2(440, 130)
 	add_child(_settings_panel)
 	_settings_panel.bind_display_settings(_display_settings)
 
 	_result_label = Label.new()
-	_result_label.position = Vector2(0, 100)
+	_result_label.position = Vector2(0, 44)
 	_result_label.size = Vector2(1280, 40)
 	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_result_label.add_theme_font_size_override("font_size", 32)
@@ -91,8 +91,8 @@ func _build_debug_view() -> void:
 
 	_restart_btn = Button.new()
 	_restart_btn.text = "重新开始"
-	_restart_btn.position = Vector2(560, 60)
-	_restart_btn.size = Vector2(160, 40)
+	_restart_btn.position = Vector2(560, 4)
+	_restart_btn.size = Vector2(160, 36)
 	_restart_btn.visible = false
 	_restart_btn.pressed.connect(_on_restart_pressed)
 	add_child(_restart_btn)

@@ -20,6 +20,12 @@ func _ready() -> void:
 	apply_settings()
 
 func apply_settings() -> void:
+	# 更新视口虚拟分辨率，使不同分辨率有真实视觉变化
+	var root: Window = null
+	if get_tree():
+		root = get_tree().root
+	if root:
+		root.content_scale_size = Vector2i(current_resolution.x, current_resolution.y)
 	match current_mode:
 		0: # Windowed
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
