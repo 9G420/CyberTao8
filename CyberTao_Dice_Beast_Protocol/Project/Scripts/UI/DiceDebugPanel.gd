@@ -31,7 +31,7 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.round_changed.connect(_on_round_changed)
 	if battle_flow.attack_completed and not battle_flow.attack_completed.is_connected(_on_attack_completed):
 		battle_flow.attack_completed.connect(_on_attack_completed)
-	round_label.text = "Round: " + str(battle_flow.round_index)
+	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
 func bind_board_view(board_view: Node) -> void:

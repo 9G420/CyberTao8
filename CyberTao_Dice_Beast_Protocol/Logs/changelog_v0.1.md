@@ -213,3 +213,14 @@
 - resolution change takes effect immediately on "应用" (apply)
 - "恢复默认" resets to 1280x720 windowed
 - battle prototype functionality unchanged
+
+## v0.1.8 - 2026-03-29
+
+### Fixed
+
+- `DiceDebugPanel.bind_battle_flow()` round label initialization used English "Round: " instead of Chinese "回合：" — now consistent with all other Chinese UI text
+
+### Notes
+
+- all three UI scripts (Main.gd, DiceDebugPanel.gd, SettingsPanel.gd) verified as valid UTF-8 with correct Chinese encoding
+- no logic changes, text-only fix
