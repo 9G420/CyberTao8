@@ -320,3 +320,34 @@
 - 敌方掷骰使用与玩家相同的 DiceManager（保底 1 MOVE）
 - 移动仍为瞬间位移，无动画
 - 当前只有 1 个调试敌方单位
+
+## v0.1.14 - 2026-03-29
+
+### 新增
+
+- 召唤系统原型（summon + path-building 第一版）
+- `BattleFlowController` 添加 `summon_completed` 信号、`get_summon_cells_for()`、`try_summon()` 方法
+- `BoardManager` 添加 `get_free_neighbors()` 辅助方法
+- `BoardView` 添加 `summon_requested` 信号和 `summon_highlight_cells` 紫色高亮渲染
+- 棋盘点击召唤：选中玩家单位且有 SUMMON crest 时，相邻空格显示紫色高亮，点击即触发召唤
+- 调试面板"测试召唤"按钮：需选中单位 + 有显化 crest，一键在第一个可用格召唤
+- 召唤时自动铺设 2 格路径（目标格 + 向外延伸 1 格），归属 player
+- 召唤在目标格生成 summoned_fox 测试单位（HP 4 / ATK 2 / DEF 0 / 移动 2 / 攻击 1）
+- 每次召唤生成唯一 ID（summoned_fox_1, summoned_fox_2, ...）
+- 路径格可视化改进：玩家路径为青色发光、其他路径为橙色
+
+### 修改
+
+- `BoardView._draw_paths()` 重写：区分 player/other 路径颜色，添加边框渲染
+- 调试面板"生成测试路径"按钮替换为"测试召唤（需选中单位+显化）"
+- `Main.gd` 提示文字更新为"青色=移动 红色=攻击 紫色=召唤铺路"
+- 移动、攻击后同时刷新召唤高亮
+- 重开战斗时清空 summon_highlight_cells 和 _summon_counter
+
+### 备注
+
+- 本轮为最小原型，验证"召唤即铺路"概念
+- 召唤单位为 hardcoded 数据，未接入 UnitData 资源
+- 路径格目前不影响移动规则（仅视觉标记）
+- 无召唤动画、无召唤数量限制
+- 路径形状固定为 2 格直线延伸

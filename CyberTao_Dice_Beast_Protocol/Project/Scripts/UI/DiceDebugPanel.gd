@@ -3,6 +3,7 @@ class_name DiceDebugPanel
 
 var battle_flow: Node = null
 var dice_manager: Node = null
+var _selected_unit_id_cache: String = ""
 var phase_label: Label
 var round_label: Label
 var selected_label: Label
@@ -33,6 +34,8 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.attack_completed.connect(_on_attack_completed)
 	if battle_flow.enemy_attack_completed and not battle_flow.enemy_attack_completed.is_connected(_on_enemy_attack_completed):
 		battle_flow.enemy_attack_completed.connect(_on_enemy_attack_completed)
+	if battle_flow.summon_completed and not battle_flow.summon_completed.is_connected(_on_summon_completed):
+		battle_flow.summon_completed.connect(_on_summon_completed)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -101,9 +104,10 @@ func _build_ui() -> void:
 	add_child(end_turn_button)
 
 	var path_button := Button.new()
-	path_button.text = "生成测试路径"
+	path_button.text = "测试召唤（需选中单位+显化）"
 	path_button.position = Vector2(20, 210)
 	path_button.size = Vector2(240, 36)
+	path_button.add_theme_font_size_override("font_size", 12)
 	path_button.pressed.connect(_on_spawn_path_pressed)
 	add_child(path_button)
 
@@ -132,8 +136,16 @@ func _on_end_turn_pressed() -> void:
 		battle_flow.end_player_turn()
 
 func _on_spawn_path_pressed() -> void:
-	if battle_flow:
-		battle_flow.spawn_demo_path()
+	if battle_flow == null:
+		return
+	# 需要选中一个玩家单位才能召唤
+	if _selected_unit_id_cache == "":
+		return
+	var summon_cells: Array[Vector2i] = battle_flow.get_summon_cells_for(_selected_unit_id_cache)
+	if summon_cells.is_empty():
+		return
+	# 选第一个可用格进行召唤
+	battle_flow.try_summon(_selected_unit_id_cache, summon_cells[0])
 
 func _on_phase_changed(phase_name: String) -> void:
 	phase_label.text = "阶段：" + _phase_label_text(phase_name)
@@ -160,9 +172,11 @@ func _on_dice_rolled(results: Array[String], next_crest_pool: Dictionary) -> voi
 
 func _on_unit_selected(unit_id: String) -> void:
 	selected_label.text = "选中：" + unit_id
+	_selected_unit_id_cache = unit_id
 
 func _on_unit_deselected() -> void:
 	selected_label.text = "选中：无"
+	_selected_unit_id_cache = ""
 
 func _on_move_completed(_unit_id: String, _from_cell: Vector2i, _to_cell: Vector2i) -> void:
 	_refresh_crest_pool()
@@ -171,6 +185,9 @@ func _on_attack_completed(_attacker_id: String, _defender_id: String, _damage: i
 	_refresh_crest_pool()
 
 func _on_enemy_attack_completed(_attacker_id: String, _defender_id: String, _damage: int, _killed: bool, _target_cell: Vector2i) -> void:
+	_refresh_crest_pool()
+
+func _on_summon_completed(_unit_id: String, _path_cells: Array[Vector2i], _spawn_cell: Vector2i) -> void:
 	_refresh_crest_pool()
 
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:

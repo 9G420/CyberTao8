@@ -5,6 +5,7 @@ signal unit_selected(unit_id: String)
 signal unit_deselected
 signal move_requested(unit_id: String, target_cell: Vector2i)
 signal attack_requested(unit_id: String, target_cell: Vector2i)
+signal summon_requested(unit_id: String, target_cell: Vector2i)
 
 const CELL_SIZE: int = 72
 const GRID_W: int = 8
@@ -18,6 +19,7 @@ var battle_flow: Node = null
 var selected_unit_id: String = ""
 var highlight_cells: Array[Vector2i] = []
 var attack_highlight_cells: Array[Vector2i] = []
+var summon_highlight_cells: Array[Vector2i] = []
 
 # Attack feedback state
 var _flash_cell: Vector2i = Vector2i(-1, -1)
@@ -52,6 +54,7 @@ func _on_state_changed() -> void:
 	if selected_unit_id != "" and battle_flow:
 		highlight_cells = battle_flow.get_reachable_cells_for(selected_unit_id)
 		attack_highlight_cells = battle_flow.get_attackable_cells_for(selected_unit_id)
+		summon_highlight_cells = battle_flow.get_summon_cells_for(selected_unit_id)
 	queue_redraw()
 
 func _gui_input(event: InputEvent) -> void:
@@ -89,6 +92,15 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		if is_attack_target:
 			emit_signal("attack_requested", selected_unit_id, cell)
 			return
+		# Check if clicked cell is a summon target
+		var is_summon_target: bool = false
+		for sc in summon_highlight_cells:
+			if sc == cell:
+				is_summon_target = true
+				break
+		if is_summon_target:
+			emit_signal("summon_requested", selected_unit_id, cell)
+			return
 		# Check if clicked cell is a move target
 		var is_move_target: bool = false
 		for hc in highlight_cells:
@@ -124,9 +136,11 @@ func _select_unit(unit_id: String) -> void:
 	if battle_flow:
 		highlight_cells = battle_flow.get_reachable_cells_for(unit_id)
 		attack_highlight_cells = battle_flow.get_attackable_cells_for(unit_id)
+		summon_highlight_cells = battle_flow.get_summon_cells_for(unit_id)
 	else:
 		highlight_cells = []
 		attack_highlight_cells = []
+		summon_highlight_cells = []
 	emit_signal("unit_selected", unit_id)
 	queue_redraw()
 
@@ -134,6 +148,7 @@ func _deselect() -> void:
 	selected_unit_id = ""
 	highlight_cells = []
 	attack_highlight_cells = []
+	summon_highlight_cells = []
 	emit_signal("unit_deselected")
 	queue_redraw()
 
@@ -141,6 +156,7 @@ func _draw() -> void:
 	_draw_board()
 	_draw_highlights()
 	_draw_attack_highlights()
+	_draw_summon_highlights()
 	_draw_paths()
 	_draw_units()
 	_draw_unit_hp()
@@ -173,12 +189,34 @@ func _draw_attack_highlights() -> void:
 		# Border red highlight
 		draw_rect(Rect2(pos, sz), Color(1.0, 0.25, 0.25, 0.75), false, 2.0)
 
+func _draw_summon_highlights() -> void:
+	for cell in summon_highlight_cells:
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 4, cell.y * CELL_SIZE + 4)
+		var sz: Vector2 = Vector2(CELL_SIZE - 10, CELL_SIZE - 10)
+		# 紫色填充高亮
+		draw_rect(Rect2(pos, sz), Color(0.7, 0.2, 1.0, 0.2), true)
+		# 紫色边框高亮
+		draw_rect(Rect2(pos, sz), Color(0.75, 0.3, 1.0, 0.7), false, 2.0)
+
 func _draw_paths() -> void:
 	if board_manager == null:
 		return
 	for cell in board_manager.path_cells.keys():
-		var path_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 8)
-		draw_rect(Rect2(path_pos, Vector2(CELL_SIZE - 18, CELL_SIZE - 18)), Color(1.0, 0.55, 0.2, 0.55), true)
+		var owner_id: String = String(board_manager.path_cells[cell])
+		var fill_color: Color
+		var border_color: Color
+		if owner_id == "player":
+			# 玩家路径：青色发光
+			fill_color = Color(0.15, 0.85, 0.75, 0.18)
+			border_color = Color(0.2, 0.95, 0.8, 0.6)
+		else:
+			# 其他路径：橙色
+			fill_color = Color(1.0, 0.55, 0.2, 0.2)
+			border_color = Color(1.0, 0.6, 0.25, 0.55)
+		var path_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 2, cell.y * CELL_SIZE + 2)
+		var path_sz: Vector2 = Vector2(CELL_SIZE - 6, CELL_SIZE - 6)
+		draw_rect(Rect2(path_pos, path_sz), fill_color, true)
+		draw_rect(Rect2(path_pos, path_sz), border_color, false, 2.0)
 
 func _draw_units() -> void:
 	if unit_manager == null:
