@@ -4,6 +4,7 @@ class_name BattleFlowController
 signal setup_completed
 signal phase_changed(phase_name: String)
 signal move_completed(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
+signal attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool)
 signal round_changed(round_number: int)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
@@ -12,6 +13,7 @@ const UnitManager = preload("res://Scripts/BattleV2/UnitManager.gd")
 const ActionResolver = preload("res://Scripts/BattleV2/ActionResolver.gd")
 const BuffManager = preload("res://Scripts/BattleV2/BuffManager.gd")
 const BattleAI = preload("res://Scripts/BattleV2/BattleAI.gd")
+const AttackRuleHelper = preload("res://Scripts/BattleV2/AttackRuleHelper.gd")
 const UnitData = preload("res://Scripts/Data/UnitData.gd")
 
 enum BattlePhase {
@@ -170,6 +172,50 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 	var old_cell: Vector2i = unit["cell"]
 	unit_manager.move_unit(unit_id, target_cell)
 	emit_signal("move_completed", unit_id, old_cell, target_cell)
+	return true
+
+## Return attackable cells for a player unit. Empty if no ATTACK crest available.
+func get_attackable_cells_for(unit_id: String) -> Array[Vector2i]:
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		var empty: Array[Vector2i] = []
+		return empty
+	var attack_available: int = int(dice_manager.crest_pool.get("attack", 0))
+	if attack_available <= 0:
+		var empty: Array[Vector2i] = []
+		return empty
+	return action_resolver.get_attackable_cells(unit_id)
+
+## Attempt to attack a target at target_cell, paying 1 ATTACK crest. Returns true on success.
+func try_attack_unit(attacker_id: String, target_cell: Vector2i) -> bool:
+	var attacker: Dictionary = unit_manager.get_unit(attacker_id)
+	if attacker.is_empty():
+		return false
+	if String(attacker.get("owner", "")) != "player":
+		return false
+	# Verify target cell is attackable
+	var attackable: Array[Vector2i] = get_attackable_cells_for(attacker_id)
+	var found: bool = false
+	for ac in attackable:
+		if ac == target_cell:
+			found = true
+			break
+	if not found:
+		return false
+	# Identify defender
+	if not unit_manager.units_by_cell.has(target_cell):
+		return false
+	var defender_id: String = String(unit_manager.units_by_cell[target_cell])
+	# Pay 1 ATTACK crest
+	var cost: Dictionary = {"attack": 1}
+	if not dice_manager.can_pay(cost):
+		return false
+	dice_manager.pay(cost)
+	# Calculate damage and apply
+	var defender: Dictionary = unit_manager.get_unit(defender_id)
+	var damage: int = AttackRuleHelper.calc_basic_damage(attacker, defender)
+	var killed: bool = unit_manager.apply_damage(defender_id, damage)
+	emit_signal("attack_completed", attacker_id, defender_id, damage, killed)
 	return true
 
 func _phase_name(phase: BattlePhase) -> String:
