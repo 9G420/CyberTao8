@@ -51,7 +51,7 @@ func _build_debug_view() -> void:
 	add_child(subtitle)
 
 	var hint := Label.new()
-	hint.text = "左侧棋盘：点击我方单位，再点击青色格移动或红色格攻击"
+	hint.text = "左侧棋盘：点击单位后 青色=移动 红色=攻击 紫色=召唤铺路"
 	hint.position = Vector2(0, 126)
 	hint.size = Vector2(1280, 28)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -102,9 +102,11 @@ func _wire_debug_views() -> void:
 	_board_view.bind_battle_flow(_battle_flow)
 	_board_view.move_requested.connect(_on_move_requested)
 	_board_view.attack_requested.connect(_on_attack_requested)
+	_board_view.summon_requested.connect(_on_summon_requested)
 	_battle_flow.phase_changed.connect(_on_phase_changed)
 	_battle_flow.attack_completed.connect(_on_attack_completed)
 	_battle_flow.enemy_attack_completed.connect(_on_enemy_attack_completed)
+	_battle_flow.summon_completed.connect(_on_summon_completed)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -112,6 +114,7 @@ func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+	_board_view.summon_highlight_cells = _battle_flow.get_summon_cells_for(unit_id)
 	_board_view.queue_redraw()
 
 func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
@@ -120,6 +123,14 @@ func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 		_board_view.play_attack_feedback(target_cell, _last_attack_damage)
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+	_board_view.summon_highlight_cells = _battle_flow.get_summon_cells_for(unit_id)
+	_board_view.queue_redraw()
+
+func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
+	var success: bool = _battle_flow.try_summon(unit_id, target_cell)
+	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+	_board_view.summon_highlight_cells = _battle_flow.get_summon_cells_for(unit_id)
 	_board_view.queue_redraw()
 
 func _on_phase_changed(phase_name: String) -> void:
@@ -144,10 +155,15 @@ func _on_enemy_attack_completed(attacker_id: String, defender_id: String, damage
 	# 敌方攻击时在目标格显示受击反馈
 	_board_view.play_attack_feedback(target_cell, damage)
 
+func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i) -> void:
+	# 召唤完成后刷新棋盘
+	_board_view.queue_redraw()
+
 func _on_restart_pressed() -> void:
 	_board_view.selected_unit_id = ""
 	_board_view.highlight_cells = []
 	_board_view.attack_highlight_cells = []
+	_board_view.summon_highlight_cells = []
 	_battle_flow.restart_battle()
 	_board_view.queue_redraw()
 

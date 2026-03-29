@@ -81,3 +81,12 @@ func get_reachable_cells(origin: Vector2i, move_range: int) -> Array[Vector2i]:
 			frontier.append(nb)
 			reachable.append(nb)
 	return reachable
+
+## 获取指定格子的所有空闲相邻格（在棋盘内、未被占据、不是路径格）
+func get_free_neighbors(cell: Vector2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	var neighbors: Array[Vector2i] = get_neighbors(cell)
+	for nb in neighbors:
+		if not occupied_cells.has(nb) and not path_cells.has(nb):
+			result.append(nb)
+	return result

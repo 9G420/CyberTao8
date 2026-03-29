@@ -6,6 +6,7 @@ signal phase_changed(phase_name: String)
 signal move_completed(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
 signal attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool)
 signal enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i)
+signal summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i)
 signal round_changed(round_number: int)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
@@ -31,6 +32,7 @@ enum BattlePhase {
 
 var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
+var _summon_counter: int = 0
 
 var dice_manager: DiceManager
 var board_manager: BoardManager
@@ -316,6 +318,77 @@ func _check_battle_outcome() -> void:
 	elif outcome == "DEFEAT" or outcome == "DRAW":
 		mark_defeat()
 
+## 获取以指定单位为原点的可召唤格（空闲相邻格）。如果 SUMMON crest 不足返回空。
+func get_summon_cells_for(unit_id: String) -> Array[Vector2i]:
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		var empty: Array[Vector2i] = []
+		return empty
+	var summon_available: int = int(dice_manager.crest_pool.get("summon", 0))
+	if summon_available <= 0:
+		var empty: Array[Vector2i] = []
+		return empty
+	var cell: Vector2i = unit["cell"]
+	return board_manager.get_free_neighbors(cell)
+
+## 尝试在指定格执行召唤：铺路 + 生成召唤单位。消耗 1 SUMMON crest。
+func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
+	if is_battle_over():
+		return false
+	if current_phase != BattlePhase.PLAYER_ACTION:
+		return false
+	var origin_unit: Dictionary = unit_manager.get_unit(origin_unit_id)
+	if origin_unit.is_empty():
+		return false
+	if String(origin_unit.get("owner", "")) != "player":
+		return false
+	# 检查 target_cell 是否在可召唤范围内
+	var summon_cells: Array[Vector2i] = get_summon_cells_for(origin_unit_id)
+	var found: bool = false
+	for sc in summon_cells:
+		if sc == target_cell:
+			found = true
+			break
+	if not found:
+		return false
+	# 支付 1 SUMMON crest
+	var cost: Dictionary = {"summon": 1}
+	if not dice_manager.can_pay(cost):
+		return false
+	dice_manager.pay(cost)
+	# 铺路：target_cell 标记为玩家路径格
+	board_manager.add_path_cell(target_cell, "player")
+	# 尝试在 target_cell 的方向上再延伸 1 格路径
+	var extended_paths: Array[Vector2i] = [target_cell]
+	var ext_neighbors: Array[Vector2i] = board_manager.get_free_neighbors(target_cell)
+	if ext_neighbors.size() > 0:
+		# 选择距离原点更远的方向延伸
+		var origin_cell: Vector2i = origin_unit["cell"]
+		var best_ext: Vector2i = ext_neighbors[0]
+		var best_dist: int = absi(ext_neighbors[0].x - origin_cell.x) + absi(ext_neighbors[0].y - origin_cell.y)
+		for ext in ext_neighbors:
+			var d: int = absi(ext.x - origin_cell.x) + absi(ext.y - origin_cell.y)
+			if d > best_dist:
+				best_dist = d
+				best_ext = ext
+		board_manager.add_path_cell(best_ext, "player")
+		extended_paths.append(best_ext)
+	# 在 target_cell 上生成召唤单位
+	_summon_counter += 1
+	var summon_id: String = "summoned_fox_" + str(_summon_counter)
+	var summon_data: Dictionary = {
+		"max_hp": 4,
+		"atk": 2,
+		"def": 0,
+		"move_range": 2,
+		"attack_range": 1,
+		"owner": "player",
+		"tags": ["summoned", "fox"],
+	}
+	unit_manager.spawn_unit(summon_id, summon_data, target_cell)
+	emit_signal("summon_completed", summon_id, extended_paths, target_cell)
+	return true
+
 func _phase_name(phase: BattlePhase) -> String:
 	match phase:
 		BattlePhase.BOOT:
@@ -342,6 +415,7 @@ func restart_battle() -> void:
 	unit_manager.clear_all_units()
 	board_manager.clear_board()
 	board_manager.build_test_board(Vector2i(8, 8))
+	_summon_counter = 0
 	_spawn_debug_units()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
