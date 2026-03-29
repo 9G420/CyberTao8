@@ -847,3 +847,26 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 事件格负面效果（HP-1）可致死，会触发胜负判定
 - 走位路线开始有多条选择：安全路线（回避陷阱/事件）vs 冒险路线（高收益但有风险）
 - 仅玩家单位触发恢复格和事件格，敌方不触发
+
+## v0.1.31 - 2026-03-29
+
+### 新增
+- 持久牌组系统：牌组跨战斗保留，战斗胜利后可获得新卡牌
+- 战斗胜利选牌机制：击败敌人后从 3 张随机候选中选 1 张加入牌组（或跳过）
+- CardRewardPanel 奖励选牌面板：品红色边框赛博朋克风格，显示候选卡牌详情
+- 5 种新卡牌类型加入奖励卡池：穿刺（无视防御 4 伤害）、吸血斩（3 伤害+回复 1）、电弧（2 伤害+敌方 ATK-1）、强化斩击（4 伤害）、双重防御（防御 3）
+- BattleState.REWARD_SELECT 新状态：奖励选牌阶段
+- 新信号：reward_cards_offered / reward_card_selected
+- 新方法：select_reward_card() / skip_reward() / get_deck_size() / reset_persistent_deck()
+
+### 修改
+- CardBattleController._win() 不再直接发出 battle_ended，改为进入 REWARD_SELECT 阶段
+- CardBattleController.start_battle() 使用持久牌组复制而非每次重建
+- CardBattlePanel._on_battle_ended() 胜利时延迟缩短为 0.5s
+- Main.gd 重新开始时重置持久牌组
+
+### 备注
+- 奖励卡池共 13 张（5 种新牌 + 8 种基础牌），每次随机 3 选 1
+- 牌组在重新开始游戏时重置为初始 10 张
+- 电弧效果虽然写为 enemy_atk -= 1，但因 start_battle 重读敌方数据，实际仅单场生效
+- 第二阶段首个功能任务，核心目标是让每次遭遇有"收获感"

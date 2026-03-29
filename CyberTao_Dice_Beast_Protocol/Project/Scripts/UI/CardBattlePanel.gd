@@ -86,8 +86,14 @@ func _on_battle_ended(victory: bool, _player_hp_remaining: int) -> void:
 		else:
 			_log_label.text = "逃跑！受到 1 点惩罚伤害。"
 	_refresh_status()
-	await get_tree().create_timer(1.2).timeout
-	visible = false
+	if not victory:
+		# 败北/逃跑：直接隐藏
+		await get_tree().create_timer(1.2).timeout
+		visible = false
+	else:
+		# 胜利：延迟隐藏，等奖励选牌面板关闭后再隐藏
+		await get_tree().create_timer(0.5).timeout
+		visible = false
 
 func _on_victory_reward(reward_text: String) -> void:
 	_log_label.text = _log_label.text + "\n奖励：" + reward_text

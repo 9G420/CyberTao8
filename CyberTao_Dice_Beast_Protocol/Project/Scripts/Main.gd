@@ -7,6 +7,7 @@ const DiceDebugPanel = preload("res://Scripts/UI/DiceDebugPanel.gd")
 const DisplaySettings = preload("res://Scripts/System/DisplaySettings.gd")
 const SettingsPanel = preload("res://Scripts/UI/SettingsPanel.gd")
 const CardBattlePanel = preload("res://Scripts/UI/CardBattlePanel.gd")
+const CardRewardPanel = preload("res://Scripts/UI/CardRewardPanel.gd")
 
 var _battle_flow: BattleFlowController
 var _card_battle_ctrl: CardBattleController
@@ -15,6 +16,7 @@ var _dice_panel: DiceDebugPanel
 var _display_settings: DisplaySettings
 var _settings_panel: SettingsPanel
 var _card_battle_panel: CardBattlePanel
+var _card_reward_panel: CardRewardPanel
 var _result_label: Label
 var _restart_btn: Button
 var _last_attack_damage: int = 0
@@ -92,6 +94,10 @@ func _build_debug_view() -> void:
 	_card_battle_panel.position = Vector2(280, 140)
 	add_child(_card_battle_panel)
 
+	_card_reward_panel = CardRewardPanel.new()
+	_card_reward_panel.position = Vector2(380, 200)
+	add_child(_card_reward_panel)
+
 	_result_label = Label.new()
 	_result_label.position = Vector2(0, 44)
 	_result_label.size = Vector2(1280, 40)
@@ -134,6 +140,8 @@ func _wire_debug_views() -> void:
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
 	# 卡牌战斗面板绑定控制器
 	_card_battle_panel.bind_controller(_card_battle_ctrl)
+	# 卡牌奖励面板绑定控制器
+	_card_reward_panel.bind_controller(_card_battle_ctrl)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 	_dice_panel.test_card_battle_requested.connect(_on_test_card_battle_requested)
@@ -250,6 +258,7 @@ func _on_restart_pressed() -> void:
 	_board_view.highlight_cells = []
 	_board_view.attack_highlight_cells = []
 	_board_view.summon_highlight_cells = []
+	_card_battle_ctrl.reset_persistent_deck()
 	_battle_flow.restart_battle()
 	_board_view.queue_redraw()
 
