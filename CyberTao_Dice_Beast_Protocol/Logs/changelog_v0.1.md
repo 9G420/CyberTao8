@@ -190,3 +190,26 @@
 - HP is displayed as text overlay; no HP bar yet
 - no restart mechanism after victory/defeat
 - no enemy AI turn; enemy never fights back
+
+## v0.1.7 - 2026-03-29
+
+### Added
+
+- display settings system: `DisplaySettings` node handles resolution, window mode, and persistence via `ConfigFile`
+- settings panel UI (`SettingsPanel`): resolution dropdown (1280x720, 1600x900, 1920x1080), window mode dropdown (windowed, fullscreen, borderless), apply/reset/close buttons
+- "设置" button in top-right corner of main scene opens settings panel
+- settings saved to `user://display_settings.cfg` and loaded on startup
+- `DisplayServer` API used for window mode switching, resize, and centering
+
+### Changed
+
+- default viewport changed from 1920x1080 to 1280x720 in `project.godot`
+- `Main.gd` layout repositioned for 1280x720: board at (40,160), dice panel at (660,160), labels resized to 1280 width
+- `Main.gd` now preloads and instantiates `DisplaySettings` and `SettingsPanel`
+
+### Notes
+
+- settings panel appears centered over the board when opened
+- resolution change takes effect immediately on "应用" (apply)
+- "恢复默认" resets to 1280x720 windowed
+- battle prototype functionality unchanged

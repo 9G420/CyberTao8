@@ -1,6 +1,6 @@
 # CyberTao: Dice Beast Protocol Migration Snapshot
 **Generated**: 2026-03-29
-**Version**: v0.1.6
+**Version**: v0.1.7
 **Branch**: `codex/dice-beast-protocol`
 
 ---
@@ -33,7 +33,7 @@ Main active directory:
 
 ## 2. Current State
 
-Current state at v0.1.6:
+Current state at v0.1.7:
 
 - a separate Godot subproject has been created
 - the new project has its own `project.godot`
@@ -69,6 +69,9 @@ Current state at v0.1.6:
 - victory check: all enemies dead → VICTORY phase, banner shown
 - defeat check: all player units dead → DEFEAT phase, banner shown
 - all actions blocked after victory/defeat
+- display settings system: resolution/window mode selection with ConfigFile persistence
+- default viewport changed from 1920x1080 to 1280x720
+- settings button in main UI opens settings panel overlay
 
 The minimum combat prototype is now complete. The next step is enemy AI and restart.
 
@@ -167,6 +170,11 @@ UI scripts:
 
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/UI/BoardView.gd`
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/UI/DiceDebugPanel.gd`
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/UI/SettingsPanel.gd`
+
+System scripts:
+
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/System/DisplaySettings.gd`
 
 ---
 
@@ -193,7 +201,7 @@ First recommended prototype factions:
 
 ## 6. Immediate Priorities
 
-Completed through v0.1.6:
+Completed through v0.1.7:
 
 1. ~~turn the visual board prototype into clickable board interaction~~ (done in v0.1.1)
 2. ~~let dice resources drive at least one real move action~~ (done in v0.1.1 — MOVE crest spending)
@@ -207,6 +215,7 @@ Completed through v0.1.6:
    - ~~end turn~~ (done in v0.1.3)
 5. ~~HP display on units~~ (done in v0.1.6)
 6. ~~victory/defeat check~~ (done in v0.1.6)
+7. ~~display settings system~~ (done in v0.1.7 — resolution, window mode, ConfigFile persistence)
 
 Next priority targets:
 
