@@ -11,6 +11,10 @@ static func execute(effect_id: String, context: Dictionary) -> Dictionary:
 			return _ghost_shift(context)
 		"steal_signal":
 			return _steal_signal(context)
+		"direct_chop":
+			return _direct_chop(context)
+		"jam_burst":
+			return _jam_burst(context)
 		_:
 			return {
 				"ok": false,
@@ -82,4 +86,40 @@ static func _steal_signal(context: Dictionary) -> Dictionary:
 			"turns": 1,
 		},
 		"log": String(source_unit.get("id", "unit")) + " disrupted " + String(target_unit.get("id", "target")) + ".",
+	}
+
+static func _direct_chop(context: Dictionary) -> Dictionary:
+	var source_unit: Dictionary = context.get("source_unit", {})
+	var target_unit: Dictionary = context.get("target_unit", {})
+	if source_unit.is_empty() or target_unit.is_empty():
+		return {
+			"ok": false,
+			"reason": "missing_target",
+		}
+	var bonus_damage: int = 1 if context.get("target_is_controlled", false) else 0
+	return {
+		"ok": true,
+		"effect": "direct_chop",
+		"damage": 2 + bonus_damage,
+		"log": String(source_unit.get("id", "unit")) + " chopped into " + String(target_unit.get("id", "target")) + ".",
+	}
+
+static func _jam_burst(context: Dictionary) -> Dictionary:
+	var source_unit: Dictionary = context.get("source_unit", {})
+	var target_unit: Dictionary = context.get("target_unit", {})
+	if source_unit.is_empty() or target_unit.is_empty():
+		return {
+			"ok": false,
+			"reason": "missing_target",
+		}
+	return {
+		"ok": true,
+		"effect": "jam_burst",
+		"damage": 1,
+		"apply_status": {
+			"type": "jammed",
+			"value": 1,
+			"turns": 1,
+		},
+		"log": String(source_unit.get("id", "unit")) + " triggered a jam burst on " + String(target_unit.get("id", "target")) + ".",
 	}

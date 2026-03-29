@@ -32,6 +32,9 @@
 - added a third prototype unit: crow caster
 - added first prototype core resource
 - added a unit keyword reference document
+- added first attack helper and target query support
+- added prototype attack rule documentation
+- added early attack-oriented skill resources for dog and fox units
 
 ### Notes
 

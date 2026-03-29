@@ -51,6 +51,7 @@ Current state at v0.1.0:
 - a third prototype unit resource now exists: crow caster
 - a first item effect library now exists
 - a first prototype core resource now exists
+- first attack helper and attack rule support docs now exist
 
 This is not yet a playable combat prototype.
 
@@ -132,9 +133,11 @@ Combat support:
 
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/SkillEffectLibrary.gd`
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/ItemEffectLibrary.gd`
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/AttackRuleHelper.gd`
 - `CyberTao_Dice_Beast_Protocol/Docs/COMBAT_RULES_v0.1.md`
 - `CyberTao_Dice_Beast_Protocol/Docs/CONTENT_ROADMAP_v0.1.md`
 - `CyberTao_Dice_Beast_Protocol/Docs/UNIT_KEYWORDS_v0.1.md`
+- `CyberTao_Dice_Beast_Protocol/Docs/ATTACK_RULES_v0.1.md`
 
 Logs and handoff:
 
