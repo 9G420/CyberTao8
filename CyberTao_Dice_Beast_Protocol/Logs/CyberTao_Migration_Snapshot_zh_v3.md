@@ -1,7 +1,7 @@
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
 **更新时间**: 2026-03-29
-**当前版本**: v0.1.22
+**当前版本**: v0.1.23
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要开发分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
@@ -15,11 +15,11 @@
 **你正在接手一个 Godot 赛博朋克战术 Roguelike 项目。** 请按以下顺序阅读文件：
 
 1. **本文件**（`Logs/CyberTao_Migration_Snapshot_zh_v3.md`）— 项目全貌、架构、数据结构、当前状态、下一步
-2. **`Logs/Weekly_Mulerun_Plan_zh_v2.md`** — 当前周计划（Day 1~6 已完成，从 Day 7 开始执行）
+2. **`Logs/Weekly_Mulerun_Plan_zh_v2.md`** — 当前周计划（Day 1~7 已完成，从 Day 8 开始执行）
 3. **`Logs/Board_Card_Battle_Concept_zh.md`** — 双层玩法机制方案（棋盘走位层 + 卡牌战斗层的设计文档）
 4. **`Logs/Demo_Roadmap_2p5D_zh.md`** — 中长期 Demo 路线（六阶段开发规划）
-5. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告（v0.1.22 遭遇格入口）
-6. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.22）
+5. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告（v0.1.23 遭遇暂停流程）
+6. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.23）
 
 **关键规则：**
 - **只在 `CyberTao_Dice_Beast_Protocol/Project/` 目录下开发**，不要修改旧项目 `CyberTao8` 根目录
@@ -28,7 +28,7 @@
 - 每次任务前确认：服务于棋盘走位层 or 卡牌战斗层入口，两者都不是则不优先做
 - 工作报告必须包含：本轮任务 / 根因目标 / 修改文件 / 实现内容 / 剩余问题 / 建议下一步
 
-**当前最优先任务：执行 Day 7 — 遭遇暂停与战斗占位流程**（详见第 5 节）
+**当前最优先任务：执行 Day 8 — 棋盘格子事件化**（详见第 5 节）
 
 ---
 
@@ -54,9 +54,9 @@
 
 ---
 
-## 2. 当前已完成内容（v0.1.0 → v0.1.22）
+## 2. 当前已完成内容（v0.1.0 → v0.1.23）
 
-### 棋盘走位层（外层基础已成型 + 遭遇入口已接入）
+### 棋盘走位层（外层基础已成型 + 遭遇暂停流程已闭环）
 
 | 系统 | 版本 | 状态 |
 |------|------|------|
@@ -72,19 +72,19 @@
 | 单位地形适性（3种） | v0.1.19 | 稳定 |
 | 道具拾取（2种即时效果） | v0.1.20 | 稳定 |
 | 敌方意图广播 + 攻击预警 | v0.1.21 | 稳定 |
-| **遭遇格原型入口** | **v0.1.22** | **稳定** |
+| 遭遇格原型入口 | v0.1.22 | 稳定 |
+| **遭遇暂停与战斗占位流程** | **v0.1.23** | **稳定** |
 | 显示设置系统 | v0.1.7 | 有 BUG-001 |
 
-### v0.1.22 新增：遭遇格原型入口
+### v0.1.23 新增：遭遇暂停与战斗占位流程
 
-- `BoardManager.encounter_cells` 字典（cell → encounter_id）
-- `add_encounter_cell()` / `clear_encounter_cell()` 方法
-- 调试布局 2 个遭遇格：(4,4) encounter_01、(6,5) encounter_02
-- 玩家单位踩遭遇格时触发 `encounter_triggered(unit_id, encounter_id, cell)` 信号
-- 橙红色警告渲染 + "遭遇" 文字标记
-- 面板占位提示 "遭遇！准备进入战斗..."
-- 橙红色飘字反馈
-- **当前限制**：踩后只发信号+提示，不暂停棋盘、不清除遭遇格、不切场景
+- `BattlePhase.ENCOUNTER` 新阶段：踩遭遇格后棋盘进入暂停状态
+- 遭遇上下文保存：`_encounter_unit_id`、`_encounter_id`、`_encounter_cell`
+- 遭遇战斗占位面板：橙红色面板 + "战斗开始 [encounter_id]" + "战斗胜利（占位）"按钮
+- `resolve_encounter()` 方法：清除遭遇格 → 回到 PLAYER_ACTION
+- `encounter_resolved` 信号：为后续接入真实卡牌战斗预留接口
+- ENCOUNTER 阶段禁止所有棋盘操作（移动/攻击/召唤/掷骰/结束回合）
+- 完整流程：踩格 → 暂停 → 占位面板 → 点击返回 → 遭遇格消失 → 棋盘继续
 
 ### 3 个玩家原型单位
 
@@ -137,7 +137,7 @@
 5. 紫色格召唤铺路
 6. 绿色格道具自动拾取
 7. 金色高台格 / 暗红陷阱格
-8. **橙红遭遇格（踩上触发信号+占位提示）** ← v0.1.22 新增
+8. **橙红遭遇格（踩上 → 暂停 → 占位面板 → 返回）** ← v0.1.23 闭环
 9. 敌方回合（意图广播 + 预警闪烁）
 10. 胜利 / 失败
 11. 重新开始
@@ -179,7 +179,7 @@ setup_completed / phase_changed / round_changed
 move_completed / attack_completed / enemy_attack_completed
 summon_completed / terrain_damage_triggered / item_picked_up
 enemy_action_announced / enemy_turn_ended
-encounter_triggered                           ← v0.1.22 新增
+encounter_triggered / encounter_resolved          ← v0.1.23 暂停+结算
 ```
 
 ### 关键数据结构
@@ -203,8 +203,9 @@ DiceManager:
 ### 战斗阶段流程
 
 ```
-BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → ENEMY_ROLL → ENEMY_ACTION → (loop)
+BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → [ENCOUNTER → PLAYER_ACTION] → ENEMY_ROLL → ENEMY_ACTION → (loop)
 终态: VICTORY / DEFEAT
+遭遇分支: PLAYER_ACTION → ENCOUNTER（暂停） → resolve_encounter() → PLAYER_ACTION
 ```
 
 ### 关键代码路径
@@ -218,27 +219,21 @@ BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → ENEMY_ROLL → ENEMY_ACT
 
 ## 5. 推进优先级（当前状态下）
 
-### 最高优先级：遭遇暂停流程（Day 7）
+### 已完成：遭遇暂停流程（Day 7 → v0.1.23）
 
-遭遇格入口已就绪（v0.1.22），下一步核心是让"踩格 → 暂停 → 占位面板 → 返回"的完整流程闭环。
+遭遇格入口 + 暂停流程已闭环。踩格 → 暂停 → 占位面板 → 点击返回 → 遭遇格消失 → 棋盘继续。
 
-需要实现：
-1. 新增 `BattlePhase.ENCOUNTER` 暂停状态
-2. 触发遭遇后棋盘进入暂停（禁止操作）
-3. 显示战斗占位面板（"战斗开始 — [encounter_id]"）
-4. 面板上"战斗胜利（占位）"按钮，点击后清除遭遇格、回到 PLAYER_ACTION
-5. 为后续接入真实卡牌战斗预留流程口
-
-### 第二优先级：棋盘格子事件化（Day 8）
+### 最高优先级：棋盘格子事件化（Day 8）
 
 - 恢复格（踩上回复 HP）
 - 事件格（随机 buff/debuff）
 - 走位路线更有策略意义
 
-### 第三优先级：最小卡牌战斗原型（Day 9）
+### 第二优先级：最小卡牌战斗原型（Day 9）
 
 - 替换 Day 7 的占位面板，接入简化版抽牌/出牌/结算
 - 战斗结果影响棋盘
+- 入口：`resolve_encounter()` 方法和 `encounter_resolved` 信号
 
 ### 后续（Day 10~12）
 
@@ -321,4 +316,4 @@ BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → ENEMY_ROLL → ENEMY_ACT
 
 ## 9. 一句话状态
 
-**v0.1.22 遭遇格原型入口已完成（棋盘上可见遭遇格、踩上触发信号+占位提示），双层结构的入口信号层已就绪。下一步核心是 Day 7 实现遭遇暂停流程（踩格→暂停→占位面板→返回），让"进入-退出"闭环成立，为 Day 9 接入最小卡牌战斗做准备。**
+**v0.1.23 遭遇暂停流程已闭环（踩格→ENCOUNTER暂停→战斗占位面板→点击返回→遭遇格消失→棋盘继续），双层结构的"进入-退出"骨架已成立。下一步核心是 Day 8 棋盘格子事件化（恢复格/事件格），然后 Day 9 替换占位面板接入最小卡牌战斗原型。**
