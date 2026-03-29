@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/SkillData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+skill_id = "my_blade_and_shield"
+skill_name = "我的刀盾"
+description = "本回合获得 2 点护持。若受到邻接攻击，立刻进行一次反击。"
+crest_cost = {
+"defend": 1,
+"skill": 1
+}
+target_type = "self"
+target_pattern = "single"
+cast_range = 0
+effect_script_id = "my_blade_and_shield"
+cooldown = 0
+consumes_action = true
+once_per_turn = true
+required_traits = Array[String](["guard"])

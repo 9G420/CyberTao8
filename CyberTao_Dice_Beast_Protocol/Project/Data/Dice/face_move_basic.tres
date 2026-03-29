@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="DiceFaceData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DiceFaceData.gd" id="1_face"]
+
+[resource]
+script = ExtResource("1_face")
+face_id = "face_move_basic"
+face_type = "move"
+crest_value = 1
+grants_path_shape = ""
+grants_effect_id = ""

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CoreData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CoreData.gd" id="1_core"]
+
+[resource]
+script = ExtResource("1_core")
+core_id = "blade_pack_core"
+core_name = "刀盾群核"
+max_hp = 3
+passive_id = "pack_guard"
+faction = "blade_shield_pack"
+visual_theme = "orange_metal"

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = "overclock_bone"
+item_name = "超频骨头"
+description = "拾取后本回合额外获得 1 点 MOVE，并使第一次攻击伤害 +1。"
+item_type = "pickup"
+rarity = 1
+pickup_effect_id = "gain_move_and_attack_boost"
+duration = 1
+meme_tag = "刀盾狗"

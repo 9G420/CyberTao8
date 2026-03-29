@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="SkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/SkillData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+skill_id = "signal_snare"
+skill_name = "信号绊索"
+description = "在目标空格放置一个机巧陷阱，敌人踏入后停止移动。"
+crest_cost = {
+"trick": 1
+}
+target_type = "cell"
+target_pattern = "single"
+cast_range = 2
+effect_script_id = "signal_snare"
+cooldown = 1
+consumes_action = false
+once_per_turn = true
+required_traits = Array[String](["trap"])

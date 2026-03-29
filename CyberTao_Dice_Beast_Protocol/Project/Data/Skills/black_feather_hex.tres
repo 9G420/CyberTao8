@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/SkillData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+skill_id = "black_feather_hex"
+skill_name = "黑羽咒包"
+description = "对 3 格内目标施加咒蚀，本回合攻击力 -1。"
+crest_cost = {
+"skill": 1,
+"trick": 1
+}
+target_type = "enemy"
+target_pattern = "single"
+cast_range = 3
+effect_script_id = "black_feather_hex"
+cooldown = 0
+consumes_action = true
+once_per_turn = false
+required_traits = Array[String](["curse"])

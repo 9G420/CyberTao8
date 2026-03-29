@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/SkillData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+skill_id = "steal_signal"
+skill_name = "偷讯号"
+description = "对 2 格内目标施加干扰，并偷取 1 点随机 crest。"
+crest_cost = {
+"skill": 1,
+"trick": 1
+}
+target_type = "enemy"
+target_pattern = "single"
+cast_range = 2
+effect_script_id = "steal_signal"
+cooldown = 1
+consumes_action = true
+once_per_turn = false
+required_traits = Array[String](["hack"])

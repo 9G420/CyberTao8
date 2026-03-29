@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = "patch_tea_cache"
+item_name = "补丁凉茶"
+description = "拾取后恢复 2 点生命，并移除一个轻度负面状态。"
+item_type = "pickup"
+rarity = 0
+pickup_effect_id = "heal_and_cleanse"
+duration = 0
+meme_tag = "土味赛博"

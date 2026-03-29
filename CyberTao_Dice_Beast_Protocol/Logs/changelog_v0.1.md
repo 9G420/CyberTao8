@@ -20,6 +20,18 @@
 - wired the main scene to the new BattleV2 managers
 - added manager signals for board, units, phase, and dice roll updates
 - spawned debug units and demo path support for the visual prototype
+- expanded the skill data model for cooldown, targeting, and trait gating
+- added the first skill resource definitions for blade shield dog
+- added a reusable skill effect library stub for combat effect execution
+- added a first explicit combat rules document for the prototype phase
+- added the first pickup item resource set
+- added the first dice face resource set
+- added a second prototype faction unit: hacker fox
+- added a content roadmap document for prototype batching
+- added an item effect library stub
+- added a third prototype unit: crow caster
+- added first prototype core resource
+- added a unit keyword reference document
 
 ### Notes
 

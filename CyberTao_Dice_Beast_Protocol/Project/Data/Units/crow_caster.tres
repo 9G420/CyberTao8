@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/UnitData.gd" id="1_unit"]
+
+[resource]
+script = ExtResource("1_unit")
+unit_id = "crow_caster"
+unit_name = "鸦机术士"
+faction = "black_signal_flock"
+species = "crow"
+role = "ranged_control"
+cost_tier = 2
+max_hp = 5
+atk = 2
+def = 0
+move_range = 1
+attack_range = 3
+traits = Array[String](["curse", "trap", "ranged"])
+skill_ids = Array[String](["black_feather_hex", "signal_snare"])
+meme_tags = Array[String](["鸦机", "远程控场", "阴间运营"])
+upgraded_version = ""

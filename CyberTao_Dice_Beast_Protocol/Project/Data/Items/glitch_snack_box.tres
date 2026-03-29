@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = "glitch_snack_box"
+item_name = "故障零食盒"
+description = "拾取后随机获得 1 点 ATTACK、DEFEND 或 SKILL。"
+item_type = "pickup"
+rarity = 0
+pickup_effect_id = "random_crest_gain"
+duration = 0
+meme_tag = "抽象"

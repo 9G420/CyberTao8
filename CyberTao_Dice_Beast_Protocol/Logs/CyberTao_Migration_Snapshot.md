@@ -43,6 +43,14 @@ Current state at v0.1.0:
 - a visible board prototype now exists in the main scene
 - a dice debug panel now exists for roll testing
 - a first prototype unit resource exists: blade shield dog
+- prototype skill resources now exist for blade shield dog
+- a first combat rules document now exists for the v0.1 prototype phase
+- prototype pickup item resources now exist
+- prototype dice face resources now exist
+- a second prototype unit resource now exists: hacker fox
+- a third prototype unit resource now exists: crow caster
+- a first item effect library now exists
+- a first prototype core resource now exists
 
 This is not yet a playable combat prototype.
 
@@ -99,6 +107,34 @@ Data scripts:
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/Data/ItemData.gd`
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/Data/CoreData.gd`
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/Data/DiceFaceData.gd`
+
+Skill resources:
+
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Skills/my_blade_and_shield.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Skills/rough_counter.tres`
+
+Item resources:
+
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Items/patch_tea_cache.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Items/overclock_bone.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Items/glitch_snack_box.tres`
+
+Dice resources:
+
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Dice/face_summon_basic.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Dice/face_move_basic.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Dice/face_attack_basic.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Dice/face_defend_basic.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Dice/face_skill_basic.tres`
+- `CyberTao_Dice_Beast_Protocol/Project/Data/Dice/face_trick_basic.tres`
+
+Combat support:
+
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/SkillEffectLibrary.gd`
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/ItemEffectLibrary.gd`
+- `CyberTao_Dice_Beast_Protocol/Docs/COMBAT_RULES_v0.1.md`
+- `CyberTao_Dice_Beast_Protocol/Docs/CONTENT_ROADMAP_v0.1.md`
+- `CyberTao_Dice_Beast_Protocol/Docs/UNIT_KEYWORDS_v0.1.md`
 
 Logs and handoff:
 
