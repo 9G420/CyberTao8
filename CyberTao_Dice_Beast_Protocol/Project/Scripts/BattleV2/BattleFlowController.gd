@@ -5,6 +5,7 @@ signal setup_completed
 signal phase_changed(phase_name: String)
 signal move_completed(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
 signal attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool)
+signal enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i)
 signal round_changed(round_number: int)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
@@ -132,12 +133,86 @@ func _spawn_debug_units() -> void:
 	}
 	unit_manager.spawn_unit("enemy_debug_grunt", enemy_data, Vector2i(3, 4))
 
-## End the player's turn: clear crest pool, advance round, return to PLAYER_ROLL.
+## 结束玩家回合：清空资源池，进入敌方回合。
 func end_player_turn() -> void:
 	if current_phase != BattlePhase.PLAYER_ACTION:
 		return
 	if is_battle_over():
 		return
+	dice_manager.reset_for_turn()
+	_start_enemy_turn()
+
+## 启动敌方回合：掷骰 -> 延迟 -> 执行敌方行动
+func _start_enemy_turn() -> void:
+	# 检查是否还有存活的敌方单位
+	var enemy_units: Array[String] = battle_ai.get_enemy_units()
+	if enemy_units.is_empty():
+		# 没有敌方单位，直接推进到下一玩家回合
+		_advance_to_next_player_round()
+		return
+	current_phase = BattlePhase.ENEMY_ROLL
+	emit_signal("phase_changed", _phase_name(current_phase))
+	dice_manager.roll_turn_dice()
+	await get_tree().create_timer(0.5).timeout
+	if is_battle_over():
+		return
+	_execute_enemy_actions()
+
+## 执行敌方行动：遍历每个敌方单位，尝试攻击或移动
+func _execute_enemy_actions() -> void:
+	current_phase = BattlePhase.ENEMY_ACTION
+	emit_signal("phase_changed", _phase_name(current_phase))
+	var enemy_units: Array[String] = battle_ai.get_enemy_units()
+	for uid in enemy_units:
+		if is_battle_over():
+			break
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		if unit.is_empty():
+			continue
+		var cell: Vector2i = unit["cell"]
+		# 优先检查相邻是否有玩家单位可攻击
+		var adjacent_players: Array[Vector2i] = battle_ai.get_adjacent_player_cells(cell)
+		if adjacent_players.size() > 0 and dice_manager.can_pay({"attack": 1}):
+			dice_manager.pay({"attack": 1})
+			var target_cell: Vector2i = adjacent_players[0]
+			var defender_id: String = String(unit_manager.units_by_cell[target_cell])
+			var defender: Dictionary = unit_manager.get_unit(defender_id)
+			var damage: int = AttackRuleHelper.calc_basic_damage(unit, defender)
+			var killed: bool = unit_manager.apply_damage(defender_id, damage)
+			emit_signal("enemy_attack_completed", uid, defender_id, damage, killed, target_cell)
+			_check_battle_outcome()
+			await get_tree().create_timer(0.4).timeout
+			continue
+		# 没有相邻目标则朝最近玩家移动
+		if dice_manager.can_pay({"move": 1}):
+			var target_player_cell: Vector2i = battle_ai.find_nearest_player_cell(cell)
+			if target_player_cell.x >= 0:
+				var move_cell: Vector2i = battle_ai.pick_move_toward(cell, target_player_cell)
+				if move_cell.x >= 0:
+					dice_manager.pay({"move": 1})
+					unit_manager.move_unit(uid, move_cell)
+					await get_tree().create_timer(0.3).timeout
+					if is_battle_over():
+						break
+					# 移动后再检查是否进入攻击范围
+					var new_adjacent: Array[Vector2i] = battle_ai.get_adjacent_player_cells(move_cell)
+					if new_adjacent.size() > 0 and dice_manager.can_pay({"attack": 1}):
+						dice_manager.pay({"attack": 1})
+						var atk_target_cell: Vector2i = new_adjacent[0]
+						var def_id: String = String(unit_manager.units_by_cell[atk_target_cell])
+						var refreshed_unit: Dictionary = unit_manager.get_unit(uid)
+						var defender2: Dictionary = unit_manager.get_unit(def_id)
+						var dmg: int = AttackRuleHelper.calc_basic_damage(refreshed_unit, defender2)
+						var killed2: bool = unit_manager.apply_damage(def_id, dmg)
+						emit_signal("enemy_attack_completed", uid, def_id, dmg, killed2, atk_target_cell)
+						_check_battle_outcome()
+						await get_tree().create_timer(0.4).timeout
+	# 敌方回合结束，推进到下一玩家回合
+	if not is_battle_over():
+		_advance_to_next_player_round()
+
+## 推进到下一个玩家回合
+func _advance_to_next_player_round() -> void:
 	dice_manager.reset_for_turn()
 	round_index += 1
 	current_phase = BattlePhase.PLAYER_ROLL

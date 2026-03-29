@@ -288,3 +288,35 @@
 - attack feedback is visual only — no sound effects
 - restart fully resets to initial state (same as fresh load)
 - no enemy AI; enemy still does not act
+
+## v0.1.13 - 2026-03-29
+
+### 新增
+
+- 敌方 AI 最小回合：玩家点击"结束回合"后，进入 ENEMY_ROLL → ENEMY_ACTION → 自动回到 PLAYER_ROLL
+- `BattleAI` 重写：添加 `get_enemy_units()`、`find_nearest_player_cell()`、`get_adjacent_player_cells()`、`pick_move_toward()` 四个核心方法
+- `BattleFlowController` 添加 `_start_enemy_turn()`、`_execute_enemy_actions()`、`_advance_to_next_player_round()` 三个敌方回合方法
+- `BattleFlowController` 添加 `enemy_attack_completed` 信号（包含 target_cell 参数）
+- 敌方攻击时在目标格显示白色闪光 + 红色飘字（与玩家攻击反馈一致）
+- `DiceDebugPanel` 连接 `enemy_attack_completed` 信号，敌方攻击后刷新 crest 池显示
+
+### 修改
+
+- `end_player_turn()` 不再直接跳回 PLAYER_ROLL，改为触发敌方回合流程
+- 敌方回合期间，掷骰按钮和结束回合按钮自动禁用
+- 调试面板阶段标签正确显示"敌方掷骰"/"敌方行动"
+
+### 敌方 AI 行为
+
+- 遍历所有存活敌方单位
+- 优先攻击：如果相邻有玩家单位且有 ATTACK crest → 攻击（消耗 1 ATTACK）
+- 否则移动：朝最近玩家单位方向移动 1 格（消耗 1 MOVE）
+- 移动后再攻击：移动后如果相邻有玩家单位且有 ATTACK crest → 再次攻击
+- 使用 await timer 在行动之间添加短延迟（0.3s-0.5s），让玩家可以观察敌方行为
+
+### 备注
+
+- 敌方 AI 为最小可用实现，不包含高级策略或行为树
+- 敌方掷骰使用与玩家相同的 DiceManager（保底 1 MOVE）
+- 移动仍为瞬间位移，无动画
+- 当前只有 1 个调试敌方单位
