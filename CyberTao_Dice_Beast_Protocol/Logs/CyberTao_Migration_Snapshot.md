@@ -149,8 +149,14 @@ Combat support:
 Logs and handoff:
 
 - `CyberTao_Dice_Beast_Protocol/Logs/Mulerun_Handoff_Template.md`
+- `CyberTao_Dice_Beast_Protocol/Logs/Mulerun_Work_Report.md`
 - `CyberTao_Dice_Beast_Protocol/Logs/CyberTao_Migration_Snapshot.md`
 - `CyberTao_Dice_Beast_Protocol/Logs/changelog_v0.1.md`
+
+UI scripts:
+
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/UI/BoardView.gd`
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/UI/DiceDebugPanel.gd`
 
 ---
 
@@ -177,18 +183,24 @@ First recommended prototype factions:
 
 ## 6. Immediate Priorities
 
-Highest priority implementation targets:
+Completed through v0.1.3:
 
-1. turn the visual board prototype into clickable board interaction
-2. let dice resources drive at least one real summon or move action
-3. create the first prototype unit set, starting with blade-shield dog
+1. ~~turn the visual board prototype into clickable board interaction~~ (done in v0.1.1)
+2. ~~let dice resources drive at least one real move action~~ (done in v0.1.1 — MOVE crest spending)
+3. ~~create the first prototype unit set~~ (blade-shield dog, hacker fox, crow caster exist)
 4. make the minimum combat loop work:
-   - roll dice
-   - gain resources
-   - summon or place path
-   - move
-   - attack
+   - ~~roll dice~~ (done in v0.1.0)
+   - ~~gain resources~~ (done in v0.1.0 — crest pool)
+   - summon or place path (not yet functional)
+   - ~~move~~ (done in v0.1.1)
+   - attack (not yet implemented)
    - ~~end turn~~ (done in v0.1.3)
+
+Next priority targets:
+
+5. implement basic attack system (ATTACK crest spending, adjacent target, damage resolution)
+6. implement simple enemy AI turn (ENEMY_ROLL → ENEMY_ACTION)
+7. add HP display on units and victory/defeat checks
 
 ---
 
