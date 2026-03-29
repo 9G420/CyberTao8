@@ -1,4 +1,4 @@
-extends Panel
+﻿extends Panel
 class_name SettingsPanel
 
 signal settings_closed
@@ -35,7 +35,6 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 	add_child(title)
 
-	# Resolution label + option
 	var res_label := Label.new()
 	res_label.text = "分辨率"
 	res_label.position = Vector2(30, 60)
@@ -52,7 +51,6 @@ func _build_ui() -> void:
 	resolution_option.add_item("1920 x 1080", 2)
 	add_child(resolution_option)
 
-	# Mode label + option
 	var mode_label := Label.new()
 	mode_label.text = "窗口模式"
 	mode_label.position = Vector2(30, 108)
@@ -69,7 +67,6 @@ func _build_ui() -> void:
 	mode_option.add_item("无边框窗口", 2)
 	add_child(mode_option)
 
-	# Apply button
 	var apply_btn := Button.new()
 	apply_btn.text = "应用"
 	apply_btn.position = Vector2(30, 170)
@@ -77,7 +74,6 @@ func _build_ui() -> void:
 	apply_btn.pressed.connect(_on_apply_pressed)
 	add_child(apply_btn)
 
-	# Reset button
 	var reset_btn := Button.new()
 	reset_btn.text = "恢复默认"
 	reset_btn.position = Vector2(210, 170)
@@ -85,7 +81,6 @@ func _build_ui() -> void:
 	reset_btn.pressed.connect(_on_reset_pressed)
 	add_child(reset_btn)
 
-	# Close button
 	var close_btn := Button.new()
 	close_btn.text = "关闭"
 	close_btn.position = Vector2(120, 230)
@@ -96,14 +91,12 @@ func _build_ui() -> void:
 func _sync_from_settings() -> void:
 	if display_settings == null:
 		return
-	# Sync resolution dropdown
 	var res: Vector2i = display_settings.current_resolution
 	for i in range(display_settings.RESOLUTIONS.size()):
 		var r: Vector2i = display_settings.RESOLUTIONS[i]
 		if r.x == res.x and r.y == res.y:
 			resolution_option.selected = i
 			break
-	# Sync mode dropdown
 	mode_option.selected = int(display_settings.current_mode)
 
 func _on_apply_pressed() -> void:

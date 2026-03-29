@@ -1,4 +1,4 @@
-extends Control
+﻿extends Control
 
 const BattleFlowController = preload("res://Scripts/BattleV2/BattleFlowController.gd")
 const BoardView = preload("res://Scripts/UI/BoardView.gd")
@@ -93,27 +93,27 @@ func _wire_debug_views() -> void:
 
 func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
-	# Always refresh highlights (clears if MOVE is now 0)
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.queue_redraw()
 
 func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
-	# Refresh both highlight types after attack
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.queue_redraw()
 
 func _on_phase_changed(phase_name: String) -> void:
 	if phase_name == "VICTORY":
-		_result_label.text = "VICTORY"
+		_result_label.text = "胜利"
 		_result_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
 		_result_label.visible = true
 	elif phase_name == "DEFEAT":
-		_result_label.text = "DEFEAT"
+		_result_label.text = "失败"
 		_result_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 		_result_label.visible = true
+	else:
+		_result_label.visible = false
 
 func _on_settings_pressed() -> void:
 	_settings_panel.open()

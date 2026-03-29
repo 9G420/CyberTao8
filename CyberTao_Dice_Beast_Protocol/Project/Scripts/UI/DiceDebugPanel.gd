@@ -1,4 +1,4 @@
-extends Panel
+﻿extends Panel
 class_name DiceDebugPanel
 
 var battle_flow: Node = null
@@ -173,12 +173,12 @@ func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	if pool.is_empty() and dice_manager:
 		pool = dice_manager.crest_pool
 	crest_label.clear()
-	crest_label.append_text("显化： " + str(pool.get("summon", 0)) + "\n")
-	crest_label.append_text("步进： " + str(pool.get("move", 0)) + "\n")
-	crest_label.append_text("杀伐： " + str(pool.get("attack", 0)) + "\n")
-	crest_label.append_text("护持： " + str(pool.get("defend", 0)) + "\n")
-	crest_label.append_text("术式： " + str(pool.get("skill", 0)) + "\n")
-	crest_label.append_text("机巧： " + str(pool.get("trick", 0)) + "\n")
+	crest_label.append_text("显化：" + str(pool.get("summon", 0)) + "\n")
+	crest_label.append_text("步进：" + str(pool.get("move", 0)) + "\n")
+	crest_label.append_text("杀伐：" + str(pool.get("attack", 0)) + "\n")
+	crest_label.append_text("护持：" + str(pool.get("defend", 0)) + "\n")
+	crest_label.append_text("术式：" + str(pool.get("skill", 0)) + "\n")
+	crest_label.append_text("机巧：" + str(pool.get("trick", 0)) + "\n")
 
 func _phase_label_text(phase_name: String) -> String:
 	match phase_name:
