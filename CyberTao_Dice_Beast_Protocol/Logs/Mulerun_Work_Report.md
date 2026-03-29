@@ -1,24 +1,24 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-29
-**版本**: v0.1.15
+**版本**: v0.1.16
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 实现高台格 + 陷阱格地形系统第一版
-- 地形与路径格共存
-- BFS 移动消耗支持不同地形 cost
+- summon / path-building 第一版收口
+- 审查召唤系统稳定性，修复发现的 bug
+- 不增加新功能
 
 ---
 
 ## 根因/目标
 
-- 当前棋盘缺少空间策略维度，所有格子效果相同
-- 高台 + 陷阱是最简单的两种地形原型，可以验证"地形影响战斗规则"的核心概念
-- 本轮只做最小可运行版本，不做地形编辑器或复杂地形系统
+- 召唤系统在 v0.1.14 实现了最小原型，但未经稳定性审查
+- 需要确保召唤流程在各种边界情况下不会崩溃或产生错误行为
+- 需要确保召唤后不会破坏原有战斗闭环（移动、攻击、敌方回合、胜负判定、重开）
 
 ---
 
@@ -26,92 +26,77 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/BattleV2/BoardManager.gd` | 添加 terrain_cells 字典、add_terrain_cell()、get_terrain_type()、get_move_cost()；BFS 重写支持不同地形移动消耗；build_test_board/clear_board 清空 terrain |
-| `Project/Scripts/BattleV2/ActionResolver.gd` | get_attackable_cells() 添加高台加成：站在 high_ground 上 attack_range += 1 |
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 添加 terrain_damage_triggered 信号、_spawn_debug_terrain()、_check_terrain_trap()；玩家/敌方移动后触发陷阱检查；restart 时重新放置地形 |
-| `Project/Scripts/UI/BoardView.gd` | 添加 _draw_terrain()：高台金色、陷阱暗红，带文字标记；_draw() 顺序中插入地形层 |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | 连接 terrain_damage_triggered 信号，地形伤害后刷新 crest 池 |
-| `Project/Scripts/Main.gd` | 连接 terrain_damage_triggered 信号、添加 _on_terrain_damage_triggered 反馈处理、更新提示文字 |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | _execute_enemy_actions() 增加陷阱击杀后的存活检查，防止死亡敌方继续攻击 |
+| `Project/Scripts/UI/BoardView.gd` | _on_state_changed() 增加选中单位存活检查，死亡则自动取消选中 |
 | `Logs/Mulerun_Work_Report.md` | 本报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.15 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.16 条目 |
 
 ---
 
 ## 实现内容
 
-1. **高台格（high_ground）**
-   - 进入消耗 2 移动点（普通格 1 点）
-   - 站在高台上的单位攻击范围 +1（Manhattan 距离）
-   - 金色填充 + 金色边框 + "HIGH" 文字标记
+### Bug 1：死亡敌方仍攻击
 
-2. **陷阱格（trap）**
-   - 单位进入时立即受到 1 点伤害
-   - 可致死（触发胜负判定）
-   - 可重复触发（每次进入都受伤）
-   - 暗红填充 + 红色边框 + "TRAP" 文字标记
-   - 触发时显示白色闪光 + 红色飘字反馈
+**场景**：敌方单位移动到陷阱格 → 受伤死亡 → 但代码继续执行后续攻击逻辑 → 已死亡的单位对玩家造成伤害
 
-3. **BFS 移动消耗重写**
-   - 原来所有格子 cost=1，现在调用 get_move_cost() 获取实际消耗
-   - 高台格 cost=2，普通格/陷阱格 cost=1
-   - 保证 BFS 正确计算带权移动范围
+**根因**：`_execute_enemy_actions()` 中，`_check_terrain_trap()` 可能击杀敌方单位，但后续代码没有检查该单位是否仍存活，直接进入攻击判定
 
-4. **调试地形布局**
-   - 高台格：(2,4) (2,5) — 棋盘中部，玩家需要绕路或花更多移动点通过
-   - 陷阱格：(1,5) (3,6) — 玩家前进路线上，需要注意规避
+**修复**：在陷阱检查和 `await` 之后，增加 `unit_manager.get_unit(uid).is_empty()` 判定，如果单位已不存在则 `continue` 跳过
 
-5. **地形与路径共存**
-   - terrain_cells 和 path_cells 是独立字典
-   - 同一格可以同时有地形和路径标记
+### Bug 2：幽灵选中状态
+
+**场景**：玩家选中一个单位 → 该单位被击杀（例如踩陷阱、被敌方攻击后由 `_on_state_changed` 触发） → `selected_unit_id` 仍然指向已死亡单位 → 无高亮、无选中环，但点击空格不会触发新选中，用户困惑
+
+**根因**：`_on_state_changed()` 在刷新高亮前没有检查选中单位是否仍然存活
+
+**修复**：在 `_on_state_changed()` 开头增加存活检查，如果 `get_unit()` 返回空字典则立即调用 `_deselect()`
 
 ---
 
-## 关键逻辑
+## 审查确认项
 
-### 高台移动消耗
-```
-BoardManager.get_move_cost(cell):
-  如果 terrain_type == "high_ground" → 返回 2
-  否则 → 返回 1
+以下流程在召唤后均通过审查：
 
-BFS 中：total = current_dist + get_move_cost(neighbor)
-  如果 total > move_range → 跳过（不可达）
-```
+1. **召唤流程稳定性** ✓
+   - 点击紫色格和调试面板按钮均可稳定触发召唤
+   - SUMMON crest 正确消耗，0 时不可召唤
+   - 无 crest 时紫色高亮不显示
 
-### 高台攻击加成
-```
-ActionResolver.get_attackable_cells():
-  attack_range = unit.attack_range
-  如果 board_manager.get_terrain_type(origin) == "high_ground":
-    attack_range += 1
-```
+2. **路径格生成稳定性** ✓
+   - 路径格稳定生成 2 格（目标格 + 延伸格）
+   - 路径格视觉（青色）与普通格、地形格有明显区分
+   - 路径格不阻挡单位移动或渲染
 
-### 陷阱触发
-```
-_check_terrain_trap(unit_id, cell):
-  如果 terrain_type == "trap":
-    apply_damage(unit_id, 1)
-    emit terrain_damage_triggered 信号
-    如果单位死亡 → _check_battle_outcome()
-```
+3. **召唤单位落位稳定性** ✓
+   - 召唤单位始终出现在目标格（第一个路径格）
+   - `occupied_cells` 和 `path_cells` 可共存于同一格
+   - 召唤单位移走后路径格保留
+   - 唯一 ID 生成（summoned_fox_1, 2, ...）无冲突
+
+4. **闭环不被破坏** ✓
+   - 召唤后可正常选中任意玩家单位
+   - MOVE 移动正常（含高台消耗、陷阱触发）
+   - ATTACK 攻击正常（含高台加成）
+   - 敌方回合正常执行
+   - Victory / Defeat 正确判定
+   - 重新开始清空所有状态（含路径格、地形格、召唤计数器）
 
 ---
 
 ## 当前剩余问题
 
-- **地形布局为 hardcoded** — 无地形编辑器或随机生成
-- **高台不影响防御** — 只加攻击范围，不加 DEF 或减伤
-- **陷阱无视觉预警** — 进入前无额外提示
-- **敌方 AI 不考虑地形** — AI 不会主动占高台或规避陷阱
-- **无地形动画** — 高台/陷阱无进入动画或特效
-- **未在编辑器中验证运行**
+- **召唤单位为 hardcoded 数据** — 未接入 UnitData 资源
+- **路径格不影响移动规则** — 仅视觉标记
+- **无召唤动画** — 单位和路径瞬间出现
+- **无召唤数量限制** — 有 SUMMON crest 就能无限召唤
+- **路径形状固定** — 总是 2 格直线延伸
+- **调试面板"测试召唤"按钮不检查阶段** — 非 PLAYER_ACTION 时点击无效果但按钮未禁用
 
 ---
 
 ## 建议下一步
 
-1. **AI 地形感知** — 敌方 AI 在移动决策中考虑高台优势和陷阱规避
-2. **更多地形类型** — 冰面（滑行）、毒沼（持续伤害）等
-3. **地形与路径联动** — 路径格上的地形效果是否减弱/增强
-4. **地形随机生成** — 每局战斗随机放置地形
-5. **移动动画** — Tween 位移替代瞬移
+1. **路径限制移动** — 让某些单位只能在路径格上行动
+2. **召唤来源接入 UnitData** — 从 .tres 读取召唤单位数据
+3. **多种路径形状** — L 形、T 形等模板
+4. **移动动画** — Tween 位移替代瞬移

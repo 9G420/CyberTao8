@@ -52,6 +52,10 @@ func _on_phase_changed(_phase_name: String) -> void:
 func _on_state_changed() -> void:
 	# Refresh highlights if a unit is selected (board changed)
 	if selected_unit_id != "" and battle_flow:
+		# 如果选中的单位已不存在（被击杀），自动取消选中
+		if unit_manager and unit_manager.get_unit(selected_unit_id).is_empty():
+			_deselect()
+			return
 		highlight_cells = battle_flow.get_reachable_cells_for(selected_unit_id)
 		attack_highlight_cells = battle_flow.get_attackable_cells_for(selected_unit_id)
 		summon_highlight_cells = battle_flow.get_summon_cells_for(selected_unit_id)
