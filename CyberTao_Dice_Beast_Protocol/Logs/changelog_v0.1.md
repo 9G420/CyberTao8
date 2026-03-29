@@ -91,3 +91,28 @@
 
 - no "End Turn" button yet; to roll again after spending resources, a phase-reset mechanism is still needed
 - the roll-once restriction is per phase transition, not a stored flag — future turn flow will manage this naturally
+
+## v0.1.3 - 2026-03-29
+
+### Added
+
+- End Turn button in debug panel: ends player action phase and advances to next round
+- `BattleFlowController.end_player_turn()`: clears crest pool, increments round_index, resets to PLAYER_ROLL
+- `BattleFlowController.round_changed` signal emitted on round advance
+- `DiceManager.reset_for_turn()`: clears crest pool and last roll results at turn boundary
+- round number display ("Round: N") in debug panel
+- End Turn button enabled only during PLAYER_ACTION, disabled otherwise
+- BoardView deselects unit and clears highlights on any phase transition
+
+### Changed
+
+- debug panel height increased from 440 to 500 to accommodate End Turn button and round label
+- debug panel layout reorganized: round label, phase label, selected label, Roll Dice, End Turn, Spawn Demo Path, roll results, crest pool
+- `_on_phase_changed` now also refreshes crest pool display (shows zeroed pool after turn reset)
+
+### Notes
+
+- the minimum turn cycle now works: Roll Dice → move unit → End Turn → Roll Dice again
+- crest pool is fully cleared at turn start (simple reset, no carry-over)
+- no enemy turn yet; End Turn skips directly back to PLAYER_ROLL
+- no attack system implemented

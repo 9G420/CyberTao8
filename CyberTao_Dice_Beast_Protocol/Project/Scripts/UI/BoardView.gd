@@ -32,6 +32,13 @@ func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
 
 func bind_battle_flow(next_battle_flow: Node) -> void:
 	battle_flow = next_battle_flow
+	if battle_flow and battle_flow.phase_changed and not battle_flow.phase_changed.is_connected(_on_phase_changed):
+		battle_flow.phase_changed.connect(_on_phase_changed)
+
+func _on_phase_changed(_phase_name: String) -> void:
+	# Deselect and clear highlights on any phase transition
+	if selected_unit_id != "":
+		_deselect()
 
 func _on_state_changed() -> void:
 	# Refresh highlights if a unit is selected (board changed)

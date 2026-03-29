@@ -4,6 +4,7 @@ class_name BattleFlowController
 signal setup_completed
 signal phase_changed(phase_name: String)
 signal move_completed(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
+signal round_changed(round_number: int)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -120,6 +121,16 @@ func _spawn_debug_units() -> void:
 		"tags": ["grunt"],
 	}
 	unit_manager.spawn_unit("enemy_debug_grunt", enemy_data, Vector2i(7, 1))
+
+## End the player's turn: clear crest pool, advance round, return to PLAYER_ROLL.
+func end_player_turn() -> void:
+	if current_phase != BattlePhase.PLAYER_ACTION:
+		return
+	dice_manager.reset_for_turn()
+	round_index += 1
+	current_phase = BattlePhase.PLAYER_ROLL
+	emit_signal("round_changed", round_index)
+	emit_signal("phase_changed", _phase_name(current_phase))
 
 func get_reachable_cells_for(unit_id: String) -> Array[Vector2i]:
 	var unit: Dictionary = unit_manager.get_unit(unit_id)

@@ -54,3 +54,8 @@ func reset_for_battle() -> void:
 	last_roll_results.clear()
 	for key in crest_pool.keys():
 		crest_pool[key] = 0
+
+func reset_for_turn() -> void:
+	last_roll_results.clear()
+	for key in crest_pool.keys():
+		crest_pool[key] = 0

@@ -1,6 +1,6 @@
 # CyberTao: Dice Beast Protocol Migration Snapshot
 **Generated**: 2026-03-29
-**Version**: v0.1.0
+**Version**: v0.1.3
 **Branch**: `codex/dice-beast-protocol`
 
 ---
@@ -33,7 +33,7 @@ Main active directory:
 
 ## 2. Current State
 
-Current state at v0.1.0:
+Current state at v0.1.3:
 
 - a separate Godot subproject has been created
 - the new project has its own `project.godot`
@@ -52,10 +52,17 @@ Current state at v0.1.0:
 - a first item effect library now exists
 - a first prototype core resource now exists
 - first attack helper and attack rule support docs now exist
+- board is now interactive: clicking player units selects them
+- selected unit shows gold ring and cyan-highlighted reachable cells
+- clicking a highlighted cell moves the unit, consuming 1 MOVE crest
+- BoardManager and UnitManager are synced via occupied_cells
+- debug panel shows currently selected unit
+- dice roll limited to once per turn with auto phase transition
+- End Turn button advances round, clears crest pool, re-enables dice roll
+- round number displayed in debug panel
+- basic turn cycle works: Roll → Move → End Turn → Roll again
 
-This is not yet a playable combat prototype.
-
-It is the architectural foundation for the new mode.
+The board now has a functional turn loop. The next step is attack resolution.
 
 ---
 
@@ -181,7 +188,7 @@ Highest priority implementation targets:
    - summon or place path
    - move
    - attack
-   - end turn
+   - ~~end turn~~ (done in v0.1.3)
 
 ---
 
@@ -198,11 +205,11 @@ Highest priority implementation targets:
 
 ## 8. Current Risks
 
-- the new project is still scaffold-level and not validated in-editor yet
-- no board rendering exists yet
-- no unit scene pipeline exists yet
-- no UI for dice, crests, or board actions exists yet
-- no actual data assets exist yet, only resource classes
+- the new project has not been validated in-editor yet
+- no unit scene pipeline exists yet (units are drawn as colored rectangles)
+- no attack or damage UI exists yet
+- no enemy turn logic exists yet
+- data assets exist for blade_shield_dog, hacker_fox, crow_caster, plus skill/item/dice resources
 
 ---
 
