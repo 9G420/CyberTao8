@@ -4,6 +4,7 @@ class_name BoardView
 signal unit_selected(unit_id: String)
 signal unit_deselected
 signal move_requested(unit_id: String, target_cell: Vector2i)
+signal attack_requested(unit_id: String, target_cell: Vector2i)
 
 const CELL_SIZE: int = 72
 const GRID_W: int = 8
@@ -16,6 +17,7 @@ var battle_flow: Node = null
 # Selection state
 var selected_unit_id: String = ""
 var highlight_cells: Array[Vector2i] = []
+var attack_highlight_cells: Array[Vector2i] = []
 
 func _ready() -> void:
 	size = Vector2(GRID_W * CELL_SIZE, GRID_H * CELL_SIZE)
@@ -44,6 +46,7 @@ func _on_state_changed() -> void:
 	# Refresh highlights if a unit is selected (board changed)
 	if selected_unit_id != "" and battle_flow:
 		highlight_cells = battle_flow.get_reachable_cells_for(selected_unit_id)
+		attack_highlight_cells = battle_flow.get_attackable_cells_for(selected_unit_id)
 	queue_redraw()
 
 func _gui_input(event: InputEvent) -> void:
@@ -66,8 +69,18 @@ func _is_valid_cell(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_W and cell.y < GRID_H
 
 func _handle_cell_click(cell: Vector2i) -> void:
-	# If a unit is selected and the clicked cell is a valid move target
+	# If a unit is selected
 	if selected_unit_id != "":
+		# Check if clicked cell is an attack target
+		var is_attack_target: bool = false
+		for ac in attack_highlight_cells:
+			if ac == cell:
+				is_attack_target = true
+				break
+		if is_attack_target:
+			emit_signal("attack_requested", selected_unit_id, cell)
+			return
+		# Check if clicked cell is a move target
 		var is_move_target: bool = false
 		for hc in highlight_cells:
 			if hc == cell:
@@ -101,20 +114,24 @@ func _select_unit(unit_id: String) -> void:
 	selected_unit_id = unit_id
 	if battle_flow:
 		highlight_cells = battle_flow.get_reachable_cells_for(unit_id)
+		attack_highlight_cells = battle_flow.get_attackable_cells_for(unit_id)
 	else:
 		highlight_cells = []
+		attack_highlight_cells = []
 	emit_signal("unit_selected", unit_id)
 	queue_redraw()
 
 func _deselect() -> void:
 	selected_unit_id = ""
 	highlight_cells = []
+	attack_highlight_cells = []
 	emit_signal("unit_deselected")
 	queue_redraw()
 
 func _draw() -> void:
 	_draw_board()
 	_draw_highlights()
+	_draw_attack_highlights()
 	_draw_paths()
 	_draw_units()
 	_draw_selection_ring()
@@ -135,6 +152,15 @@ func _draw_highlights() -> void:
 		draw_rect(Rect2(pos, sz), Color(0.2, 0.8, 1.0, 0.22), true)
 		# Border highlight
 		draw_rect(Rect2(pos, sz), Color(0.2, 0.85, 1.0, 0.65), false, 2.0)
+
+func _draw_attack_highlights() -> void:
+	for cell in attack_highlight_cells:
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 4, cell.y * CELL_SIZE + 4)
+		var sz: Vector2 = Vector2(CELL_SIZE - 10, CELL_SIZE - 10)
+		# Filled red highlight
+		draw_rect(Rect2(pos, sz), Color(1.0, 0.2, 0.2, 0.25), true)
+		# Border red highlight
+		draw_rect(Rect2(pos, sz), Color(1.0, 0.25, 0.25, 0.75), false, 2.0)
 
 func _draw_paths() -> void:
 	if board_manager == null:

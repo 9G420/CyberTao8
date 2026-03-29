@@ -50,6 +50,7 @@ func _wire_debug_views() -> void:
 	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
 	_board_view.bind_battle_flow(_battle_flow)
 	_board_view.move_requested.connect(_on_move_requested)
+	_board_view.attack_requested.connect(_on_attack_requested)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -57,4 +58,12 @@ func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
 	# Always refresh highlights (clears if MOVE is now 0)
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+	_board_view.queue_redraw()
+
+func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
+	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
+	# Refresh both highlight types after attack
+	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.queue_redraw()

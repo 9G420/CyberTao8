@@ -1,6 +1,6 @@
 # CyberTao: Dice Beast Protocol Migration Snapshot
 **Generated**: 2026-03-29
-**Version**: v0.1.3
+**Version**: v0.1.4
 **Branch**: `codex/dice-beast-protocol`
 
 ---
@@ -33,7 +33,7 @@ Main active directory:
 
 ## 2. Current State
 
-Current state at v0.1.3:
+Current state at v0.1.4:
 
 - a separate Godot subproject has been created
 - the new project has its own `project.godot`
@@ -62,8 +62,11 @@ Current state at v0.1.3:
 - End Turn button advances round, clears crest pool, re-enables dice roll
 - round number displayed in debug panel
 - basic turn cycle works: Roll → Move → End Turn → Roll again
+- basic attack works: red highlights on adjacent enemies, click to attack consuming 1 ATTACK crest
+- damage formula: max(1, atk - def), killed units are removed from board
+- minimum combat loop now functional: Roll → Move → Attack → End Turn
 
-The board now has a functional turn loop. The next step is attack resolution.
+The board now has a functional combat loop. The next step is HP display, enemy AI, and victory/defeat checks.
 
 ---
 
@@ -186,7 +189,7 @@ First recommended prototype factions:
 
 ## 6. Immediate Priorities
 
-Completed through v0.1.3:
+Completed through v0.1.4:
 
 1. ~~turn the visual board prototype into clickable board interaction~~ (done in v0.1.1)
 2. ~~let dice resources drive at least one real move action~~ (done in v0.1.1 — MOVE crest spending)
@@ -196,14 +199,14 @@ Completed through v0.1.3:
    - ~~gain resources~~ (done in v0.1.0 — crest pool)
    - summon or place path (not yet functional)
    - ~~move~~ (done in v0.1.1)
-   - attack (not yet implemented)
+   - ~~attack~~ (done in v0.1.4 — melee adjacent, ATTACK crest)
    - ~~end turn~~ (done in v0.1.3)
 
 Next priority targets:
 
-5. implement basic attack system (ATTACK crest spending, adjacent target, damage resolution)
-6. add HP display on units and hook in victory/defeat checks
-7. implement simple enemy AI turn (ENEMY_ROLL → ENEMY_ACTION)
+5. add HP display on units and hook in victory/defeat checks
+6. implement simple enemy AI turn (ENEMY_ROLL → ENEMY_ACTION)
+7. attack feedback (damage popup or flash)
 
 ---
 
@@ -222,8 +225,10 @@ Next priority targets:
 
 - the new project has not been validated in-editor yet
 - no unit scene pipeline exists yet (units are drawn as colored rectangles)
-- no attack or damage UI exists yet
+- no HP display on units yet
+- no victory/defeat check on unit death
 - no enemy turn logic exists yet
+- no attack animation or feedback
 - data assets exist for blade_shield_dog, hacker_fox, crow_caster, plus skill/item/dice resources
 
 ---

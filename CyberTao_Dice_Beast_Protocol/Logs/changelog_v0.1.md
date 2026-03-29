@@ -118,3 +118,36 @@
 - crest pool is fully cleared at turn start (simple reset, no carry-over)
 - no enemy turn yet; End Turn skips directly back to PLAYER_ROLL
 - no attack system implemented
+
+## v0.1.4 - 2026-03-29
+
+### Added
+
+- attack highlighting: red overlay on adjacent enemy cells when a player unit is selected and ATTACK crest > 0
+- click-to-attack: clicking a red-highlighted enemy cell triggers a basic attack
+- `BattleFlowController.try_attack_unit()`: validates adjacency, pays 1 ATTACK crest, applies damage via `AttackRuleHelper.calc_basic_damage()`
+- `BattleFlowController.get_attackable_cells_for()`: delegates to `ActionResolver.get_attackable_cells()`, gated on ATTACK crest availability
+- `BattleFlowController.attack_completed` signal (attacker_id, defender_id, damage, killed)
+- `BoardView.attack_requested` signal for attack click events
+- `BoardView.attack_highlight_cells` array for red attack target rendering
+- `BoardView._draw_attack_highlights()`: red filled + red border rectangles on attackable cells
+- `DiceDebugPanel._on_attack_completed()`: refreshes crest pool display after each attack
+- `Main._on_attack_requested()`: wires attack signal, refreshes both move and attack highlights after attack
+- if target HP <= 0, unit is despawned from board via existing `UnitManager.apply_damage()` → `despawn_unit()`
+
+### Changed
+
+- `_handle_cell_click()` now checks attack targets before move targets (attack takes priority on enemy-occupied cells)
+- `_select_unit()` and `_on_state_changed()` now compute both move and attack highlights
+- `_deselect()` now clears both highlight arrays
+- `_on_move_requested()` now refreshes attack highlights alongside move highlights
+
+### Notes
+
+- minimum combat loop now works: Roll → Move → Attack → End Turn
+- attack is melee-only (orthogonal adjacent, range 1)
+- damage formula: max(1, attacker.atk - defender.def)
+- no attack animation; damage is applied instantly
+- no HP display on units yet
+- no enemy turn or enemy AI
+- no victory/defeat check on kill

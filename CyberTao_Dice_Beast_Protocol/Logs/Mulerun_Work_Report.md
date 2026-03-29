@@ -1,14 +1,14 @@
 # Mulerun Work Report
 
 **Date**: 2026-03-29
-**Version**: v0.1.3
+**Version**: v0.1.4
 **Branch**: `codex/dice-beast-protocol`
 
 ---
 
 ## Task
 
-Implement the minimum turn cycle: Roll Dice → spend MOVE to move unit → End Turn → next round with fresh dice roll.
+Add basic attack interaction: red attack highlights on adjacent enemies, click-to-attack consuming 1 ATTACK crest, damage resolution with unit removal on kill.
 
 ---
 
@@ -16,63 +16,67 @@ Implement the minimum turn cycle: Roll Dice → spend MOVE to move unit → End 
 
 | File | Change |
 |------|--------|
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | Added `end_player_turn()`, `round_changed` signal |
-| `Project/Scripts/BattleV2/DiceManager.gd` | Added `reset_for_turn()` to clear crest pool at turn boundary |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | Added End Turn button, round label, button enable/disable logic |
-| `Project/Scripts/UI/BoardView.gd` | Added phase_changed listener to deselect on turn end |
-| `Logs/changelog_v0.1.md` | Added v0.1.3 entry |
-| `Logs/CyberTao_Migration_Snapshot.md` | Updated to v0.1.3, marked end turn as done |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | Added `attack_completed` signal, `get_attackable_cells_for()`, `try_attack_unit()`, `AttackRuleHelper` preload |
+| `Project/Scripts/UI/BoardView.gd` | Added `attack_requested` signal, `attack_highlight_cells`, `_draw_attack_highlights()`, attack click handling |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | Connected `attack_completed` signal, added `_on_attack_completed()` handler |
+| `Project/Scripts/Main.gd` | Wired `attack_requested` signal, added `_on_attack_requested()`, refreshes attack highlights after move |
+| `Logs/changelog_v0.1.md` | Added v0.1.4 entry |
+| `Logs/CyberTao_Migration_Snapshot.md` | Updated to v0.1.4, marked attack as done |
 | `Logs/Mulerun_Work_Report.md` | Overwritten with this report |
 
 ---
 
 ## What Was Implemented
 
-- End Turn button in debug panel (enabled only during PLAYER_ACTION)
-- `BattleFlowController.end_player_turn()`: guards on PLAYER_ACTION phase, calls `dice_manager.reset_for_turn()`, increments `round_index`, resets to PLAYER_ROLL phase
-- `DiceManager.reset_for_turn()`: clears `last_roll_results` and zeroes all crest pool values
-- `round_changed` signal emitted on round advance, drives round label update
-- Round number label ("Round: N") in debug panel
-- End Turn button disabled outside PLAYER_ACTION; Roll Dice button disabled outside PLAYER_ROLL
-- BoardView listens to `phase_changed` and deselects unit + clears highlights on any phase transition
-- Debug panel refreshes crest pool display on phase change (shows zeroed pool after end turn)
+- Red attack highlight overlay on adjacent enemy cells when a player unit is selected and ATTACK crest > 0
+- Click a red-highlighted cell to execute a basic melee attack
+- `BattleFlowController.try_attack_unit()`: validates target is in attackable cells, pays 1 ATTACK crest, computes damage via `AttackRuleHelper.calc_basic_damage()`, applies damage via `UnitManager.apply_damage()`
+- `BattleFlowController.get_attackable_cells_for()`: delegates to `ActionResolver.get_attackable_cells()`, returns empty if ATTACK crest <= 0
+- `attack_completed` signal emitted after each attack (attacker_id, defender_id, damage, killed)
+- `BoardView` draws red highlights separately from cyan move highlights — both can appear simultaneously
+- Attack targets checked before move targets in click handler (attack takes priority on occupied enemy cells)
+- If target HP <= 0 after damage, `apply_damage()` calls `despawn_unit()` which removes the unit from board and dictionaries
+- Debug panel refreshes crest pool display after each attack
 
 ---
 
 ## Key Logic
 
-### Turn cycle flow
+### Attack flow
 
-1. Game starts in `PLAYER_ROLL` (round 1). Roll Dice enabled, End Turn disabled.
-2. Player clicks Roll Dice → `start_player_roll()` rolls 3 dice, adds to pool, transitions to `PLAYER_ACTION`. Roll Dice disabled, End Turn enabled.
-3. Player selects unit, moves using MOVE crests. Highlights clear when MOVE = 0.
-4. Player clicks End Turn → `end_player_turn()` clears pool, increments round, transitions to `PLAYER_ROLL`. End Turn disabled, Roll Dice enabled.
-5. Cycle repeats from step 2.
+1. Player selects a unit during PLAYER_ACTION phase.
+2. `_select_unit()` computes both `highlight_cells` (move) and `attack_highlight_cells` (attack).
+3. Cyan highlights show reachable empty cells (gated on MOVE > 0). Red highlights show adjacent enemy cells (gated on ATTACK > 0).
+4. Player clicks a red cell → `attack_requested` signal → `Main._on_attack_requested()` → `BattleFlowController.try_attack_unit()`.
+5. `try_attack_unit()` verifies the cell is in attackable list, pays 1 ATTACK crest, calls `AttackRuleHelper.calc_basic_damage(attacker, defender)` → `max(1, atk - def)`, then `unit_manager.apply_damage(defender_id, damage)`.
+6. If HP <= 0, `apply_damage()` returns true (killed) and auto-despawns the unit.
+7. Both highlight types refresh after attack.
 
-### Crest pool reset rule
+### Damage formula
 
-Simple full reset: `reset_for_turn()` zeroes all 6 crest types. No carry-over between rounds.
+`max(1, attacker.atk - defender.def)` — minimum 1 damage guaranteed.
 
-### Selection cleanup on phase change
+### Highlight coexistence
 
-BoardView connects to `battle_flow.phase_changed`. On any phase transition, if a unit is selected, `_deselect()` is called. This prevents stale selection/highlights across turn boundaries.
+Move highlights (cyan) and attack highlights (red) are independent arrays drawn in separate passes. A cell can only be one or the other since move cells must be unoccupied and attack cells must contain an enemy.
 
 ---
 
 ## Remaining Limits
 
-- **No enemy turn** — End Turn skips directly back to PLAYER_ROLL; no ENEMY_ROLL or ENEMY_ACTION phase is used
-- **No attack system** — ATTACK crests are generated but cannot be spent
-- **No movement animation** — unit position updates are instant
+- **No enemy turn** — End Turn skips directly back to PLAYER_ROLL
+- **No HP display** — unit health is not visible on the board
+- **No victory/defeat check** — killing the enemy does not trigger any end state
+- **No attack animation** — damage is applied instantly
+- **No ranged or area attacks** — melee adjacent only
 - **No enemy AI** — enemy grunt sits idle
 - **Not validated in-editor** — code is structurally correct but has not been run in Godot yet
-- **Single player unit only** — only `blade_shield_dog` exists
 
 ---
 
 ## Next Suggestion
 
-1. **Attack system** — When a selected unit is adjacent to an enemy, show red attack highlights. Click to attack consuming 1 ATTACK crest. Use existing `ActionResolver.try_attack()`.
-2. **Enemy AI turn** — After player ends turn, run a simple enemy phase: enemy rolls dice, moves toward player, attacks if adjacent.
-3. **HP display** — Show unit HP on the board (text or bar overlay).
-4. **Victory/defeat check** — When enemy HP reaches 0, call `mark_victory()`. When player unit HP reaches 0, call `mark_defeat()`.
+1. **HP display** — Show unit HP as text or bar overlay on each unit rectangle
+2. **Victory/defeat check** — When all enemies are dead, call `mark_victory()`. When player unit dies, call `mark_defeat()`.
+3. **Enemy AI turn** — After player ends turn, run ENEMY_ROLL → ENEMY_ACTION: enemy rolls dice, moves toward player, attacks if adjacent
+4. **Attack feedback** — Brief visual flash or text popup showing damage dealt
