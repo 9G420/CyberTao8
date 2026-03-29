@@ -593,6 +593,40 @@
 - 遭遇格被清除后不再触发（单次遭遇）
 - ENCOUNTER 阶段期间，掷骰/移动/攻击/召唤/结束回合均被禁止
 
+## v0.1.27 - 2026-03-29
+
+### 新增
+
+- 卡牌战斗丰富化（Day 10：卡牌战斗层）
+- **能量系统**：每回合 3 点能量，出牌消耗 1~3 能量，不足时按钮禁用
+- **双牌堆系统**：10 张牌组（draw pile + discard pile），每回合抽 3 张（上限 6），回合结束弃全部手牌，牌堆空时自动 reshuffle
+- **牌组内容**：斩击x2(1E/3伤) / 重击x1(2E/5伤) / 防御x2(1E/减伤2) / 修复x1(1E/回复2) / 连斩x2(1E/2伤) / 猛攻x1(3E/8伤) / 急救x1(2E/回复4)
+- **3 种敌方行为模式**：attack（普攻）/ heavy_attack（ATK×2 重击）/ defend_attack（防御+攻击，敌方获 2 减伤）
+- **敌方行为循环**：异常哨兵 = attack→attack→defend_attack→heavy_attack / 赛博游魂 = attack→heavy_attack→attack
+- **敌方意图预告**：每回合开始显示敌方下一步行动类型和预期伤害
+- **敌方防御减伤**：defend_attack 给敌方 +2 减伤，影响玩家下次攻击（最低穿透 1）
+- **胜利奖励**：胜利后随机 +1 crest 写入棋盘层 dice_manager
+- **结束回合按钮**：玩家可随时结束回合
+- `CardBattleController.hand_changed` / `enemy_intent_changed` / `victory_reward` 信号
+- `CardBattleController.end_turn()` / `get_draw_count()` / `get_discard_count()` 方法
+
+### 修改
+
+- `CardBattleController.gd` 全面重写：从固定 5 张手牌升级为能量+抽牌+行为模式系统
+- `CardBattlePanel.gd` 全面重写：固定按钮改为动态手牌按钮区，增加能量/牌堆/意图显示，面板扩大至 480x460
+- `Main.gd` 连接 `victory_reward` 信号，胜利后将 crest 写入 dice_manager.crest_pool
+- 遭遇敌方数据增加 pattern 字段和 HP 调整（异常哨兵 HP 6→8）
+
+### 备注
+
+- 能量不保留跨回合（原型简化）
+- 敌方防御减伤只影响玩家下一次攻击牌（消费后归零）
+- 防御可叠加（同回合多张防御牌效果累加）
+- 牌组固定 10 张（后续可参考旧 CardData.gd 引入稀有度和升级）
+- 出牌选择有了真正的策略维度：能量分配 + 手牌取舍 + 应对敌方意图
+
+---
+
 ## v0.1.26 - 2026-03-29
 
 ### 新增

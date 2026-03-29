@@ -87,7 +87,7 @@ func _build_debug_view() -> void:
 	_settings_panel.bind_display_settings(_display_settings)
 
 	_card_battle_panel = CardBattlePanel.new()
-	_card_battle_panel.position = Vector2(300, 160)
+	_card_battle_panel.position = Vector2(280, 140)
 	add_child(_card_battle_panel)
 
 	_result_label = Label.new()
@@ -127,6 +127,7 @@ func _wire_debug_views() -> void:
 	_battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
+	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
 	# 卡牌战斗面板绑定控制器
 	_card_battle_panel.bind_controller(_card_battle_ctrl)
 	_dice_panel.bind_battle_flow(_battle_flow)
@@ -230,6 +231,14 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 	if victory and encounter_cell.x >= 0:
 		_board_view.play_pickup_feedback(encounter_cell, "战斗胜利！")
 	_board_view.queue_redraw()
+
+func _on_card_battle_reward(reward_text: String) -> void:
+	# 卡牌战斗胜利奖励：将 crest 加入棋盘层资源池
+	var crest_type: String = reward_text.replace("+1", "").to_lower()
+	var dm: Node = _battle_flow.dice_manager
+	if dm:
+		var current: int = int(dm.crest_pool.get(crest_type, 0))
+		dm.crest_pool[crest_type] = current + 1
 
 func _on_restart_pressed() -> void:
 	_board_view.selected_unit_id = ""
