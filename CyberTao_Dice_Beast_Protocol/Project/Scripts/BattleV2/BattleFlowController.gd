@@ -130,7 +130,7 @@ func _spawn_debug_units() -> void:
 		"owner": "enemy",
 		"tags": ["grunt"],
 	}
-	unit_manager.spawn_unit("enemy_debug_grunt", enemy_data, Vector2i(7, 1))
+	unit_manager.spawn_unit("enemy_debug_grunt", enemy_data, Vector2i(3, 4))
 
 ## End the player's turn: clear crest pool, advance round, return to PLAYER_ROLL.
 func end_player_turn() -> void:

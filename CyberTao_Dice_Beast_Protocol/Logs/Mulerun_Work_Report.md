@@ -1,26 +1,14 @@
 # Mulerun Work Report
 
 **Date**: 2026-03-29
-**Version**: v0.1.10
+**Version**: v0.1.11
 **Branch**: `codex/dice-beast-protocol`
 
 ---
 
 ## Task
 
-Fix interaction regression: board clicks not reaching BoardView, preventing unit selection, movement, and attack.
-
----
-
-## Root Cause
-
-Multiple Controls in Main.gd used the default `mouse_filter = MOUSE_FILTER_STOP`, which in Godot 4 means "intercept all mouse events in my rect." These decorative/overlay nodes were stealing clicks before they could reach BoardView:
-
-1. **`bg` (ColorRect)**: `PRESET_FULL_RECT` covering entire 1280x720 viewport with default `MOUSE_FILTER_STOP`
-2. **Title/subtitle/hint labels**: Full 1280px width with default `MOUSE_FILTER_STOP`, overlapping the board's vertical range
-3. **`SettingsPanel`**: Position (440,200) size 400x320 with `MOUSE_FILTER_STOP` even when `visible = false` — overlapped board region [440,200]-[616,520]
-4. **`_result_label`**: Full 1280px width with default `MOUSE_FILTER_STOP`
-5. **BoardView**: Never called `accept_event()` after handling clicks, allowing input to propagate unexpectedly
+Fix prototype playability: guarantee MOVE crest availability and reduce enemy distance.
 
 ---
 
@@ -28,30 +16,43 @@ Multiple Controls in Main.gd used the default `mouse_filter = MOUSE_FILTER_STOP`
 
 | File | Change |
 |------|--------|
-| `Project/Scripts/Main.gd` | Set `mouse_filter = MOUSE_FILTER_IGNORE` on bg, title, subtitle, hint, _result_label |
-| `Project/Scripts/UI/SettingsPanel.gd` | Start with `MOUSE_FILTER_IGNORE`; toggle to `STOP` on open(), back to `IGNORE` on close |
-| `Project/Scripts/UI/BoardView.gd` | Added `accept_event()` call after `_handle_cell_click()` in `_gui_input()` |
-| `Logs/changelog_v0.1.md` | Added v0.1.10 entry |
+| `Project/Scripts/BattleV2/DiceManager.gd` | Added MOVE floor: if roll produces 0 MOVE, set pool to 1 MOVE |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | Changed enemy spawn from (7,1) to (3,4) |
+| `Logs/changelog_v0.1.md` | Added v0.1.11 entry |
 | `Logs/Mulerun_Work_Report.md` | Overwritten with this report |
 
 ---
 
-## What Was Restored
+## Approach
 
-- Click player unit to select (gold ring + "选中：" update)
-- Roll dice, then click cyan-highlighted cell to move (MOVE crest consumed)
-- Click red-highlighted adjacent enemy cell to attack (ATTACK crest consumed, HP updated)
-- End Turn button advances round
-- Victory/defeat judgment still intact
-- Settings panel still works when opened via "设置" button
+**MOVE guarantee (方案A):** After `roll_turn_dice()` rolls 3 random dice, if the resulting crest pool has `move <= 0`, it is set to `1`. This is the simplest approach — no weight tables, no extra dice, no complex logic. The random roll results array is unchanged (still shows the actual faces rolled), but the pool always has at least 1 MOVE available.
+
+**Why 方案A over others:**
+- 方案B (weighted faces) changes probability curves in ways that are hard to predict
+- 方案C (more dice) inflates all crest types, not just MOVE
+- 方案A is a targeted floor that only activates when needed (57.9% of rolls)
+
+**Enemy repositioned to (3,4):**
+- Player starts at (0,6), enemy was at (7,1) — manhattan distance 12
+- New position (3,4) — manhattan distance 5
+- With guaranteed 1 MOVE per turn and move_range of 3, player can reach enemy in ~2 rounds
+- Close enough to test attack within first few turns, far enough that movement still matters
+
+---
+
+## Expected Gameplay Flow
+
+1. Round 1: Roll → get at least 1 MOVE → select unit → move toward (3,4)
+2. Round 2: Roll → move adjacent to enemy → if ATTACK crest available, attack
+3. Round 3+: Continue attacking until enemy HP reaches 0 → VICTORY
 
 ---
 
 ## Remaining Limits
 
-- **No enemy AI** — enemy never takes a turn
-- **No restart** — no way to restart after victory/defeat
-- **No attack animation** — damage is instant
+- **No enemy AI** — enemy still never moves or attacks
+- **No restart** — must reload after victory/defeat
+- **MOVE floor is hardcoded** — future design may want configurable floors per crest type
 - **Not validated in-editor**
 
 ---

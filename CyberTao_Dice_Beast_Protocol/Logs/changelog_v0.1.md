@@ -250,3 +250,17 @@
 - root cause: Controls in Godot 4 default to `MOUSE_FILTER_STOP`, which can intercept mouse events even for purely decorative nodes; the full-screen `bg` ColorRect and full-width labels were potential input blockers
 - `SettingsPanel` at position (440,200) size 400x320 overlapped the board at (40,160) size 576x576 — with `MOUSE_FILTER_STOP` while invisible, it could block clicks in the overlap zone [440,200]-[616,520]
 - no logic, layout, or feature changes — interaction-only fix
+
+## v0.1.11 - 2026-03-29
+
+### Changed
+
+- guaranteed minimum 1 MOVE crest per dice roll: if random roll produces 0 MOVE, pool is set to 1 MOVE after rolling
+- enemy debug unit spawn position moved from (7,1) to (3,4) — manhattan distance to player reduced from 12 to 5
+
+### Notes
+
+- prototype playability fix: with 3 dice and 6 faces, probability of 0 MOVE per roll was 57.9% — most turns were unplayable
+- guaranteed MOVE ensures every turn has at least 1 movement action available
+- new enemy position (3,4) means player at (0,6) can reach and attack within 2-3 rounds
+- no new features, no enemy AI, no visual changes

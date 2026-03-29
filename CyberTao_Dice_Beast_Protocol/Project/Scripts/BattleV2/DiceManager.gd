@@ -32,6 +32,9 @@ func roll_turn_dice() -> Array[String]:
 		var face: String = possible_faces[idx]
 		last_roll_results.append(face)
 		crest_pool[face] = int(crest_pool.get(face, 0)) + 1
+	# Guarantee at least 1 MOVE per roll for prototype playability
+	if int(crest_pool.get("move", 0)) <= 0:
+		crest_pool["move"] = 1
 	emit_signal("dice_rolled", last_roll_results.duplicate(), crest_pool.duplicate())
 	return last_roll_results
 
