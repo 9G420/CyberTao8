@@ -5,10 +5,57 @@ var board_manager: Node
 var unit_manager: Node
 var action_resolver: Node
 
-func plan_enemy_turn() -> Array[Dictionary]:
-	return []
+## 获取所有敌方单位 ID
+func get_enemy_units() -> Array[String]:
+	var result: Array[String] = []
+	for uid in unit_manager.units_by_id.keys():
+		var state: Dictionary = unit_manager.units_by_id[uid]
+		if String(state.get("owner", "")) == "enemy":
+			result.append(String(uid))
+	return result
 
-func pick_forward_move(unit_id: String, candidate_cells: Array[Vector2i]) -> Vector2i:
-	if candidate_cells.is_empty():
-		return Vector2i(-1, -1)
-	return candidate_cells[0]
+## 查找距离指定格子最近的玩家单位所在格
+func find_nearest_player_cell(from_cell: Vector2i) -> Vector2i:
+	var best_cell: Vector2i = Vector2i(-1, -1)
+	var best_dist: int = 9999
+	for uid in unit_manager.units_by_id.keys():
+		var state: Dictionary = unit_manager.units_by_id[uid]
+		if String(state.get("owner", "")) != "player":
+			continue
+		var cell: Vector2i = state["cell"]
+		var dist: int = absi(cell.x - from_cell.x) + absi(cell.y - from_cell.y)
+		if dist < best_dist:
+			best_dist = dist
+			best_cell = cell
+	return best_cell
+
+## 获取相邻格中包含玩家单位的格子列表
+func get_adjacent_player_cells(from_cell: Vector2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if board_manager == null or unit_manager == null:
+		return result
+	var neighbors: Array[Vector2i] = board_manager.get_neighbors(from_cell)
+	for nb in neighbors:
+		if not unit_manager.units_by_cell.has(nb):
+			continue
+		var uid: String = String(unit_manager.units_by_cell[nb])
+		var state: Dictionary = unit_manager.get_unit(uid)
+		if String(state.get("owner", "")) == "player":
+			result.append(nb)
+	return result
+
+## 选择一个朝目标方向移动的最优相邻空格
+func pick_move_toward(from_cell: Vector2i, target_cell: Vector2i) -> Vector2i:
+	var best_cell: Vector2i = Vector2i(-1, -1)
+	var best_dist: int = absi(target_cell.x - from_cell.x) + absi(target_cell.y - from_cell.y)
+	if board_manager == null:
+		return best_cell
+	var neighbors: Array[Vector2i] = board_manager.get_neighbors(from_cell)
+	for nb in neighbors:
+		if board_manager.occupied_cells.has(nb):
+			continue
+		var dist: int = absi(target_cell.x - nb.x) + absi(target_cell.y - nb.y)
+		if dist < best_dist:
+			best_dist = dist
+			best_cell = nb
+	return best_cell

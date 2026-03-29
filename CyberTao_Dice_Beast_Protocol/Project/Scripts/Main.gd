@@ -104,6 +104,7 @@ func _wire_debug_views() -> void:
 	_board_view.attack_requested.connect(_on_attack_requested)
 	_battle_flow.phase_changed.connect(_on_phase_changed)
 	_battle_flow.attack_completed.connect(_on_attack_completed)
+	_battle_flow.enemy_attack_completed.connect(_on_enemy_attack_completed)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -138,6 +139,10 @@ func _on_phase_changed(phase_name: String) -> void:
 
 func _on_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool) -> void:
 	_last_attack_damage = damage
+
+func _on_enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i) -> void:
+	# 敌方攻击时在目标格显示受击反馈
+	_board_view.play_attack_feedback(target_cell, damage)
 
 func _on_restart_pressed() -> void:
 	_board_view.selected_unit_id = ""

@@ -31,6 +31,8 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.round_changed.connect(_on_round_changed)
 	if battle_flow.attack_completed and not battle_flow.attack_completed.is_connected(_on_attack_completed):
 		battle_flow.attack_completed.connect(_on_attack_completed)
+	if battle_flow.enemy_attack_completed and not battle_flow.enemy_attack_completed.is_connected(_on_enemy_attack_completed):
+		battle_flow.enemy_attack_completed.connect(_on_enemy_attack_completed)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -166,6 +168,9 @@ func _on_move_completed(_unit_id: String, _from_cell: Vector2i, _to_cell: Vector
 	_refresh_crest_pool()
 
 func _on_attack_completed(_attacker_id: String, _defender_id: String, _damage: int, _killed: bool) -> void:
+	_refresh_crest_pool()
+
+func _on_enemy_attack_completed(_attacker_id: String, _defender_id: String, _damage: int, _killed: bool, _target_cell: Vector2i) -> void:
 	_refresh_crest_pool()
 
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
