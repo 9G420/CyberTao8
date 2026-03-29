@@ -559,3 +559,36 @@
 - 遭遇格踩后不消失（Day 7 遭遇暂停流程中处理清除逻辑）
 - 遭遇格位置：(4,4) 在玩家前进路线中段，(6,5) 在侧翼可选绕行
 - 为 Day 7（遭遇暂停）和 Day 9（卡牌战斗）预留了信号接口
+
+## v0.1.23 - 2026-03-29
+
+### 新增
+
+- 遭遇暂停与战斗占位流程（Day 7：棋盘走位层 → 双层入口）
+- `BattlePhase.ENCOUNTER` 新阶段枚举：遭遇触发后棋盘进入暂停状态
+- `BattleFlowController.encounter_resolved` 信号（encounter_id, cell）
+- `BattleFlowController.resolve_encounter()`：遭遇结算方法，清除遭遇格并回到 PLAYER_ACTION
+- `BattleFlowController` 新增遭遇上下文变量：`_encounter_unit_id`、`_encounter_id`、`_encounter_cell`
+- `DiceDebugPanel` 新增遭遇战斗占位面板（`encounter_panel`）：橙红色背景 + "战斗开始 [encounter_id]" 标题 + "战斗胜利（占位）"按钮
+- 遭遇清除反馈：解除遭遇后在遭遇格位置显示绿色"遭遇清除"飘字
+- `_phase_label_text()` 新增 "ENCOUNTER" → "遭遇战斗" 映射
+
+### 修改
+
+- `_check_encounter()` 重写：从仅发信号改为进入 ENCOUNTER 暂停状态 + 保存遭遇上下文
+- `BoardView._handle_cell_click()` 新增 ENCOUNTER 阶段点击屏蔽（与 VICTORY/DEFEAT 一致）
+- `DiceDebugPanel._on_phase_changed()` 新增 ENCOUNTER 处理：禁用掷骰/结束回合按钮，阶段标签变橙色
+- `DiceDebugPanel._on_encounter_triggered()` 更新：除显示文字提示外，同时弹出战斗占位面板
+- `Main.gd` 连接 `encounter_resolved` 信号，触发绿色飘字反馈
+- `restart_battle()` 清空遭遇上下文变量
+
+### 完整流程
+
+踩遭遇格 → 棋盘进入 ENCOUNTER 暂停 → 禁止所有操作 → 弹出战斗占位面板 → 点击"战斗胜利（占位）" → 遭遇格消失 → 回到 PLAYER_ACTION 继续
+
+### 备注
+
+- 占位面板为 Day 9 最小卡牌战斗原型的替换入口
+- `resolve_encounter()` 预留了战斗结果参数扩展空间
+- 遭遇格被清除后不再触发（单次遭遇）
+- ENCOUNTER 阶段期间，掷骰/移动/攻击/召唤/结束回合均被禁止

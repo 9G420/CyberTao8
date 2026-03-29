@@ -112,6 +112,7 @@ func _wire_debug_views() -> void:
 	_battle_flow.enemy_action_announced.connect(_on_enemy_action_announced)
 	_battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
 	_battle_flow.encounter_triggered.connect(_on_encounter_triggered)
+	_battle_flow.encounter_resolved.connect(_on_encounter_resolved)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -191,6 +192,11 @@ func _on_enemy_turn_ended() -> void:
 func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i) -> void:
 	# 遭遇触发反馈：橙红色飘字提示
 	_board_view.play_encounter_feedback(cell, "遭遇！")
+	_board_view.queue_redraw()
+
+func _on_encounter_resolved(encounter_id: String, cell: Vector2i) -> void:
+	# 遭遇结算反馈：绿色飘字提示
+	_board_view.play_pickup_feedback(cell, "遭遇清除")
 	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:

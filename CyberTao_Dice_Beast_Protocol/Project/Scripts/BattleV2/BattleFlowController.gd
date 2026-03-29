@@ -13,6 +13,7 @@ signal item_picked_up(unit_id: String, item_id: String, effect_text: String, cel
 signal enemy_action_announced(unit_id: String, action_type: String, detail: String)
 signal enemy_turn_ended
 signal encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i)
+signal encounter_resolved(encounter_id: String, cell: Vector2i)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -29,6 +30,7 @@ enum BattlePhase {
 	BOOT,
 	PLAYER_ROLL,
 	PLAYER_ACTION,
+	ENCOUNTER,
 	ENEMY_ROLL,
 	ENEMY_ACTION,
 	RESOLUTION,
@@ -39,6 +41,9 @@ enum BattlePhase {
 var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
 var _summon_counter: int = 0
+var _encounter_unit_id: String = ""
+var _encounter_id: String = ""
+var _encounter_cell: Vector2i = Vector2i(-1, -1)
 
 var dice_manager: DiceManager
 var board_manager: BoardManager
@@ -472,13 +477,38 @@ func _check_item_pickup(unit_id: String, cell: Vector2i) -> void:
 	emit_signal("item_picked_up", unit_id, item_id, effect_text, cell)
 	board_manager.emit_signal("board_changed")
 
-## 检查遭遇格：玩家单位踩到遭遇格时触发遭遇信号
+## 检查遭遇格：玩家单位踩到遭遇格时触发遭遇，进入 ENCOUNTER 暂停状态
 func _check_encounter(unit_id: String, cell: Vector2i) -> void:
 	if not board_manager.encounter_cells.has(cell):
 		return
 	var encounter_id: String = String(board_manager.encounter_cells[cell])
-	# 触发遭遇信号（当前版本仅发信号+提示，不切场景）
+	# 保存当前遭遇上下文（供 resolve_encounter 使用）
+	_encounter_unit_id = unit_id
+	_encounter_id = encounter_id
+	_encounter_cell = cell
+	# 进入 ENCOUNTER 暂停状态（棋盘禁止操作）
+	current_phase = BattlePhase.ENCOUNTER
+	emit_signal("phase_changed", _phase_name(current_phase))
+	# 触发遭遇信号（UI 层用于显示反馈和战斗占位面板）
 	emit_signal("encounter_triggered", unit_id, encounter_id, cell)
+
+## 遭遇结算（占位）：清除遭遇格，回到 PLAYER_ACTION 继续操作
+## 后续可在此接入真实卡牌战斗结果
+func resolve_encounter() -> void:
+	if current_phase != BattlePhase.ENCOUNTER:
+		return
+	var resolved_id: String = _encounter_id
+	var resolved_cell: Vector2i = _encounter_cell
+	# 清除遭遇格（已完成的遭遇不再触发）
+	board_manager.clear_encounter_cell(resolved_cell)
+	# 清空遭遇上下文
+	_encounter_unit_id = ""
+	_encounter_id = ""
+	_encounter_cell = Vector2i(-1, -1)
+	# 回到玩家行动阶段
+	current_phase = BattlePhase.PLAYER_ACTION
+	emit_signal("encounter_resolved", resolved_id, resolved_cell)
+	emit_signal("phase_changed", _phase_name(current_phase))
 
 ## 执行道具效果并返回效果描述
 func _apply_item_effect(item_id: String, unit_id: String) -> String:
@@ -606,6 +636,8 @@ func _phase_name(phase: BattlePhase) -> String:
 			return "PLAYER_ROLL"
 		BattlePhase.PLAYER_ACTION:
 			return "PLAYER_ACTION"
+		BattlePhase.ENCOUNTER:
+			return "ENCOUNTER"
 		BattlePhase.ENEMY_ROLL:
 			return "ENEMY_ROLL"
 		BattlePhase.ENEMY_ACTION:
@@ -625,6 +657,9 @@ func restart_battle() -> void:
 	board_manager.clear_board()
 	board_manager.build_test_board(Vector2i(8, 8))
 	_summon_counter = 0
+	_encounter_unit_id = ""
+	_encounter_id = ""
+	_encounter_cell = Vector2i(-1, -1)
 	_spawn_debug_units()
 	_spawn_debug_terrain()
 	_spawn_debug_items()

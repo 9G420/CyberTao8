@@ -12,6 +12,9 @@ var crest_label: RichTextLabel
 var enemy_intent_label: Label
 var roll_button: Button
 var end_turn_button: Button
+var encounter_panel: Panel
+var encounter_title_label: Label
+var encounter_resolve_button: Button
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(280, 500)
@@ -47,6 +50,8 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
 	if battle_flow.encounter_triggered and not battle_flow.encounter_triggered.is_connected(_on_encounter_triggered):
 		battle_flow.encounter_triggered.connect(_on_encounter_triggered)
+	if battle_flow.encounter_resolved and not battle_flow.encounter_resolved.is_connected(_on_encounter_resolved):
+		battle_flow.encounter_resolved.connect(_on_encounter_resolved)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -147,6 +152,37 @@ func _build_ui() -> void:
 	enemy_intent_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.25))
 	add_child(enemy_intent_label)
 
+	# 遭遇战斗占位面板（默认隐藏）
+	encounter_panel = Panel.new()
+	encounter_panel.position = Vector2(10, 116)
+	encounter_panel.size = Vector2(260, 140)
+	encounter_panel.visible = false
+	var enc_bg := StyleBoxFlat.new()
+	enc_bg.bg_color = Color(0.15, 0.08, 0.05, 0.95)
+	enc_bg.border_color = Color(1.0, 0.4, 0.15, 0.9)
+	enc_bg.set_border_width_all(2)
+	enc_bg.set_corner_radius_all(6)
+	encounter_panel.add_theme_stylebox_override("panel", enc_bg)
+	add_child(encounter_panel)
+
+	encounter_title_label = Label.new()
+	encounter_title_label.text = ""
+	encounter_title_label.position = Vector2(10, 12)
+	encounter_title_label.size = Vector2(240, 50)
+	encounter_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	encounter_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	encounter_title_label.add_theme_font_size_override("font_size", 18)
+	encounter_title_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.2))
+	encounter_panel.add_child(encounter_title_label)
+
+	encounter_resolve_button = Button.new()
+	encounter_resolve_button.text = "战斗胜利（占位）"
+	encounter_resolve_button.position = Vector2(30, 80)
+	encounter_resolve_button.size = Vector2(200, 44)
+	encounter_resolve_button.add_theme_font_size_override("font_size", 16)
+	encounter_resolve_button.pressed.connect(_on_encounter_resolve_pressed)
+	encounter_panel.add_child(encounter_resolve_button)
+
 func _on_roll_pressed() -> void:
 	if battle_flow:
 		battle_flow.start_player_roll()
@@ -174,14 +210,21 @@ func _on_phase_changed(phase_name: String) -> void:
 		roll_button.disabled = true
 		end_turn_button.disabled = true
 		enemy_intent_label.text = ""
+		encounter_panel.visible = false
 		if phase_name == "VICTORY":
 			phase_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
 		else:
 			phase_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	elif phase_name == "ENCOUNTER":
+		# 遭遇暂停状态：禁用所有常规按钮，显示遭遇面板
+		roll_button.disabled = true
+		end_turn_button.disabled = true
+		phase_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.15))
 	else:
 		phase_label.add_theme_color_override("font_color", Color(0.72, 0.9, 0.84))
 		roll_button.disabled = phase_name != "PLAYER_ROLL"
 		end_turn_button.disabled = phase_name != "PLAYER_ACTION"
+		encounter_panel.visible = false
 		# 进入玩家阶段时清空敌方意图
 		if phase_name == "PLAYER_ROLL" or phase_name == "PLAYER_ACTION":
 			enemy_intent_label.text = ""
@@ -229,6 +272,18 @@ func _on_enemy_turn_ended() -> void:
 func _on_encounter_triggered(_unit_id: String, encounter_id: String, _cell: Vector2i) -> void:
 	enemy_intent_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.15))
 	enemy_intent_label.text = "遭遇！准备进入战斗... [" + encounter_id + "]"
+	# 显示遭遇战斗占位面板
+	encounter_title_label.text = "战斗开始\n[" + encounter_id + "]"
+	encounter_panel.visible = true
+
+func _on_encounter_resolved(_encounter_id: String, _cell: Vector2i) -> void:
+	encounter_panel.visible = false
+	enemy_intent_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+	enemy_intent_label.text = "遭遇已清除，继续行动"
+
+func _on_encounter_resolve_pressed() -> void:
+	if battle_flow:
+		battle_flow.resolve_encounter()
 
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	var pool: Dictionary = next_crest_pool
@@ -248,6 +303,8 @@ func _phase_label_text(phase_name: String) -> String:
 			return "玩家掷骰"
 		"PLAYER_ACTION":
 			return "玩家行动"
+		"ENCOUNTER":
+			return "遭遇战斗"
 		"ENEMY_ROLL":
 			return "敌方掷骰"
 		"ENEMY_ACTION":

@@ -82,8 +82,8 @@ func _is_valid_cell(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_W and cell.y < GRID_H
 
 func _handle_cell_click(cell: Vector2i) -> void:
-	# Block interaction if battle is over
-	if battle_flow and battle_flow.is_battle_over():
+	# Block interaction if battle is over or encounter is active
+	if battle_flow and (battle_flow.is_battle_over() or battle_flow.current_phase == battle_flow.BattlePhase.ENCOUNTER):
 		return
 	# If a unit is selected
 	if selected_unit_id != "":
