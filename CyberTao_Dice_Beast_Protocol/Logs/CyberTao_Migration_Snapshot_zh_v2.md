@@ -1,7 +1,7 @@
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v2）
 
 **生成时间**: 2026-03-29  
-**当前版本**: v0.1.15
+**当前版本**: v0.1.16
 **当前分支**: `codex/dice-beast-protocol`  
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
 

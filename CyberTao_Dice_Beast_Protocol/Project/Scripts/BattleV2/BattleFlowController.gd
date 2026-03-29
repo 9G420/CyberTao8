@@ -219,6 +219,9 @@ func _execute_enemy_actions() -> void:
 					await get_tree().create_timer(0.3).timeout
 					if is_battle_over():
 						break
+					# 如果该敌方单位已被陷阱击杀，跳过后续攻击
+					if unit_manager.get_unit(uid).is_empty():
+						continue
 					# 移动后再检查是否进入攻击范围
 					var new_adjacent: Array[Vector2i] = battle_ai.get_adjacent_player_cells(move_cell)
 					if new_adjacent.size() > 0 and dice_manager.can_pay({"attack": 1}):
