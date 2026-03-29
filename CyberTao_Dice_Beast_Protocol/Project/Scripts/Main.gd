@@ -1,6 +1,7 @@
-﻿extends Control
+extends Control
 
 const BattleFlowController = preload("res://Scripts/BattleV2/BattleFlowController.gd")
+const CardBattleController = preload("res://Scripts/BattleV2/CardBattleController.gd")
 const BoardView = preload("res://Scripts/UI/BoardView.gd")
 const DiceDebugPanel = preload("res://Scripts/UI/DiceDebugPanel.gd")
 const DisplaySettings = preload("res://Scripts/System/DisplaySettings.gd")
@@ -8,6 +9,7 @@ const SettingsPanel = preload("res://Scripts/UI/SettingsPanel.gd")
 const CardBattlePanel = preload("res://Scripts/UI/CardBattlePanel.gd")
 
 var _battle_flow: BattleFlowController
+var _card_battle_ctrl: CardBattleController
 var _board_view: BoardView
 var _dice_panel: DiceDebugPanel
 var _display_settings: DisplaySettings
@@ -22,6 +24,8 @@ func _ready() -> void:
 	add_child(_display_settings)
 	_battle_flow = BattleFlowController.new()
 	add_child(_battle_flow)
+	_card_battle_ctrl = CardBattleController.new()
+	add_child(_card_battle_ctrl)
 	_build_debug_view()
 	_wire_debug_views()
 
@@ -121,9 +125,10 @@ func _wire_debug_views() -> void:
 	_battle_flow.encounter_resolved.connect(_on_encounter_resolved)
 	_battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
 	_battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
-	_battle_flow.card_battle_started.connect(_on_card_battle_started)
-	_battle_flow.card_battle_ended.connect(_on_card_battle_ended)
-	_card_battle_panel.battle_ended.connect(_on_card_battle_panel_ended)
+	# 卡牌战斗控制器信号
+	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
+	# 卡牌战斗面板绑定控制器
+	_card_battle_panel.bind_controller(_card_battle_ctrl)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -169,25 +174,20 @@ func _on_attack_completed(attacker_id: String, defender_id: String, damage: int,
 	_last_attack_damage = damage
 
 func _on_enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i) -> void:
-	# 敌方攻击时在目标格显示受击反馈
 	_board_view.play_attack_feedback(target_cell, damage)
 
 func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i) -> void:
-	# 召唤完成后刷新棋盘
 	_board_view.queue_redraw()
 
 func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String) -> void:
-	# 地形伤害反馈：在受伤格显示伤害飘字
 	_board_view.play_attack_feedback(cell, damage)
 	_board_view.queue_redraw()
 
 func _on_item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i) -> void:
-	# 道具拾取反馈：在拾取格显示绿色效果飘字
 	_board_view.play_pickup_feedback(cell, effect_text)
 	_board_view.queue_redraw()
 
 func _on_enemy_action_announced(unit_id: String, action_type: String, detail: String) -> void:
-	# 敌方行动预告：攻击时在目标格显示橙色预警闪烁
 	if action_type == "attack":
 		var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
 		if not unit.is_empty():
@@ -197,45 +197,38 @@ func _on_enemy_action_announced(unit_id: String, action_type: String, detail: St
 				_board_view.play_enemy_warning(adjacent[0])
 
 func _on_enemy_turn_ended() -> void:
-	# 敌方回合结束，清除残留闪烁
 	_board_view.queue_redraw()
 
 func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i) -> void:
 	# 遭遇触发反馈：橙红色飘字提示
 	_board_view.play_encounter_feedback(cell, "遭遇！")
 	_board_view.queue_redraw()
+	# 启动卡牌战斗控制器（从 BFC 查询当前遭遇单位的 HP）
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+	var p_hp: int = int(unit.get("hp", 1))
+	var p_max_hp: int = int(unit.get("max_hp", 1))
+	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp)
 
 func _on_encounter_resolved(encounter_id: String, cell: Vector2i) -> void:
-	# 遭遇结算反馈：绿色飘字提示
 	_board_view.play_pickup_feedback(cell, "遭遇清除")
 	_board_view.queue_redraw()
 
 func _on_heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int) -> void:
-	# 恢复格反馈：蓝色飘字显示回复量
 	_board_view.play_heal_feedback(cell, "HP+" + str(actual_heal))
 	_board_view.queue_redraw()
 
 func _on_event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String) -> void:
-	# 事件格反馈：根据效果正负显示不同颜色飘字
 	var is_positive: bool = not effect_text.begins_with("HP-")
 	_board_view.play_event_feedback(cell, effect_text, is_positive)
 	_board_view.queue_redraw()
 
-func _on_card_battle_started(encounter_id: String, enemy_name: String, enemy_hp: int, enemy_atk: int, unit_id: String, player_hp: int, player_max_hp: int) -> void:
-	# 卡牌战斗开始：启动 CardBattlePanel
-	_card_battle_panel.start_battle(encounter_id, enemy_name, enemy_hp, enemy_atk, player_hp, player_max_hp)
-
-func _on_card_battle_panel_ended(victory: bool, player_hp_remaining: int) -> void:
-	# 卡牌战斗面板结束 → 调用 BattleFlowController 结算遭遇
+func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
+	# CardBattleController 战斗结束 → 先记录遭遇格位置，再结算
+	var encounter_cell: Vector2i = _battle_flow._encounter_cell
 	_battle_flow.resolve_encounter(victory, player_hp_remaining)
-	_board_view.queue_redraw()
-
-func _on_card_battle_ended(encounter_id: String, cell: Vector2i, victory: bool, player_hp_remaining: int) -> void:
-	# 卡牌战斗结算完成反馈
-	if victory:
-		_board_view.play_pickup_feedback(cell, "战斗胜利！")
-	else:
-		_board_view.play_attack_feedback(cell, 2)
+	# 反馈飘字
+	if victory and encounter_cell.x >= 0:
+		_board_view.play_pickup_feedback(encounter_cell, "战斗胜利！")
 	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:

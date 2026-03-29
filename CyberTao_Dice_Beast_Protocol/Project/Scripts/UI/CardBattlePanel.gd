@@ -1,22 +1,13 @@
 extends Panel
 class_name CardBattlePanel
 
-## 最小卡牌战斗面板：遭遇触发后进入，玩家选牌 → 敌方行动 → 结算 → 回到棋盘
-## Day 9 原型：固定 5 张手牌，敌方每回合固定攻击
+## 卡牌战斗 UI 面板（纯显示层）
+## 所有战斗逻辑委托给 CardBattleController，本文件只负责渲染和按钮回调
+## 不持有任何战斗状态，仅通过 bind_controller() 绑定信号
 
-signal battle_ended(victory: bool, player_hp_remaining: int)
+const CardBattleController = preload("res://Scripts/BattleV2/CardBattleController.gd")
 
-# --- 战斗状态 ---
-var _player_hp: int = 0
-var _player_max_hp: int = 0
-var _enemy_hp: int = 0
-var _enemy_max_hp: int = 0
-var _enemy_atk: int = 2
-var _enemy_name: String = ""
-var _def_bonus: int = 0  # 防御牌本回合减伤
-var _battle_turn: int = 0
-var _is_active: bool = false
-var _encounter_id: String = ""
+var _controller: CardBattleController = null
 
 # --- UI 引用 ---
 var _title_label: Label
@@ -27,116 +18,77 @@ var _turn_label: Label
 var _card_buttons: Array[Button] = []
 var _flee_button: Button
 
-# --- 手牌定义 ---
-# type: "attack" | "defend" | "heal"
-var _hand: Array[Dictionary] = []
-
 func _ready() -> void:
 	visible = false
 	custom_minimum_size = Vector2(420, 400)
 	size = Vector2(420, 400)
 	_build_ui()
 
-func start_battle(encounter_id: String, enemy_name: String, enemy_hp: int, enemy_atk: int, player_hp: int, player_max_hp: int) -> void:
-	_encounter_id = encounter_id
-	_enemy_name = enemy_name
-	_enemy_hp = enemy_hp
-	_enemy_max_hp = enemy_hp
-	_enemy_atk = enemy_atk
-	_player_hp = player_hp
-	_player_max_hp = player_max_hp
-	_def_bonus = 0
-	_battle_turn = 1
-	_is_active = true
-	_build_hand()
-	_refresh_ui()
-	_log_label.text = "遭遇 " + _enemy_name + "！选择手牌出击。"
+func bind_controller(controller: CardBattleController) -> void:
+	_controller = controller
+	if _controller.battle_started and not _controller.battle_started.is_connected(_on_battle_started):
+		_controller.battle_started.connect(_on_battle_started)
+	if _controller.card_played and not _controller.card_played.is_connected(_on_card_played):
+		_controller.card_played.connect(_on_card_played)
+	if _controller.enemy_acted and not _controller.enemy_acted.is_connected(_on_enemy_acted):
+		_controller.enemy_acted.connect(_on_enemy_acted)
+	if _controller.turn_resolved and not _controller.turn_resolved.is_connected(_on_turn_resolved):
+		_controller.turn_resolved.connect(_on_turn_resolved)
+	if _controller.battle_ended and not _controller.battle_ended.is_connected(_on_battle_ended):
+		_controller.battle_ended.connect(_on_battle_ended)
+
+# --- 控制器信号回调 ---
+
+func _on_battle_started(player_hp: int, enemy_hp: int, enemy_name: String) -> void:
+	_log_label.text = "遭遇 " + enemy_name + "！选择手牌出击。"
+	_set_cards_disabled(false)
+	_refresh_hp(player_hp, _controller.player_max_hp, enemy_hp, _controller.enemy_max_hp, enemy_name, 1)
 	visible = true
 
-func _build_hand() -> void:
-	_hand = [
-		{"name": "斩击", "type": "attack", "value": 3, "desc": "造成 3 点伤害"},
-		{"name": "重击", "type": "attack", "value": 5, "desc": "造成 5 点伤害"},
-		{"name": "防御", "type": "defend", "value": 2, "desc": "本回合减伤 2"},
-		{"name": "修复", "type": "heal", "value": 2, "desc": "回复 2 HP"},
-		{"name": "连斩", "type": "attack", "value": 2, "desc": "造成 2 点伤害"},
-	]
+func _on_card_played(_card_index: int, _card_name: String, effect_text: String) -> void:
+	_log_label.text = effect_text
 
-func _play_card(index: int) -> void:
-	if not _is_active or index < 0 or index >= _hand.size():
-		return
-	var card: Dictionary = _hand[index]
-	var effect_text: String = ""
-	# 重置上回合防御加成
-	_def_bonus = 0
-	match card["type"]:
-		"attack":
-			var dmg: int = card["value"]
-			_enemy_hp = max(0, _enemy_hp - dmg)
-			effect_text = card["name"] + " → 对 " + _enemy_name + " 造成 " + str(dmg) + " 伤害"
-		"defend":
-			_def_bonus = card["value"]
-			effect_text = card["name"] + " → 防御 +" + str(card["value"])
-		"heal":
-			var actual: int = min(card["value"], _player_max_hp - _player_hp)
-			_player_hp = min(_player_max_hp, _player_hp + card["value"])
-			effect_text = card["name"] + " → 回复 " + str(actual) + " HP"
-	# 检查敌方是否被击杀
-	if _enemy_hp <= 0:
-		_is_active = false
-		_log_label.text = effect_text + "\n胜利！" + _enemy_name + " 被消灭。"
-		_set_cards_disabled(true)
-		_refresh_ui()
-		# 延迟返回棋盘
-		await get_tree().create_timer(1.2).timeout
-		visible = false
-		emit_signal("battle_ended", true, _player_hp)
-		return
-	# 敌方行动
-	var enemy_text: String = _enemy_act()
-	_battle_turn += 1
-	_log_label.text = effect_text + "\n" + enemy_text
-	_refresh_ui()
-	# 检查玩家是否被击杀
-	if _player_hp <= 0:
-		_is_active = false
-		_log_label.text = _log_label.text + "\n败北..."
-		_set_cards_disabled(true)
-		await get_tree().create_timer(1.2).timeout
-		visible = false
-		emit_signal("battle_ended", false, 0)
+func _on_enemy_acted(action_text: String) -> void:
+	_log_label.text = _log_label.text + "\n" + action_text
 
-func _enemy_act() -> String:
-	var actual_dmg: int = max(1, _enemy_atk - _def_bonus)
-	_player_hp = max(0, _player_hp - actual_dmg)
-	var text: String = _enemy_name + " 攻击 → " + str(actual_dmg) + " 伤害"
-	if _def_bonus > 0:
-		text += "（已减免）"
-	return text
+func _on_turn_resolved(player_hp: int, enemy_hp: int, battle_turn: int) -> void:
+	_refresh_hp(player_hp, _controller.player_max_hp, enemy_hp, _controller.enemy_max_hp, _controller.enemy_name, battle_turn)
+
+func _on_battle_ended(victory: bool, _player_hp_remaining: int) -> void:
+	_set_cards_disabled(true)
+	if victory:
+		_log_label.text = _log_label.text + "\n胜利！" + _controller.enemy_name + " 被消灭。"
+	else:
+		if _controller.player_hp <= 0:
+			_log_label.text = _log_label.text + "\n败北..."
+		else:
+			_log_label.text = "逃跑！受到 1 点惩罚伤害。"
+	# 延迟关闭面板（由 Main.gd 处理 resolve_encounter）
+	await get_tree().create_timer(1.2).timeout
+	visible = false
+
+# --- 按钮回调（委托给 controller） ---
+
+func _on_card_pressed(index: int) -> void:
+	if _controller:
+		_controller.play_card(index)
 
 func _on_flee_pressed() -> void:
-	if not _is_active:
-		return
-	_is_active = false
-	_log_label.text = "逃跑！受到 1 点惩罚伤害。"
-	_player_hp = max(0, _player_hp - 1)
-	_set_cards_disabled(true)
-	_refresh_ui()
-	await get_tree().create_timer(0.8).timeout
-	visible = false
-	emit_signal("battle_ended", false, _player_hp)
+	if _controller:
+		_controller.flee()
 
-func _refresh_ui() -> void:
-	_title_label.text = "卡牌战斗 — " + _enemy_name
-	_enemy_hp_label.text = "敌方 HP：" + str(_enemy_hp) + " / " + str(_enemy_max_hp)
-	_player_hp_label.text = "我方 HP：" + str(_player_hp) + " / " + str(_player_max_hp)
-	_turn_label.text = "回合 " + str(_battle_turn)
-	# 更新 HP 颜色
-	if _enemy_hp <= _enemy_max_hp * 0.3:
+# --- UI 刷新 ---
+
+func _refresh_hp(player_hp: int, player_max_hp: int, enemy_hp: int, enemy_max_hp: int, enemy_name: String, battle_turn: int) -> void:
+	_title_label.text = "卡牌战斗 — " + enemy_name
+	_enemy_hp_label.text = "敌方 HP：" + str(enemy_hp) + " / " + str(enemy_max_hp)
+	_player_hp_label.text = "我方 HP：" + str(player_hp) + " / " + str(player_max_hp)
+	_turn_label.text = "回合 " + str(battle_turn)
+	if enemy_hp <= enemy_max_hp * 0.3:
 		_enemy_hp_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3))
 	else:
 		_enemy_hp_label.add_theme_color_override("font_color", Color(0.95, 0.5, 0.35))
-	if _player_hp <= _player_max_hp * 0.3:
+	if player_hp <= player_max_hp * 0.3:
 		_player_hp_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 	else:
 		_player_hp_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.7))
@@ -145,6 +97,8 @@ func _set_cards_disabled(disabled: bool) -> void:
 	for btn in _card_buttons:
 		btn.disabled = disabled
 	_flee_button.disabled = disabled
+
+# --- UI 构建 ---
 
 func _build_ui() -> void:
 	var bg := StyleBoxFlat.new()
@@ -187,7 +141,6 @@ func _build_ui() -> void:
 	_player_hp_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.7))
 	add_child(_player_hp_label)
 
-	# 战斗日志
 	_log_label = Label.new()
 	_log_label.text = ""
 	_log_label.position = Vector2(20, 102)
@@ -197,7 +150,6 @@ func _build_ui() -> void:
 	_log_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.75))
 	add_child(_log_label)
 
-	# 手牌按钮区域（5 张）
 	var card_names: Array[String] = ["斩击(3)", "重击(5)", "防御(2)", "修复(2)", "连斩(2)"]
 	var card_y: float = 178.0
 	for i in range(5):
@@ -210,11 +162,10 @@ func _build_ui() -> void:
 		btn.size = Vector2(120, 42)
 		btn.add_theme_font_size_override("font_size", 15)
 		var idx: int = i
-		btn.pressed.connect(func(): _play_card(idx))
+		btn.pressed.connect(func(): _on_card_pressed(idx))
 		add_child(btn)
 		_card_buttons.append(btn)
 
-	# 手牌说明
 	var desc_labels: Array[String] = ["伤害3", "伤害5", "减伤2", "回复2", "伤害2"]
 	for i in range(5):
 		var dlbl := Label.new()
@@ -226,7 +177,6 @@ func _build_ui() -> void:
 		dlbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.55))
 		add_child(dlbl)
 
-	# 逃跑按钮
 	_flee_button = Button.new()
 	_flee_button.text = "逃跑（-1 HP）"
 	_flee_button.position = Vector2(20, 346)

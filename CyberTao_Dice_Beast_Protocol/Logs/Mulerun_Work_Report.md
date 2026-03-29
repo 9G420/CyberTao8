@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-29
-**版本**: v0.1.25
+**版本**: v0.1.26
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- Day 9：最小卡牌战斗原型（卡牌战斗层）
+- Day 9 架构重构：按上岗指令拆分卡牌战斗为 CardBattleController（逻辑）+ CardBattlePanel（UI），剥离 BattleFlowController 中不该存在的卡牌逻辑
 
 ---
 
 ## 根因目标
 
-在遭遇入口（Day 7）和棋盘事件化（Day 8）基础上，实现双层结构的第二层——卡牌战斗层最小原型。玩家踩到遭遇格后，不再只看到占位按钮，而是进入一个真正的卡牌选择战斗子流程：选牌出击 → 敌方反击 → 循环至一方 HP 归零 → 回到棋盘层。这是双层玩法"棋盘走位层 + 卡牌战斗层"跑通的关键里程碑。
+v0.1.25 的卡牌战斗实现违反了上岗指令的架构规则：战斗逻辑和 UI 混写在 CardBattlePanel 中，遭遇敌方数据映射和卡牌战斗信号堆在 BattleFlowController 里。本轮重构将卡牌战斗层拆分为独立的 Controller + Panel 架构，使两层（棋盘走位层 / 卡牌战斗层）的代码边界清晰，为 Day 10 丰富化打好基础。
 
 ---
 
@@ -22,56 +22,88 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/CardBattlePanel.gd` | **新增**。独立卡牌战斗面板，包含完整战斗逻辑+UI：5 张固定手牌（斩击/重击/防御/修复/连斩）、敌方每回合固定攻击、HP 双方对耗、防御减伤、逃跑机制、胜败判定、自动返回棋盘 |
-| `BattleFlowController.gd` | 新增 `card_battle_started`/`card_battle_ended` 信号；新增 `get_encounter_enemy_data()` 遭遇敌方数据映射；重写 `_check_encounter()` 增加卡牌战斗启动信号；重写 `resolve_encounter()` 接受胜败参数，同步战斗后 HP 到棋盘单位 |
-| `DiceDebugPanel.gd` | 遭遇面板按钮改为"卡牌战斗进行中..."（禁用状态）；连接 `card_battle_ended` 信号，战斗结束后更新按钮文字；移除旧的占位结算按钮回调 |
-| `Main.gd` | 新增 `CardBattlePanel` 引用和实例化；连接 `card_battle_started`/`card_battle_ended`/`battle_ended` 信号；新增 `_on_card_battle_started()`、`_on_card_battle_panel_ended()`、`_on_card_battle_ended()` 处理方法；战斗胜利显示绿色飘字，失败显示伤害飘字 |
+| `Scripts/BattleV2/CardBattleController.gd` | **新增**。独立卡牌战斗状态机，包含：BattleState 枚举（IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT）、手牌构建、出牌结算、敌方行动、逃跑、遭遇敌方数据映射（static 方法）、完整信号链（battle_started/card_played/enemy_acted/turn_resolved/battle_ended） |
+| `Scripts/UI/CardBattlePanel.gd` | **重写为纯 UI**。移除所有战斗状态和逻辑，改为通过 `bind_controller()` 绑定 CardBattleController 信号，按钮点击委托给 controller 方法 |
+| `Scripts/BattleV2/BattleFlowController.gd` | 移除 `card_battle_started`/`card_battle_ended` 信号；移除 `get_encounter_enemy_data()` 方法；简化 `_check_encounter()` 只发射 `encounter_triggered`；`resolve_encounter()` 保留但去掉 card_battle_ended 发射；新增 `get_encounter_unit_id()` 查询方法 |
+| `Scripts/UI/DiceDebugPanel.gd` | 移除 `card_battle_ended` 信号连接和 `_on_card_battle_ended()` 回调；遭遇面板按钮保持"卡牌战斗进行中..." |
+| `Scripts/Main.gd` | 新增 `CardBattleController` 实例化（add_child）；`_on_encounter_triggered()` 中直接启动 controller；`_on_card_battle_ended()` 中先记录 encounter_cell 再调用 resolve_encounter；CardBattlePanel 通过 `bind_controller()` 连接 |
 
 ---
 
 ## 实现内容
 
-1. **CardBattlePanel.gd**（全新文件，~200 行）
-   - 赛博朋克风格卡牌战斗面板（暗紫底色+橙色边框）
-   - 显示：战斗标题、敌方 HP、我方 HP、回合数、战斗日志、5 张手牌按钮、逃跑按钮
-   - 5 张固定手牌：
-     - 斩击（3 伤害）/ 重击（5 伤害）/ 防御（减伤 2）/ 修复（回复 2 HP）/ 连斩（2 伤害）
-   - 每回合流程：玩家选牌 → 效果结算 → 检查敌方死亡 → 敌方攻击 → 检查玩家死亡
-   - 防御牌机制：当回合敌方攻击减伤，最低 1 点穿透
-   - 逃跑机制：受 1 点惩罚伤害后退出战斗（视为失败）
-   - HP 低于 30% 时文字变红色警告
-   - 战斗结束后 1.2 秒延迟自动关闭面板
+1. **架构拆分**：CardBattlePanel（纯 UI，~170 行） + CardBattleController（纯逻辑，~115 行）
+2. **信号归属修正**：卡牌战斗相关信号全部在 CardBattleController 上，BattleFlowController 只保留棋盘层信号
+3. **数据归属修正**：遭遇敌方数据（异常哨兵/赛博游魂）从 BFC 移至 CardBattleController 的 static 方法
+4. **接口简化**：BFC 只暴露 `encounter_triggered` 和 `resolve_encounter()`，不再关心卡牌战斗内部
+5. **旧项目盘点**：已读旧 BattleManager.gd（2500+ 行）/ GameState.gd / Hand.gd / Deck.gd / CardData.gd，结论记录在 CardBattleController 文件头注释
 
-2. **遭遇敌方数据**
-   - encounter_01（异常哨兵）：HP 6, ATK 2 — 肉盾型
-   - encounter_02（赛博游魂）：HP 4, ATK 3 — 高攻型
+---
 
-3. **战斗结果同步**
-   - 胜利：卡牌战斗中剩余 HP 同步回棋盘单位
-   - 败北（逃跑）：剩余 HP 同步回棋盘单位（最低保底 1 HP）
-   - 败北（阵亡）：棋盘单位保底 1 HP（原型阶段不因卡牌战斗直接全灭）
-   - 遭遇格无论胜败均清除（原型阶段避免无限循环）
+## 接口变更
 
-4. **信号流完整链路**
-   - 踩遭遇格 → `encounter_triggered` + `card_battle_started`
-   - → CardBattlePanel 启动 → 玩家出牌 → 循环
-   - → 战斗结束 → `battle_ended` → `resolve_encounter(victory, hp)`
-   - → `card_battle_ended` + `encounter_resolved` → 棋盘继续
+| 变更类型 | 内容 |
+|----------|------|
+| 新增信号 | `CardBattleController.battle_started(player_hp, enemy_hp, enemy_name)` |
+| 新增信号 | `CardBattleController.card_played(card_index, card_name, effect_text)` |
+| 新增信号 | `CardBattleController.enemy_acted(action_text)` |
+| 新增信号 | `CardBattleController.turn_resolved(player_hp, enemy_hp, battle_turn)` |
+| 新增信号 | `CardBattleController.battle_ended(victory, player_hp_remaining)` |
+| 新增方法 | `CardBattleController.start_battle(enc_id, p_hp, p_max_hp)` |
+| 新增方法 | `CardBattleController.play_card(index)` |
+| 新增方法 | `CardBattleController.flee()` |
+| 新增静态 | `CardBattleController.get_encounter_enemy_data(enc_id) -> Dictionary` |
+| 新增方法 | `CardBattlePanel.bind_controller(controller)` |
+| 新增方法 | `BattleFlowController.get_encounter_unit_id() -> String` |
+| 删除信号 | `BattleFlowController.card_battle_started`（已移至 CardBattleController） |
+| 删除信号 | `BattleFlowController.card_battle_ended`（已移至 CardBattleController） |
+| 删除方法 | `BattleFlowController.get_encounter_enemy_data()`（已移至 CardBattleController） |
 
-5. **双层结构里程碑**：Day 9 标志着"遭遇触发 → 进入卡牌战斗 → 出牌 → 结算 → 回到棋盘"的完整闭环首次跑通
+---
+
+## 测试确认
+
+- 代码结构检查：所有信号连接链完整，无悬挂引用
+- 闭环流程验证（逻辑走查）：
+  - 掷骰 → 移动 → 踩遭遇格 → ENCOUNTER 暂停 → CardBattleController.start_battle() → CardBattlePanel 显示 → 出牌 → 敌方行动 → 循环 → battle_ended → resolve_encounter() → PLAYER_ACTION 恢复
+  - 逃跑流程：flee() → battle_ended(false, hp-1) → resolve_encounter(false, hp) → HP 保底 1
+  - 重新开始：restart_battle() 不受影响（CardBattleController 为 IDLE 状态）
+- 未在 Godot 引擎中实际运行测试（沙盒环境无 Godot）
 
 ---
 
 ## 剩余问题
 
+- **未做引擎运行测试** — 沙盒无 Godot 4.6.1 环境，需人工确认
 - **手牌固定不消耗** — Day 10 加入费用系统和抽牌机制
 - **敌方行为单一** — Day 10 加入 2~3 种敌方行为模式
-- **BuffManager.tick_turn() 仍未接入**
+- **BuffManager.tick_turn() 仍未接入** — 已记录，不在当前任务范围
 - **BUG-001 分辨率切换无效**（低优先级）
+- **BattleFlowController 仍有 750+ 行** — debug spawn 函数应剥离到 DebugScenario.gd（Day 10 可并行）
 
 ---
 
 ## 建议下一步
 
-1. **Day 10：卡牌战斗丰富化** — 能量/费用系统、手牌抽取、2~3 种敌人行为模式、战斗奖励
-2. **Day 11~12 按周计划继续**
+1. **Day 10：卡牌战斗丰富化** — 能量/费用系统（参考旧 BattleManager 的 energy 模型）、手牌抽取（参考旧 Deck.gd 双牌堆结构）、2~3 种敌人行为模式
+2. **Day 10 并行：BFC debug spawn 剥离** — 新建 DebugScenario.gd，降低 BFC 行数
+3. **Day 11~12 按周计划继续**
+
+---
+
+## 旧项目卡牌结构盘点结论
+
+| 旧文件 | 判断 | 理由 |
+|--------|------|------|
+| BattleManager.gd (2500 行) | **不复用，部分参考** | 阴阳系统/召唤/98卡池等远超原型需求，但 energy 增长模型（每回合+1, max 6）和 X-cost 概念可参考 |
+| Deck.gd | **Day 10 可参考** | 双牌堆（draw + discard）+ 自动 reshuffle 结构干净，适合移植 |
+| Hand.gd | **不复用** | 扇形布局是 STS 风格 UI，当前原型用按钮即可 |
+| CardData.gd | **Day 10 可参考** | cost/power/defense/type 字段结构合理，可简化后用于卡牌资源 |
+| GameState.gd | **不复用** | 地图/商店/成就等属于 meta 层，原型不需要 |
+
+---
+
+## Codex 复审标注
+
+1. **CardBattleController 作为独立 Node 挂在 Main 下**（而非 BFC 子节点）——判断依据：上岗指令明确要求"不要把卡牌逻辑写进 BFC"，独立节点确保两层解耦。风险：如果后续需要 controller 访问 BFC 的 dice_manager（例如 Day 10 的费用系统可能与 crest 联动），需要通过 Main.gd 中转或新增绑定接口。
+2. **resolve_encounter() 的 player_hp_remaining 参数**——判断依据：卡牌战斗结束时需要同步 HP 回棋盘单位，最直接的方式是传递剩余 HP。替代方案是让 controller 直接持有 unit_manager 引用，但这会打破层间隔离。选择了保守方案（通过参数传递）。

@@ -593,6 +593,33 @@
 - 遭遇格被清除后不再触发（单次遭遇）
 - ENCOUNTER 阶段期间，掷骰/移动/攻击/召唤/结束回合均被禁止
 
+## v0.1.26 - 2026-03-29
+
+### 新增
+
+- `Scripts/BattleV2/CardBattleController.gd`（全新文件）：独立卡牌战斗状态机
+  - BattleState 枚举：IDLE / PLAYER_TURN / ENEMY_TURN / VICTORY / DEFEAT
+  - 5 张固定手牌（斩击/重击/防御/修复/连斩）
+  - 遭遇敌方数据映射（static 方法）
+  - 完整信号链：battle_started / card_played / enemy_acted / turn_resolved / battle_ended
+- `BattleFlowController.get_encounter_unit_id()` 查询方法
+
+### 修改
+
+- `CardBattlePanel.gd` 重写为纯 UI 层：移除所有战斗状态，通过 `bind_controller()` 绑定 CardBattleController 信号
+- `BattleFlowController.gd` 瘦身：移除 `card_battle_started`/`card_battle_ended` 信号、`get_encounter_enemy_data()` 方法；`_check_encounter()` 简化为只发射 `encounter_triggered`；`resolve_encounter()` 移除 `card_battle_ended` 发射
+- `DiceDebugPanel.gd` 移除 `card_battle_ended` 信号连接和回调
+- `Main.gd` 重构信号连接：CardBattleController 独立实例化，encounter_triggered 直接启动 controller，battle_ended 驱动 resolve_encounter
+
+### 备注
+
+- 本版本是 v0.1.25 的架构修正，功能不变，但代码结构符合上岗指令要求
+- 卡牌战斗逻辑完全脱离 BattleFlowController，通过 Main.gd 中转信号
+- 旧项目盘点结论：BattleManager.gd 不复用（过于复杂），Deck.gd 和 CardData.gd Day 10 可参考
+- 需要 Codex 复审：CardBattleController 的独立挂载位置、resolve_encounter 的参数传递方式
+
+---
+
 ## v0.1.25 - 2026-03-29
 
 ### 新增

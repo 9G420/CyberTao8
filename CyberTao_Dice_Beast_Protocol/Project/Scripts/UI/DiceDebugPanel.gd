@@ -56,8 +56,6 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
 	if battle_flow.event_cell_triggered and not battle_flow.event_cell_triggered.is_connected(_on_event_cell_triggered):
 		battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
-	if battle_flow.card_battle_ended and not battle_flow.card_battle_ended.is_connected(_on_card_battle_ended):
-		battle_flow.card_battle_ended.connect(_on_card_battle_ended)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -286,13 +284,6 @@ func _on_encounter_resolved(_encounter_id: String, _cell: Vector2i) -> void:
 	encounter_panel.visible = false
 	enemy_intent_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
 	enemy_intent_label.text = "遭遇已清除，继续行动"
-
-func _on_card_battle_ended(_encounter_id: String, _cell: Vector2i, victory: bool, _player_hp: int) -> void:
-	if victory:
-		encounter_resolve_button.text = "战斗胜利！"
-	else:
-		encounter_resolve_button.text = "战斗失败..."
-	_refresh_crest_pool()
 
 func _on_heal_cell_triggered(_unit_id: String, _cell: Vector2i, _heal_amount: int, _actual_heal: int) -> void:
 	_refresh_crest_pool()
