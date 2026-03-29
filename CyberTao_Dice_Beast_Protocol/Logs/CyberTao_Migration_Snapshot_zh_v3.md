@@ -2,8 +2,33 @@
 
 **更新时间**: 2026-03-29
 **当前版本**: v0.1.22
-**当前分支**: `codex/dice-beast-protocol`
+**GitHub 仓库**: `https://github.com/9G420/CyberTao8`
+**主要开发分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
+**引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
+**视口**: 1280x720 | stretch mode: canvas_items
+
+---
+
+## 0. 新接手 AI 必读（快速上手指南）
+
+**你正在接手一个 Godot 赛博朋克战术 Roguelike 项目。** 请按以下顺序阅读文件：
+
+1. **本文件**（`Logs/CyberTao_Migration_Snapshot_zh_v3.md`）— 项目全貌、架构、数据结构、当前状态、下一步
+2. **`Logs/Weekly_Mulerun_Plan_zh_v2.md`** — 当前周计划（Day 1~6 已完成，从 Day 7 开始执行）
+3. **`Logs/Board_Card_Battle_Concept_zh.md`** — 双层玩法机制方案（棋盘走位层 + 卡牌战斗层的设计文档）
+4. **`Logs/Demo_Roadmap_2p5D_zh.md`** — 中长期 Demo 路线（六阶段开发规划）
+5. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告（v0.1.22 遭遇格入口）
+6. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.22）
+
+**关键规则：**
+- **只在 `CyberTao_Dice_Beast_Protocol/Project/` 目录下开发**，不要修改旧项目 `CyberTao8` 根目录
+- **所有日志必须写中文**
+- 每轮任务完成后必须更新 `Mulerun_Work_Report.md` 和 `changelog_v0.1.md`
+- 每次任务前确认：服务于棋盘走位层 or 卡牌战斗层入口，两者都不是则不优先做
+- 工作报告必须包含：本轮任务 / 根因目标 / 修改文件 / 实现内容 / 剩余问题 / 建议下一步
+
+**当前最优先任务：执行 Day 7 — 遭遇暂停与战斗占位流程**（详见第 5 节）
 
 ---
 
@@ -247,25 +272,50 @@ BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → ENEMY_ROLL → ENEMY_ACT
 
 ---
 
-## 8. 给新 Mulerun 账号的接力说明
+## 8. 核心文件索引
 
-新账号接手时请先阅读（按此顺序）：
+### 源代码文件（`Project/Scripts/` 下）
 
-1. `Logs/CyberTao_Migration_Snapshot_zh_v3.md`（本文件 — 项目全貌+架构+当前状态）
-2. `Logs/Weekly_Mulerun_Plan_zh_v2.md`（当前周计划，Day 6 已完成，从 Day 7 继续）
-3. `Logs/Board_Card_Battle_Concept_zh.md`（双层玩法机制方案）
-4. `Logs/Demo_Roadmap_2p5D_zh.md`（中长期 Demo 路线）
-5. `Logs/Mulerun_Work_Report.md`（最近一轮工作报告 — v0.1.22 遭遇格入口）
-6. `Logs/changelog_v0.1.md`（完整版本变更记录 v0.1.0~v0.1.22）
+| 文件路径 | 职责 | 行数参考 |
+|----------|------|----------|
+| `BattleV2/BattleFlowController.gd` | 核心战斗控制器：阶段管理/信号中枢/移动攻击召唤/遭遇检测/敌方回合 | ~630 行 |
+| `BattleV2/BoardManager.gd` | 棋盘状态：5 个字典（occupied/path/item/terrain/encounter）+ BFS 移动 | ~130 行 |
+| `BattleV2/UnitManager.gd` | 单位状态：生成/移动/伤害/击杀 | ~100 行 |
+| `BattleV2/ActionResolver.gd` | 攻击范围计算（含地形适性加成） | ~50 行 |
+| `BattleV2/DiceManager.gd` | 掷骰 + crest 资源池管理 | ~60 行 |
+| `BattleV2/BattleAI.gd` | 敌方 AI（优先攻击/追踪最近玩家） | ~80 行 |
+| `BattleV2/BuffManager.gd` | buff 管理（tick_turn 未接入） | ~30 行 |
+| `BattleV2/AttackRuleHelper.gd` | 伤害公式 | ~15 行 |
+| `BattleV2/VictoryRuleHelper.gd` | 胜负判定 | ~20 行 |
+| `BattleV2/ItemEffectLibrary.gd` | 道具效果执行 | ~40 行 |
+| `UI/BoardView.gd` | 棋盘渲染 + 点击交互 + 反馈动画 | ~470 行 |
+| `UI/DiceDebugPanel.gd` | 调试面板（crest 池/阶段/意图/遭遇提示） | ~260 行 |
+| `UI/SettingsPanel.gd` | 显示设置面板 | ~100 行 |
+| `System/DisplaySettings.gd` | 分辨率/窗口模式（有 BUG-001） | ~60 行 |
+| `Main.gd` | 场景组合 + 信号接线 + 反馈调度 | ~205 行 |
+| `Data/UnitData.gd` | 单位数据资源脚本 | ~20 行 |
 
-关键规则：
-- 只在以下目录开发：`CyberTao_Dice_Beast_Protocol/Project/`
-- 不要修改旧项目：`CyberTao8` 根目录仅作参考
-- Godot 版本：4.6.1，GDScript，renderer: gl_compatibility
-- 视口：1280x720，stretch mode: canvas_items
-- 分支：`codex/dice-beast-protocol`
+### 数据文件（`Project/Data/` 下）
 
-接手后建议直接执行 **Day 7：遭遇暂停与战斗占位流程**。
+| 文件 | 内容 |
+|------|------|
+| `Data/Units/blade_shield_dog.tres` | 刀盾狗（路径适性） |
+| `Data/Units/hacker_fox.tres` | 灵狐骇客（陷阱适性） |
+| `Data/Units/crow_caster.tres` | 鸦机术士（高台适性） |
+| `Data/Items/patch_tea_cache.tres` | 补丁凉茶（HP+2） |
+| `Data/Items/overclock_bone.tres` | 超频骨头（MOVE+1） |
+| `Data/Items/glitch_snack_box.tres` | 故障零食盒（随机 crest+1，未放置） |
+
+### 日志文件（`Logs/` 下）
+
+| 文件 | 用途 |
+|------|------|
+| `CyberTao_Migration_Snapshot_zh_v3.md` | 本文件 — 项目全貌+架构（阶段性更新） |
+| `Weekly_Mulerun_Plan_zh_v2.md` | 周推进计划（任务列表+优先级） |
+| `Board_Card_Battle_Concept_zh.md` | 双层玩法机制方案 |
+| `Demo_Roadmap_2p5D_zh.md` | 中长期 Demo 路线 |
+| `Mulerun_Work_Report.md` | 最近一轮工作报告（每轮更新） |
+| `changelog_v0.1.md` | 完整版本变更记录（每轮追加） |
 
 ---
 
