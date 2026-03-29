@@ -164,3 +164,29 @@
 - this is a data-link fix only; no new features or behavior changes
 - all units already defaulted to `attack_range = 1` via fallback, so visible behavior is unchanged for the current prototype
 - the fix ensures future units with non-default attack_range will work correctly
+
+## v0.1.6 - 2026-03-29
+
+### Added
+
+- HP display on all units: white `hp/max_hp` text drawn on each unit rectangle
+- victory/defeat check after every attack using `VictoryRuleHelper.get_battle_outcome()`
+- `BattleFlowController._check_battle_outcome()`: calls `mark_victory()` when all enemies dead, `mark_defeat()` when all player units dead
+- `BattleFlowController.is_battle_over()`: returns true if phase is VICTORY or DEFEAT
+- result banner label in Main scene: large "VICTORY" (green) or "DEFEAT" (red) text appears at top center
+- debug panel phase label turns green on VICTORY, red on DEFEAT
+- all buttons disabled on terminal phase (VICTORY/DEFEAT)
+- board click input blocked when battle is over
+
+### Changed
+
+- `try_move_unit()`, `try_attack_unit()`, `start_player_roll()`, `end_player_turn()` all guard on `is_battle_over()`
+- `_on_phase_changed` in DiceDebugPanel now handles terminal phases with colored text and full button disable
+- `Main._wire_debug_views()` now connects `phase_changed` for result banner display
+
+### Notes
+
+- minimum combat prototype is now complete: Roll → Move → Attack → End Turn → Victory/Defeat
+- HP is displayed as text overlay; no HP bar yet
+- no restart mechanism after victory/defeat
+- no enemy AI turn; enemy never fights back

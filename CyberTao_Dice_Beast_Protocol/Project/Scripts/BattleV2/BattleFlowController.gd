@@ -14,6 +14,7 @@ const ActionResolver = preload("res://Scripts/BattleV2/ActionResolver.gd")
 const BuffManager = preload("res://Scripts/BattleV2/BuffManager.gd")
 const BattleAI = preload("res://Scripts/BattleV2/BattleAI.gd")
 const AttackRuleHelper = preload("res://Scripts/BattleV2/AttackRuleHelper.gd")
+const VictoryRuleHelper = preload("res://Scripts/BattleV2/VictoryRuleHelper.gd")
 const UnitData = preload("res://Scripts/Data/UnitData.gd")
 
 enum BattlePhase {
@@ -70,8 +71,13 @@ func _bootstrap() -> void:
 	emit_signal("setup_completed")
 	emit_signal("phase_changed", _phase_name(current_phase))
 
+func is_battle_over() -> bool:
+	return current_phase == BattlePhase.VICTORY or current_phase == BattlePhase.DEFEAT
+
 func start_player_roll() -> void:
 	if current_phase != BattlePhase.PLAYER_ROLL:
+		return
+	if is_battle_over():
 		return
 	dice_manager.roll_turn_dice()
 	current_phase = BattlePhase.PLAYER_ACTION
@@ -130,6 +136,8 @@ func _spawn_debug_units() -> void:
 func end_player_turn() -> void:
 	if current_phase != BattlePhase.PLAYER_ACTION:
 		return
+	if is_battle_over():
+		return
 	dice_manager.reset_for_turn()
 	round_index += 1
 	current_phase = BattlePhase.PLAYER_ROLL
@@ -152,6 +160,8 @@ func get_reachable_cells_for(unit_id: String) -> Array[Vector2i]:
 
 ## Attempt to move a player unit, paying 1 MOVE crest. Returns true on success.
 func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
+	if is_battle_over():
+		return false
 	var unit: Dictionary = unit_manager.get_unit(unit_id)
 	if unit.is_empty():
 		return false
@@ -190,6 +200,8 @@ func get_attackable_cells_for(unit_id: String) -> Array[Vector2i]:
 
 ## Attempt to attack a target at target_cell, paying 1 ATTACK crest. Returns true on success.
 func try_attack_unit(attacker_id: String, target_cell: Vector2i) -> bool:
+	if is_battle_over():
+		return false
 	var attacker: Dictionary = unit_manager.get_unit(attacker_id)
 	if attacker.is_empty():
 		return false
@@ -218,7 +230,16 @@ func try_attack_unit(attacker_id: String, target_cell: Vector2i) -> bool:
 	var damage: int = AttackRuleHelper.calc_basic_damage(attacker, defender)
 	var killed: bool = unit_manager.apply_damage(defender_id, damage)
 	emit_signal("attack_completed", attacker_id, defender_id, damage, killed)
+	# Check for battle end after attack
+	_check_battle_outcome()
 	return true
+
+func _check_battle_outcome() -> void:
+	var outcome: String = VictoryRuleHelper.get_battle_outcome(unit_manager)
+	if outcome == "VICTORY":
+		mark_victory()
+	elif outcome == "DEFEAT" or outcome == "DRAW":
+		mark_defeat()
 
 func _phase_name(phase: BattlePhase) -> String:
 	match phase:

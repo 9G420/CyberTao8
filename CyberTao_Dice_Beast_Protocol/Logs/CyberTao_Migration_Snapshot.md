@@ -1,6 +1,6 @@
 # CyberTao: Dice Beast Protocol Migration Snapshot
 **Generated**: 2026-03-29
-**Version**: v0.1.4
+**Version**: v0.1.6
 **Branch**: `codex/dice-beast-protocol`
 
 ---
@@ -33,7 +33,7 @@ Main active directory:
 
 ## 2. Current State
 
-Current state at v0.1.4:
+Current state at v0.1.6:
 
 - a separate Godot subproject has been created
 - the new project has its own `project.godot`
@@ -65,8 +65,12 @@ Current state at v0.1.4:
 - basic attack works: red highlights on adjacent enemies, click to attack consuming 1 ATTACK crest
 - damage formula: max(1, atk - def), killed units are removed from board
 - minimum combat loop now functional: Roll → Move → Attack → End Turn
+- HP displayed as text on each unit (hp/max_hp)
+- victory check: all enemies dead → VICTORY phase, banner shown
+- defeat check: all player units dead → DEFEAT phase, banner shown
+- all actions blocked after victory/defeat
 
-The board now has a functional combat loop. The next step is HP display, enemy AI, and victory/defeat checks.
+The minimum combat prototype is now complete. The next step is enemy AI and restart.
 
 ---
 
@@ -189,7 +193,7 @@ First recommended prototype factions:
 
 ## 6. Immediate Priorities
 
-Completed through v0.1.4:
+Completed through v0.1.6:
 
 1. ~~turn the visual board prototype into clickable board interaction~~ (done in v0.1.1)
 2. ~~let dice resources drive at least one real move action~~ (done in v0.1.1 — MOVE crest spending)
@@ -201,12 +205,14 @@ Completed through v0.1.4:
    - ~~move~~ (done in v0.1.1)
    - ~~attack~~ (done in v0.1.4 — melee adjacent, ATTACK crest)
    - ~~end turn~~ (done in v0.1.3)
+5. ~~HP display on units~~ (done in v0.1.6)
+6. ~~victory/defeat check~~ (done in v0.1.6)
 
 Next priority targets:
 
-5. add HP display on units and hook in victory/defeat checks
-6. implement simple enemy AI turn (ENEMY_ROLL → ENEMY_ACTION)
-7. attack feedback (damage popup or flash)
+7. implement simple enemy AI turn (ENEMY_ROLL → ENEMY_ACTION)
+8. attack feedback (damage popup or flash)
+9. restart button after victory/defeat
 
 ---
 
@@ -225,10 +231,9 @@ Next priority targets:
 
 - the new project has not been validated in-editor yet
 - no unit scene pipeline exists yet (units are drawn as colored rectangles)
-- no HP display on units yet
-- no victory/defeat check on unit death
 - no enemy turn logic exists yet
 - no attack animation or feedback
+- no restart mechanism after victory/defeat
 - data assets exist for blade_shield_dog, hacker_fox, crow_caster, plus skill/item/dice resources
 
 ---

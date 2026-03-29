@@ -135,8 +135,18 @@ func _on_spawn_path_pressed() -> void:
 
 func _on_phase_changed(phase_name: String) -> void:
 	phase_label.text = "阶段：" + _phase_label_text(phase_name)
-	roll_button.disabled = phase_name != "PLAYER_ROLL"
-	end_turn_button.disabled = phase_name != "PLAYER_ACTION"
+	var is_terminal: bool = phase_name == "VICTORY" or phase_name == "DEFEAT"
+	if is_terminal:
+		roll_button.disabled = true
+		end_turn_button.disabled = true
+		if phase_name == "VICTORY":
+			phase_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
+		else:
+			phase_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	else:
+		phase_label.add_theme_color_override("font_color", Color(0.72, 0.9, 0.84))
+		roll_button.disabled = phase_name != "PLAYER_ROLL"
+		end_turn_button.disabled = phase_name != "PLAYER_ACTION"
 	_refresh_crest_pool()
 
 func _on_round_changed(round_number: int) -> void:

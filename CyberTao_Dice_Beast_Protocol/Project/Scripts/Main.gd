@@ -7,6 +7,7 @@ const DiceDebugPanel = preload("res://Scripts/UI/DiceDebugPanel.gd")
 var _battle_flow: BattleFlowController
 var _board_view: BoardView
 var _dice_panel: DiceDebugPanel
+var _result_label: Label
 
 func _ready() -> void:
 	_battle_flow = BattleFlowController.new()
@@ -55,11 +56,20 @@ func _build_debug_view() -> void:
 	_dice_panel.position = Vector2(1260, 220)
 	add_child(_dice_panel)
 
+	_result_label = Label.new()
+	_result_label.position = Vector2(0, 130)
+	_result_label.size = Vector2(1280, 40)
+	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_result_label.add_theme_font_size_override("font_size", 32)
+	_result_label.visible = false
+	add_child(_result_label)
+
 func _wire_debug_views() -> void:
 	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
 	_board_view.bind_battle_flow(_battle_flow)
 	_board_view.move_requested.connect(_on_move_requested)
 	_board_view.attack_requested.connect(_on_attack_requested)
+	_battle_flow.phase_changed.connect(_on_phase_changed)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -76,3 +86,13 @@ func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.queue_redraw()
+
+func _on_phase_changed(phase_name: String) -> void:
+	if phase_name == "VICTORY":
+		_result_label.text = "VICTORY"
+		_result_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
+		_result_label.visible = true
+	elif phase_name == "DEFEAT":
+		_result_label.text = "DEFEAT"
+		_result_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+		_result_label.visible = true

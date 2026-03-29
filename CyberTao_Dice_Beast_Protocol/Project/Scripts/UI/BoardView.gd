@@ -69,6 +69,9 @@ func _is_valid_cell(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_W and cell.y < GRID_H
 
 func _handle_cell_click(cell: Vector2i) -> void:
+	# Block interaction if battle is over
+	if battle_flow and battle_flow.is_battle_over():
+		return
 	# If a unit is selected
 	if selected_unit_id != "":
 		# Check if clicked cell is an attack target
@@ -134,6 +137,7 @@ func _draw() -> void:
 	_draw_attack_highlights()
 	_draw_paths()
 	_draw_units()
+	_draw_unit_hp()
 	_draw_selection_ring()
 
 func _draw_board() -> void:
@@ -180,6 +184,20 @@ func _draw_units() -> void:
 		var unit_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 12, cell.y * CELL_SIZE + 12)
 		draw_rect(Rect2(unit_pos, Vector2(CELL_SIZE - 26, CELL_SIZE - 26)), fill, true)
 		draw_rect(Rect2(unit_pos, Vector2(CELL_SIZE - 26, CELL_SIZE - 26)), Color(0.04, 0.04, 0.04, 0.9), false, 2.0)
+
+func _draw_unit_hp() -> void:
+	if unit_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 11
+	for cell in unit_manager.units_by_cell.keys():
+		var uid: String = String(unit_manager.units_by_cell[cell])
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		var hp: int = int(unit.get("hp", 0))
+		var max_hp: int = int(unit.get("max_hp", 0))
+		var hp_text: String = str(hp) + "/" + str(max_hp)
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE - 8)
+		draw_string(font, text_pos, hp_text, HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 1.0, 1.0, 0.95))
 
 func _draw_selection_ring() -> void:
 	if selected_unit_id == "" or unit_manager == null:
