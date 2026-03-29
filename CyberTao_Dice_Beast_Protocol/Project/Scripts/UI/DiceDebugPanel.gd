@@ -1,6 +1,8 @@
 ﻿extends Panel
 class_name DiceDebugPanel
 
+signal test_card_battle_requested
+
 var battle_flow: Node = null
 var dice_manager: Node = null
 var _selected_unit_id_cache: String = ""
@@ -17,8 +19,8 @@ var encounter_title_label: Label
 var encounter_resolve_button: Button
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(280, 500)
-	size = Vector2(280, 500)
+	custom_minimum_size = Vector2(280, 540)
+	size = Vector2(280, 540)
 	_build_ui()
 
 func bind_battle_flow(next_battle_flow: Node) -> void:
@@ -131,9 +133,18 @@ func _build_ui() -> void:
 	path_button.pressed.connect(_on_spawn_path_pressed)
 	add_child(path_button)
 
+	var card_test_button := Button.new()
+	card_test_button.text = "测试卡牌战斗"
+	card_test_button.position = Vector2(20, 250)
+	card_test_button.size = Vector2(240, 36)
+	card_test_button.add_theme_font_size_override("font_size", 13)
+	card_test_button.add_theme_color_override("font_color", Color(1.0, 0.6, 0.2))
+	card_test_button.pressed.connect(_on_test_card_battle_pressed)
+	add_child(card_test_button)
+
 	roll_label = Label.new()
 	roll_label.text = "上次掷骰：-"
-	roll_label.position = Vector2(20, 256)
+	roll_label.position = Vector2(20, 294)
 	roll_label.size = Vector2(240, 44)
 	roll_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	roll_label.add_theme_font_size_override("font_size", 14)
@@ -141,7 +152,7 @@ func _build_ui() -> void:
 	add_child(roll_label)
 
 	crest_label = RichTextLabel.new()
-	crest_label.position = Vector2(20, 306)
+	crest_label.position = Vector2(20, 342)
 	crest_label.size = Vector2(240, 140)
 	crest_label.scroll_active = false
 	crest_label.add_theme_font_size_override("normal_font_size", 14)
@@ -149,7 +160,7 @@ func _build_ui() -> void:
 
 	enemy_intent_label = Label.new()
 	enemy_intent_label.text = ""
-	enemy_intent_label.position = Vector2(20, 450)
+	enemy_intent_label.position = Vector2(20, 488)
 	enemy_intent_label.size = Vector2(240, 40)
 	enemy_intent_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	enemy_intent_label.add_theme_font_size_override("font_size", 14)
@@ -206,6 +217,9 @@ func _on_spawn_path_pressed() -> void:
 		return
 	# 选第一个可用格进行召唤
 	battle_flow.try_summon(_selected_unit_id_cache, summon_cells[0])
+
+func _on_test_card_battle_pressed() -> void:
+	test_card_battle_requested.emit()
 
 func _on_phase_changed(phase_name: String) -> void:
 	phase_label.text = "阶段：" + _phase_label_text(phase_name)

@@ -132,6 +132,7 @@ func _wire_debug_views() -> void:
 	_card_battle_panel.bind_controller(_card_battle_ctrl)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
+	_dice_panel.test_card_battle_requested.connect(_on_test_card_battle_requested)
 
 func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
@@ -250,3 +251,15 @@ func _on_restart_pressed() -> void:
 
 func _on_settings_pressed() -> void:
 	_settings_panel.open()
+
+func _on_test_card_battle_requested() -> void:
+	# 调试快捷键：直接用第一个玩家单位的 HP 启动卡牌战斗（encounter_01）
+	var player_ids: Array[String] = _battle_flow.unit_manager.get_player_units()
+	if player_ids.is_empty():
+		return
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(player_ids[0])
+	if unit.is_empty():
+		return
+	var p_hp: int = int(unit.get("hp", 1))
+	var p_max_hp: int = int(unit.get("max_hp", 1))
+	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp)

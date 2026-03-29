@@ -593,6 +593,30 @@
 - 遭遇格被清除后不再触发（单次遭遇）
 - ENCOUNTER 阶段期间，掷骰/移动/攻击/召唤/结束回合均被禁止
 
+## v0.1.28 - 2026-03-29
+
+### 新增
+
+- "测试卡牌战斗"调试快捷按钮：DiceDebugPanel 新增一键进入卡牌战斗的按钮，无需走到遭遇格即可测试
+- `DiceDebugPanel.test_card_battle_requested` 信号
+- `DiceDebugPanel._on_test_card_battle_pressed()` 处理方法
+- `Main._on_test_card_battle_requested()`：获取第一个玩家单位 HP，直接启动 CardBattleController（encounter_01 异常哨兵）
+
+### 修改
+
+- DiceDebugPanel 面板高度从 500 扩大至 540，各标签位置调整避免重叠
+  - roll_label y: 256→294
+  - crest_label y: 306→342
+  - enemy_intent_label y: 450→488
+
+### 备注
+
+- 解决用户反馈"只能投骰子互殴、无法触发卡牌战斗"的问题
+- 根因：遭遇格 (4,4)/(6,5) 距离玩家起点 (0,6)/(1,7)/(0,5) 太远，需多个回合才能走到
+- 调试按钮允许任意时刻一键测试卡牌战斗流程
+
+---
+
 ## v0.1.27 - 2026-03-29
 
 ### 新增
