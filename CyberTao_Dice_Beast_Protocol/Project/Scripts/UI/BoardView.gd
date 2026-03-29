@@ -58,7 +58,7 @@ func _on_state_changed() -> void:
 			return
 		highlight_cells = battle_flow.get_reachable_cells_for(selected_unit_id)
 		attack_highlight_cells = battle_flow.get_attackable_cells_for(selected_unit_id)
-		summon_highlight_cells = battle_flow.get_summon_cells_for(selected_unit_id)
+		summon_highlight_cells = _filter_summon_cells(battle_flow.get_summon_cells_for(selected_unit_id))
 	queue_redraw()
 
 func _gui_input(event: InputEvent) -> void:
@@ -96,16 +96,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		if is_attack_target:
 			emit_signal("attack_requested", selected_unit_id, cell)
 			return
-		# Check if clicked cell is a summon target
-		var is_summon_target: bool = false
-		for sc in summon_highlight_cells:
-			if sc == cell:
-				is_summon_target = true
-				break
-		if is_summon_target:
-			emit_signal("summon_requested", selected_unit_id, cell)
-			return
-		# Check if clicked cell is a move target
+		# Check if clicked cell is a move target (优先于召唤)
 		var is_move_target: bool = false
 		for hc in highlight_cells:
 			if hc == cell:
@@ -113,6 +104,15 @@ func _handle_cell_click(cell: Vector2i) -> void:
 				break
 		if is_move_target:
 			emit_signal("move_requested", selected_unit_id, cell)
+			return
+		# Check if clicked cell is a summon target (仅在不可移动时触发)
+		var is_summon_target: bool = false
+		for sc in summon_highlight_cells:
+			if sc == cell:
+				is_summon_target = true
+				break
+		if is_summon_target:
+			emit_signal("summon_requested", selected_unit_id, cell)
 			return
 		# Clicking the same unit again deselects
 		if unit_manager and unit_manager.units_by_cell.has(cell):
@@ -140,7 +140,7 @@ func _select_unit(unit_id: String) -> void:
 	if battle_flow:
 		highlight_cells = battle_flow.get_reachable_cells_for(unit_id)
 		attack_highlight_cells = battle_flow.get_attackable_cells_for(unit_id)
-		summon_highlight_cells = battle_flow.get_summon_cells_for(unit_id)
+		summon_highlight_cells = _filter_summon_cells(battle_flow.get_summon_cells_for(unit_id))
 	else:
 		highlight_cells = []
 		attack_highlight_cells = []
@@ -155,6 +155,19 @@ func _deselect() -> void:
 	summon_highlight_cells = []
 	emit_signal("unit_deselected")
 	queue_redraw()
+
+## 过滤召唤高亮格：移除已在移动高亮中的格子，避免点击移动时误触召唤
+func _filter_summon_cells(raw_summon_cells: Array[Vector2i]) -> Array[Vector2i]:
+	var filtered: Array[Vector2i] = []
+	for sc in raw_summon_cells:
+		var in_move: bool = false
+		for hc in highlight_cells:
+			if hc == sc:
+				in_move = true
+				break
+		if not in_move:
+			filtered.append(sc)
+	return filtered
 
 func _draw() -> void:
 	_draw_board()

@@ -1,29 +1,28 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-29
-**版本**: v0.1.17
+**版本**: v0.1.18
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 修复棋盘显示不完整（底部被裁切）
-- 修复窗口分辨率调整无效果
+- 修复移动时误触召唤导致出现"分身"单位的 bug
 
 ---
 
 ## 根因/目标
 
-### 棋盘裁切根因
-- 棋盘起始 y=160，高度 8×72=576，底边 y=736
-- 视口高度 720，溢出 16px → 最底行被裁切
+### 根因
+- `BoardView._handle_cell_click()` 的点击优先级为 attack > summon > move
+- 当选中玩家单位且有 SUMMON crest 时，相邻空格同时出现在 `summon_highlight_cells` 和 `highlight_cells`（移动）中
+- 由于 summon 优先于 move，用户点击相邻格意图移动时，实际触发了召唤
+- 召唤在目标格生成 summoned_fox（4/4），用户看到"分身"
 
-### 分辨率无效根因
-- `project.godot` 设置了 `canvas_items` stretch mode
-- 该模式下视口始终渲染为 1280×720 后按比例缩放到窗口大小
-- 窗口物理尺寸改变，但视觉内容完全一致（只是放大/缩小）
-- 用户无法感知任何变化
+### 目标
+- 确保移动优先于召唤
+- 确保紫色召唤高亮不与青色移动高亮重叠，避免视觉误导
 
 ---
 
@@ -31,41 +30,39 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/Main.gd` | 压缩标题区布局，棋盘从 y=160 移至 y=94，所有 UI 元素位置同步调整 |
-| `Project/Scripts/System/DisplaySettings.gd` | apply_settings() 新增 root.content_scale_size 同步更新 |
+| `Project/Scripts/UI/BoardView.gd` | 点击优先级改为 attack > move > summon；添加 _filter_summon_cells() 过滤方法；_select_unit 和 _on_state_changed 使用过滤后的召唤高亮 |
+| `Project/Scripts/Main.gd` | 所有高亮刷新点（_on_move/attack/summon_requested）使用 _filter_summon_cells 过滤 |
 | `Logs/Mulerun_Work_Report.md` | 本报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.17 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.18 条目 |
 
 ---
 
 ## 实现内容
 
-### 1. 布局压缩
-- 标题：y=4（原 42），字号 30（原 34）
-- 副标题：y=44（原 96），字号 16（原 18）
-- 提示：y=68（原 126），字号 13（原 15）
-- 棋盘 + 调试面板：y=94（原 160）
-- 棋盘底边：94 + 576 = 670（距视口底 720 有 50px 余量）
-- 设置面板、胜负标签、重开按钮位置同步调整
+### 1. 点击优先级修正
+- 原：attack → summon → move
+- 新：attack → move → summon
+- 确保有 MOVE crest 时，点击相邻空格执行移动而非召唤
 
-### 2. 分辨率生效
-- `apply_settings()` 中新增 `root.content_scale_size = current_resolution`
-- 使虚拟视口分辨率跟随窗口分辨率变化
-- 1280×720：标准布局
-- 1600×900 / 1920×1080：窗口和虚拟视口同步放大，UI 元素占比缩小，可见区域增大
+### 2. 召唤高亮过滤
+- 新增 `_filter_summon_cells(raw_summon_cells)` 方法
+- 从召唤候选格中移除所有已在 `highlight_cells`（移动高亮）中的格子
+- 效果：紫色高亮只出现在"不可移动但可召唤"的位置（通常是 MOVE crest 用完后的相邻格）
+
+### 3. 全局刷新同步
+- `_select_unit`、`_on_state_changed`、`_on_move_requested`、`_on_attack_requested`、`_on_summon_requested` 均使用过滤后的召唤高亮
 
 ---
 
 ## 当前剩余问题
 
-- **UI 不自适应分辨率** — 所有位置 hardcoded 为 1280×720 坐标，高分辨率下右侧/底部有空白
-- **无 UI 缩放** — 高分辨率下文字和按钮物理尺寸变小
-- **调试面板高度固定** — 高分辨率下底部有截断可能
+- **调试面板"测试召唤"按钮不检查阶段** — 非 PLAYER_ACTION 时点击无效但按钮未禁用
+- **召唤单位为 hardcoded** — 未接入 UnitData
+- **路径格不影响移动规则** — 仅视觉标记
 
 ---
 
 ## 建议下一步
 
-1. **锚点布局** — 逐步将 hardcoded 坐标改为 Godot 锚点系统，实现自适应
-2. **UI 缩放选项** — 在设置面板增加 UI 缩放滑块
-3. **继续推进核心玩法** — 路径限制移动、召唤接入 UnitData、移动动画
+1. 在编辑器中验证本修复
+2. 继续推进核心玩法：路径限制移动、召唤接入 UnitData
