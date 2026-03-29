@@ -260,3 +260,15 @@ func _phase_name(phase: BattlePhase) -> String:
 		BattlePhase.DEFEAT:
 			return "DEFEAT"
 	return "UNKNOWN"
+
+## Restart the battle: clear all state and re-spawn units at initial positions.
+func restart_battle() -> void:
+	dice_manager.reset_for_battle()
+	unit_manager.clear_all_units()
+	board_manager.clear_board()
+	board_manager.build_test_board(Vector2i(8, 8))
+	_spawn_debug_units()
+	current_phase = BattlePhase.PLAYER_ROLL
+	round_index = 1
+	emit_signal("round_changed", round_index)
+	emit_signal("phase_changed", _phase_name(current_phase))

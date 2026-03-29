@@ -15,6 +15,12 @@ func build_test_board(size: Vector2i) -> void:
 	item_cells.clear()
 	emit_signal("board_changed")
 
+func clear_board() -> void:
+	occupied_cells.clear()
+	path_cells.clear()
+	item_cells.clear()
+	emit_signal("board_changed")
+
 func is_in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < board_size.x and cell.y < board_size.y
 

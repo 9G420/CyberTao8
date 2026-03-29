@@ -1,6 +1,6 @@
 # CyberTao: Dice Beast Protocol Migration Snapshot
 **Generated**: 2026-03-29
-**Version**: v0.1.7
+**Version**: v0.1.12
 **Branch**: `codex/dice-beast-protocol`
 
 ---

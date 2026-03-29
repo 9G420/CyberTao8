@@ -12,6 +12,8 @@ var _dice_panel: DiceDebugPanel
 var _display_settings: DisplaySettings
 var _settings_panel: SettingsPanel
 var _result_label: Label
+var _restart_btn: Button
+var _last_attack_damage: int = 0
 
 func _ready() -> void:
 	_display_settings = DisplaySettings.new()
@@ -87,12 +89,21 @@ func _build_debug_view() -> void:
 	_result_label.visible = false
 	add_child(_result_label)
 
+	_restart_btn = Button.new()
+	_restart_btn.text = "重新开始"
+	_restart_btn.position = Vector2(560, 60)
+	_restart_btn.size = Vector2(160, 40)
+	_restart_btn.visible = false
+	_restart_btn.pressed.connect(_on_restart_pressed)
+	add_child(_restart_btn)
+
 func _wire_debug_views() -> void:
 	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
 	_board_view.bind_battle_flow(_battle_flow)
 	_board_view.move_requested.connect(_on_move_requested)
 	_board_view.attack_requested.connect(_on_attack_requested)
 	_battle_flow.phase_changed.connect(_on_phase_changed)
+	_battle_flow.attack_completed.connect(_on_attack_completed)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -104,6 +115,8 @@ func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 
 func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
+	if success:
+		_board_view.play_attack_feedback(target_cell, _last_attack_damage)
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.queue_redraw()
@@ -113,12 +126,25 @@ func _on_phase_changed(phase_name: String) -> void:
 		_result_label.text = "胜利"
 		_result_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
 		_result_label.visible = true
+		_restart_btn.visible = true
 	elif phase_name == "DEFEAT":
 		_result_label.text = "失败"
 		_result_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 		_result_label.visible = true
+		_restart_btn.visible = true
 	else:
 		_result_label.visible = false
+		_restart_btn.visible = false
+
+func _on_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool) -> void:
+	_last_attack_damage = damage
+
+func _on_restart_pressed() -> void:
+	_board_view.selected_unit_id = ""
+	_board_view.highlight_cells = []
+	_board_view.attack_highlight_cells = []
+	_battle_flow.restart_battle()
+	_board_view.queue_redraw()
 
 func _on_settings_pressed() -> void:
 	_settings_panel.open()

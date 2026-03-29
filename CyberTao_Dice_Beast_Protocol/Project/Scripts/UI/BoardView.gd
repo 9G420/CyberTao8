@@ -19,6 +19,11 @@ var selected_unit_id: String = ""
 var highlight_cells: Array[Vector2i] = []
 var attack_highlight_cells: Array[Vector2i] = []
 
+# Attack feedback state
+var _flash_cell: Vector2i = Vector2i(-1, -1)
+var _flash_alpha: float = 0.0
+var _damage_label: Label = null
+
 func _ready() -> void:
 	size = Vector2(GRID_W * CELL_SIZE, GRID_H * CELL_SIZE)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -140,6 +145,7 @@ func _draw() -> void:
 	_draw_units()
 	_draw_unit_hp()
 	_draw_selection_ring()
+	_draw_attack_flash()
 
 func _draw_board() -> void:
 	for y in range(GRID_H):
@@ -210,3 +216,46 @@ func _draw_selection_ring() -> void:
 	var ring_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 6, cell.y * CELL_SIZE + 6)
 	var ring_sz: Vector2 = Vector2(CELL_SIZE - 14, CELL_SIZE - 14)
 	draw_rect(Rect2(ring_pos, ring_sz), Color(1.0, 0.85, 0.2, 0.85), false, 3.0)
+
+func _draw_attack_flash() -> void:
+	if _flash_alpha <= 0.0 or _flash_cell.x < 0:
+		return
+	var pos: Vector2 = Vector2(_flash_cell.x * CELL_SIZE, _flash_cell.y * CELL_SIZE)
+	var sz: Vector2 = Vector2(CELL_SIZE - 2, CELL_SIZE - 2)
+	draw_rect(Rect2(pos, sz), Color(1.0, 1.0, 1.0, _flash_alpha), true)
+
+## Play attack feedback: white flash on cell + floating damage number
+func play_attack_feedback(cell: Vector2i, damage: int) -> void:
+	# White flash
+	_flash_cell = cell
+	_flash_alpha = 0.85
+	var tw: Tween = create_tween()
+	tw.tween_method(_set_flash_alpha, 0.85, 0.0, 0.35)
+	tw.tween_callback(_clear_flash)
+	# Floating damage number
+	if _damage_label != null and is_instance_valid(_damage_label):
+		_damage_label.queue_free()
+	_damage_label = Label.new()
+	_damage_label.text = "-" + str(damage)
+	_damage_label.add_theme_font_size_override("font_size", 22)
+	_damage_label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.2))
+	var start_x: float = cell.x * CELL_SIZE + 16
+	var start_y: float = cell.y * CELL_SIZE + 10
+	_damage_label.position = Vector2(start_x, start_y)
+	_damage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_damage_label)
+	var tw2: Tween = _damage_label.create_tween()
+	tw2.set_parallel(true)
+	tw2.tween_property(_damage_label, "position:y", start_y - 40.0, 0.6)
+	tw2.tween_property(_damage_label, "modulate:a", 0.0, 0.6)
+	tw2.set_parallel(false)
+	tw2.tween_callback(_damage_label.queue_free)
+
+func _set_flash_alpha(val: float) -> void:
+	_flash_alpha = val
+	queue_redraw()
+
+func _clear_flash() -> void:
+	_flash_cell = Vector2i(-1, -1)
+	_flash_alpha = 0.0
+	queue_redraw()

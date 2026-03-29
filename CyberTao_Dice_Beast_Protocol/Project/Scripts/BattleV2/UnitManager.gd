@@ -77,3 +77,10 @@ func get_player_units() -> Array[String]:
 		if String(state.get("owner", "")) == "player":
 			result.append(String(uid))
 	return result
+
+func clear_all_units() -> void:
+	units_by_id.clear()
+	units_by_cell.clear()
+	if board_manager:
+		board_manager.occupied_cells.clear()
+	emit_signal("units_changed")

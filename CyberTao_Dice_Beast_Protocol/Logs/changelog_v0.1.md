@@ -264,3 +264,27 @@
 - guaranteed MOVE ensures every turn has at least 1 movement action available
 - new enemy position (3,4) means player at (0,6) can reach and attack within 2-3 rounds
 - no new features, no enemy AI, no visual changes
+
+## v0.1.12 - 2026-03-29
+
+### Added
+
+- attack feedback: white flash on hit cell (tween fade 0.35s) + red floating damage number (-N) that rises and fades out (0.6s)
+- `BoardView.play_attack_feedback()`: creates flash overlay via `_draw_attack_flash()` and spawns a temporary Label for damage number with position+alpha tween
+- "重新开始" (restart) button appears on VICTORY or DEFEAT phase, positioned at top center
+- `BattleFlowController.restart_battle()`: resets dice, clears all units, rebuilds board, re-spawns debug units, returns to round 1 PLAYER_ROLL
+- `UnitManager.clear_all_units()`: clears all unit state and occupied cells
+- `BoardManager.clear_board()`: clears occupied, path, and item cells
+- `Main._on_attack_completed()`: captures damage for feedback display
+- `Main._on_restart_pressed()`: clears board selection and triggers battle restart
+
+### Changed
+
+- `Main._on_phase_changed()` now shows/hides restart button alongside result label
+- `Main._on_attack_requested()` triggers `play_attack_feedback()` on successful attack
+
+### Notes
+
+- attack feedback is visual only — no sound effects
+- restart fully resets to initial state (same as fresh load)
+- no enemy AI; enemy still does not act
