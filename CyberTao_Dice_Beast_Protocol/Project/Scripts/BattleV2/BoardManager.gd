@@ -1,6 +1,8 @@
 extends Node
 class_name BoardManager
 
+signal board_changed
+
 var board_size: Vector2i = Vector2i.ZERO
 var occupied_cells: Dictionary = {}
 var path_cells: Dictionary = {}
@@ -11,6 +13,7 @@ func build_test_board(size: Vector2i) -> void:
 	occupied_cells.clear()
 	path_cells.clear()
 	item_cells.clear()
+	emit_signal("board_changed")
 
 func is_in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < board_size.x and cell.y < board_size.y
@@ -27,10 +30,12 @@ func clear_unit_cell(cell: Vector2i) -> void:
 func add_path_cell(cell: Vector2i, owner_id: String) -> void:
 	if is_in_bounds(cell):
 		path_cells[cell] = owner_id
+		emit_signal("board_changed")
 
 func add_item_cell(cell: Vector2i, item_id: String) -> void:
 	if is_in_bounds(cell):
 		item_cells[cell] = item_id
+		emit_signal("board_changed")
 
 func get_neighbors(cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []

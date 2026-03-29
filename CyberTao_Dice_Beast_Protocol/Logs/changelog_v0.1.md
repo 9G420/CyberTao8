@@ -12,6 +12,14 @@
 - added resource script stubs for units, skills, items, cores, and dice faces
 - added a dedicated `Logs/` folder for migration and version tracking
 - added a reusable Mulerun handoff template for account-to-account continuity
+- added the first debug board view and dice debug panel
+- added a first prototype unit resource: blade shield dog
+
+### Improved
+
+- wired the main scene to the new BattleV2 managers
+- added manager signals for board, units, phase, and dice roll updates
+- spawned debug units and demo path support for the visual prototype
 
 ### Notes
 

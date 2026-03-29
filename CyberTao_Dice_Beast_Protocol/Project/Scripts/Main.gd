@@ -1,13 +1,18 @@
 extends Control
 
 const BattleFlowController = preload("res://Scripts/BattleV2/BattleFlowController.gd")
+const BoardView = preload("res://Scripts/UI/BoardView.gd")
+const DiceDebugPanel = preload("res://Scripts/UI/DiceDebugPanel.gd")
 
 var _battle_flow: BattleFlowController
+var _board_view: BoardView
+var _dice_panel: DiceDebugPanel
 
 func _ready() -> void:
-	_build_debug_view()
 	_battle_flow = BattleFlowController.new()
 	add_child(_battle_flow)
+	_build_debug_view()
+	_wire_debug_views()
 
 func _build_debug_view() -> void:
 	var bg := ColorRect.new()
@@ -33,15 +38,14 @@ func _build_debug_view() -> void:
 	subtitle.add_theme_color_override("font_color", Color(0.7, 0.9, 0.86))
 	add_child(subtitle)
 
-	var info := RichTextLabel.new()
-	info.position = Vector2(240, 180)
-	info.size = Vector2(800, 260)
-	info.bbcode_enabled = true
-	info.fit_content = false
-	info.scroll_active = false
-	info.add_theme_font_size_override("normal_font_size", 18)
-	info.append_text("[center]New project scaffold ready.[/center]\n")
-	info.append_text("[center]- BattleV2 managers[/center]\n")
-	info.append_text("[center]- Data resources[/center]\n")
-	info.append_text("[center]- Future board combat prototype[/center]")
-	add_child(info)
+	_board_view = BoardView.new()
+	_board_view.position = Vector2(80, 170)
+	add_child(_board_view)
+
+	_dice_panel = DiceDebugPanel.new()
+	_dice_panel.position = Vector2(920, 170)
+	add_child(_dice_panel)
+
+func _wire_debug_views() -> void:
+	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
+	_dice_panel.bind_battle_flow(_battle_flow)

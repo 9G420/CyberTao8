@@ -40,6 +40,9 @@ Current state at v0.1.0:
 - a minimal `Main.tscn` entry scene exists
 - the first `BattleV2` architecture scaffold exists
 - the first data resource classes exist
+- a visible board prototype now exists in the main scene
+- a dice debug panel now exists for roll testing
+- a first prototype unit resource exists: blade shield dog
 
 This is not yet a playable combat prototype.
 
@@ -130,8 +133,8 @@ First recommended prototype factions:
 
 Highest priority implementation targets:
 
-1. build a visible board prototype
-2. display dice roll results and crest resource UI
+1. turn the visual board prototype into clickable board interaction
+2. let dice resources drive at least one real summon or move action
 3. create the first prototype unit set, starting with blade-shield dog
 4. make the minimum combat loop work:
    - roll dice

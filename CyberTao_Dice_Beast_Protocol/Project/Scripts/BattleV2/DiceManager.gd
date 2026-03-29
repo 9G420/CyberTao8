@@ -1,6 +1,8 @@
 extends Node
 class_name DiceManager
 
+signal dice_rolled(results: Array[String], crest_pool: Dictionary)
+
 enum CrestType {
 	SUMMON,
 	MOVE,
@@ -30,6 +32,7 @@ func roll_turn_dice() -> Array[String]:
 		var face: String = possible_faces[idx]
 		last_roll_results.append(face)
 		crest_pool[face] = int(crest_pool.get(face, 0)) + 1
+	emit_signal("dice_rolled", last_roll_results.duplicate(), crest_pool.duplicate())
 	return last_roll_results
 
 func can_pay(costs: Dictionary) -> bool:

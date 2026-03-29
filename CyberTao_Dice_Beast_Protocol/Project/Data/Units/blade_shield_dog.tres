@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/UnitData.gd" id="1_unit"]
+
+[resource]
+script = ExtResource("1_unit")
+unit_id = "blade_shield_dog"
+unit_name = "刀盾狗"
+faction = "blade_shield_pack"
+species = "dog"
+role = "frontliner"
+cost_tier = 1
+max_hp = 8
+atk = 3
+def = 1
+move_range = 1
+attack_range = 1
+traits = Array[String](["guard", "retaliate", "push"])
+skill_ids = Array[String](["my_blade_and_shield", "rough_counter"])
+meme_tags = Array[String](["刀盾狗", "抽象", "硬汉"])
+upgraded_version = ""

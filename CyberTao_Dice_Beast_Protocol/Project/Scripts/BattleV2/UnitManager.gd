@@ -1,6 +1,8 @@
 extends Node
 class_name UnitManager
 
+signal units_changed
+
 var units_by_id: Dictionary = {}
 var units_by_cell: Dictionary = {}
 
@@ -17,6 +19,7 @@ func spawn_unit(unit_id: String, payload: Dictionary, cell: Vector2i) -> void:
 	}
 	units_by_id[unit_id] = unit_state
 	units_by_cell[cell] = unit_id
+	emit_signal("units_changed")
 
 func move_unit(unit_id: String, target_cell: Vector2i) -> void:
 	if not units_by_id.has(unit_id):
@@ -27,6 +30,7 @@ func move_unit(unit_id: String, target_cell: Vector2i) -> void:
 	state["cell"] = target_cell
 	units_by_id[unit_id] = state
 	units_by_cell[target_cell] = unit_id
+	emit_signal("units_changed")
 
 func apply_damage(unit_id: String, amount: int) -> bool:
 	if not units_by_id.has(unit_id):
@@ -38,6 +42,7 @@ func apply_damage(unit_id: String, amount: int) -> bool:
 	if next_hp <= 0:
 		despawn_unit(unit_id)
 		return true
+	emit_signal("units_changed")
 	return false
 
 func despawn_unit(unit_id: String) -> void:
@@ -47,6 +52,7 @@ func despawn_unit(unit_id: String) -> void:
 	var old_cell: Vector2i = state["cell"]
 	units_by_cell.erase(old_cell)
 	units_by_id.erase(unit_id)
+	emit_signal("units_changed")
 
 func get_unit(unit_id: String) -> Dictionary:
 	return units_by_id.get(unit_id, {})
