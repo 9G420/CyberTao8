@@ -9,6 +9,7 @@ var round_label: Label
 var selected_label: Label
 var roll_label: Label
 var crest_label: RichTextLabel
+var enemy_intent_label: Label
 var roll_button: Button
 var end_turn_button: Button
 
@@ -40,6 +41,10 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.terrain_damage_triggered.connect(_on_terrain_damage_triggered)
 	if battle_flow.item_picked_up and not battle_flow.item_picked_up.is_connected(_on_item_picked_up):
 		battle_flow.item_picked_up.connect(_on_item_picked_up)
+	if battle_flow.enemy_action_announced and not battle_flow.enemy_action_announced.is_connected(_on_enemy_action_announced):
+		battle_flow.enemy_action_announced.connect(_on_enemy_action_announced)
+	if battle_flow.enemy_turn_ended and not battle_flow.enemy_turn_ended.is_connected(_on_enemy_turn_ended):
+		battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -126,10 +131,19 @@ func _build_ui() -> void:
 
 	crest_label = RichTextLabel.new()
 	crest_label.position = Vector2(20, 306)
-	crest_label.size = Vector2(240, 180)
+	crest_label.size = Vector2(240, 140)
 	crest_label.scroll_active = false
 	crest_label.add_theme_font_size_override("normal_font_size", 14)
 	add_child(crest_label)
+
+	enemy_intent_label = Label.new()
+	enemy_intent_label.text = ""
+	enemy_intent_label.position = Vector2(20, 450)
+	enemy_intent_label.size = Vector2(240, 40)
+	enemy_intent_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	enemy_intent_label.add_theme_font_size_override("font_size", 14)
+	enemy_intent_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.25))
+	add_child(enemy_intent_label)
 
 func _on_roll_pressed() -> void:
 	if battle_flow:
@@ -157,6 +171,7 @@ func _on_phase_changed(phase_name: String) -> void:
 	if is_terminal:
 		roll_button.disabled = true
 		end_turn_button.disabled = true
+		enemy_intent_label.text = ""
 		if phase_name == "VICTORY":
 			phase_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
 		else:
@@ -165,6 +180,9 @@ func _on_phase_changed(phase_name: String) -> void:
 		phase_label.add_theme_color_override("font_color", Color(0.72, 0.9, 0.84))
 		roll_button.disabled = phase_name != "PLAYER_ROLL"
 		end_turn_button.disabled = phase_name != "PLAYER_ACTION"
+		# 进入玩家阶段时清空敌方意图
+		if phase_name == "PLAYER_ROLL" or phase_name == "PLAYER_ACTION":
+			enemy_intent_label.text = ""
 	_refresh_crest_pool()
 
 func _on_round_changed(round_number: int) -> void:
@@ -199,6 +217,12 @@ func _on_terrain_damage_triggered(_unit_id: String, _cell: Vector2i, _damage: in
 
 func _on_item_picked_up(_unit_id: String, _item_id: String, _effect_text: String, _cell: Vector2i) -> void:
 	_refresh_crest_pool()
+
+func _on_enemy_action_announced(_unit_id: String, _action_type: String, detail: String) -> void:
+	enemy_intent_label.text = detail
+
+func _on_enemy_turn_ended() -> void:
+	enemy_intent_label.text = "敌方回合结束"
 
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	var pool: Dictionary = next_crest_pool

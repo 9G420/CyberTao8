@@ -109,6 +109,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.summon_completed.connect(_on_summon_completed)
 	_battle_flow.terrain_damage_triggered.connect(_on_terrain_damage_triggered)
 	_battle_flow.item_picked_up.connect(_on_item_picked_up)
+	_battle_flow.enemy_action_announced.connect(_on_enemy_action_announced)
+	_battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -169,6 +171,20 @@ func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, 
 func _on_item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i) -> void:
 	# 道具拾取反馈：在拾取格显示绿色效果飘字
 	_board_view.play_pickup_feedback(cell, effect_text)
+	_board_view.queue_redraw()
+
+func _on_enemy_action_announced(unit_id: String, action_type: String, detail: String) -> void:
+	# 敌方行动预告：攻击时在目标格显示橙色预警闪烁
+	if action_type == "attack":
+		var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+		if not unit.is_empty():
+			var cell: Vector2i = unit["cell"]
+			var adjacent: Array[Vector2i] = _battle_flow.battle_ai.get_adjacent_player_cells(cell)
+			if adjacent.size() > 0:
+				_board_view.play_enemy_warning(adjacent[0])
+
+func _on_enemy_turn_ended() -> void:
+	# 敌方回合结束，清除残留闪烁
 	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:

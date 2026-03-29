@@ -1,29 +1,31 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-29
-**版本**: v0.1.20
+**版本**: v0.1.21
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- buff / item 格第一版（Weekly Plan Day 4）
+- 敌方 AI 可读性增强（Weekly Plan Day 5）
 
 ---
 
 ## 根因/目标
 
 ### 根因
-- `BoardManager.item_cells`、`ActionResolver.try_pickup()`、`BuffManager`、`ItemEffectLibrary` 四个系统全部存在但处于死链状态
-- 棋盘上没有可交互的资源点，战斗缺少"抢点 vs 推线"的策略选择
-- 3 个 ItemData .tres 文件已定义但从未被使用
+- 敌方回合行动速度过快（0.3-0.4 秒），玩家难以看清敌方做了什么
+- 面板只显示"敌方行动"四个字，不知道哪个敌人在动、要做什么
+- 敌方攻击没有预警，伤害突然出现令人困惑
+- 敌方回合结束时没有明确提示，玩家不知道何时轮到自己
 
 ### 目标
-- 接通现有道具管道：放置 → 拾取 → 效果生效
-- 在棋盘上放置 2 种可拾取道具
-- 拾取后即时生效并有视觉反馈
-- 不做复杂持续 buff，只做即时效果
+- 加长敌方行动间停顿，让玩家看清每一步
+- 面板显示每个敌方单位的具体意图（"哨兵甲 → 攻击 刀盾狗"）
+- 敌方攻击前目标格闪烁预警
+- 敌方回合结束时显示明确文字提示
+- 不改动 AI 决策逻辑
 
 ---
 
@@ -31,51 +33,52 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 添加 item_picked_up 信号、_spawn_debug_items()、_check_item_pickup()、_apply_item_effect()；try_move_unit 增加拾取检查；restart 增加道具重置 |
-| `Project/Scripts/UI/BoardView.gd` | 添加 _draw_items() 绿色道具格渲染；添加 play_pickup_feedback() 绿色飘字 |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | 连接 item_picked_up 信号，拾取后刷新 crest 池 |
-| `Project/Scripts/Main.gd` | 连接 item_picked_up 信号，触发拾取反馈；提示栏新增"绿色=道具" |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | 新增 `enemy_action_announced` / `enemy_turn_ended` 信号；新增 `_get_unit_display_name()` 辅助方法；`_execute_enemy_actions()` 重写：每步行动前广播意图、加长停顿；`_start_enemy_turn()` 掷骰等待从 0.5s 延长到 0.8s |
+| `Project/Scripts/UI/BoardView.gd` | 新增 `play_enemy_warning()` 橙色预警闪烁；新增 `play_enemy_move_indicator()` 移动意图指示 |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | 新增 `enemy_intent_label` 敌方意图显示标签；连接 `enemy_action_announced` / `enemy_turn_ended` 信号；玩家阶段自动清空意图文字 |
+| `Project/Scripts/Main.gd` | 连接 `enemy_action_announced` / `enemy_turn_ended` 信号；攻击意图广播时在目标格触发预警闪烁 |
 | `Logs/Mulerun_Work_Report.md` | 本报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.20 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.21 条目 |
 
 ---
 
 ## 实现内容
 
-### 1. 道具放置
-- `_spawn_debug_items()` 在棋盘上固定放置 2 个道具：
-  - 补丁凉茶 (4,5)：回复 2 HP
-  - 超频骨头 (2,6)：+1 MOVE crest
-- 使用已有的 `BoardManager.add_item_cell()` 方法
+### 1. 意图广播信号
+- `enemy_action_announced(unit_id, action_type, detail)` — 每个敌方单位行动前广播
+  - action_type: "attack" 或 "move"
+  - detail: 中文描述如 "哨兵甲 → 攻击 刀盾狗" 或 "哨兵乙 → 移动"
+- `enemy_turn_ended` — 所有敌方行动完成后广播
 
-### 2. 拾取触发
-- `try_move_unit()` 在移动完成、陷阱检查之后，检查目标格是否有道具
-- 条件：单位存活（陷阱未击杀）才触发拾取
-- 拾取后道具格从 `item_cells` 中移除
+### 2. 加长停顿时间
+- 掷骰后等待：0.5s → 0.8s
+- 攻击意图广播后：新增 0.6s 预读时间
+- 攻击执行后：0.4s → 0.7s
+- 移动意图广播后：新增 0.5s 预读时间
+- 移动执行后：0.3s → 0.6s
+- 回合结束后：新增 0.5s 过渡时间
 
-### 3. 效果执行
-- `_apply_item_effect()` 调用 `ItemEffectLibrary.execute()` 获取效果描述
-- 根据返回的 effect 类型实际应用：
-  - `heal_and_cleanse`：回复 HP（不超过 max_hp）
-  - `gain_move_and_attack_boost`：向 crest_pool 添加 MOVE
-  - `random_crest_gain`：随机添加 ATTACK/DEFEND/SKILL
+### 3. 面板意图显示
+- DiceDebugPanel 底部新增橙色 `enemy_intent_label`
+- 实时显示当前敌方行动内容（"哨兵甲 → 攻击 刀盾狗"）
+- 敌方回合结束时显示 "敌方回合结束"
+- 进入玩家阶段时自动清空
 
-### 4. 视觉呈现
-- `_draw_items()`：绿色填充+边框+道具中文名缩写（"凉茶"/"骨头"）
-- `play_pickup_feedback()`：绿色飘字上浮淡出（0.7 秒），显示效果文本（如"HP+2"）
+### 4. 攻击预警闪烁
+- 攻击意图广播时，目标格显示橙色闪烁（0.6s 渐变动画）
+- 闪烁在实际伤害发生前完成，形成"预读 → 攻击"节奏
 
-### 5. 信号接通
-- `item_picked_up` 信号 → Main.gd 触发飘字 → DiceDebugPanel 刷新 crest 池
+### 5. 辅助方法
+- `_get_unit_display_name()` 统一获取单位显示名称，无名则回退到 unit_id
 
 ---
 
 ## 当前剩余问题
 
-- **道具为固定放置** — 无随机生成，无每回合补充
-- **仅玩家触发拾取** — 敌方移动到道具格不触发
+- **敌方移动无路径预览** — 只能看到移动结果，无法预知移动目的地
+- **敌方无行动日志** — 面板只显示最后一条意图，不保留历史
 - **BuffManager.tick_turn() 仍未接入** — 持续 buff 暂不生效
-- **无道具数量限制** — 理论上可无限放置
-- **故障零食盒未放置** — 数据已就绪但调试布局只放了 2 个
+- **故障零食盒未放置** — 数据已就绪但调试布局只放了 2 个道具
 
 ## 未处理 BUG
 
@@ -90,5 +93,5 @@
 
 ## 建议下一步
 
-1. 在编辑器中验证道具拾取流程
-2. 按 Weekly Plan 继续推进 Day 5：敌方 AI 可读性增强
+1. 在编辑器中验证敌方回合的可读性改善
+2. 按 Weekly Plan 继续推进 Day 6：战斗 UI 去调试化第一版

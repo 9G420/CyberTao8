@@ -499,3 +499,32 @@
 - 仅玩家单位触发拾取，敌方移动不触发
 - 道具效果为即时生效，无持续 buff（BuffManager.tick_turn 仍未接入）
 - 补丁凉茶回复不超过 max_hp
+
+## v0.1.21 - 2026-03-29
+
+### 新增
+
+- 敌方 AI 可读性增强第一版：意图广播 + 加长停顿 + 攻击预警
+- `BattleFlowController` 新增 `enemy_action_announced` 信号：每个敌方行动前广播意图（"哨兵甲 → 攻击 刀盾狗"）
+- `BattleFlowController` 新增 `enemy_turn_ended` 信号：所有敌方行动完成后广播
+- `BattleFlowController._get_unit_display_name()`：统一获取单位显示名称
+- `BoardView.play_enemy_warning()`：攻击意图广播时目标格橙色预警闪烁（0.6s）
+- `BoardView.play_enemy_move_indicator()`：移动意图指示（橙色单位名称渐隐）
+- `DiceDebugPanel` 新增 `enemy_intent_label`：橙色标签实时显示敌方行动内容
+- 敌方回合结束时面板显示 "敌方回合结束"
+- 玩家阶段开始时自动清空意图文字
+
+### 修改
+
+- `_execute_enemy_actions()` 重写：每步行动前广播意图、等待预读时间后再执行
+- 敌方行动停顿时间全面加长：掷骰 0.5→0.8s，攻击后 0.4→0.7s，移动后 0.3→0.6s
+- 每步行动前新增意图预读等待：攻击 0.6s，移动 0.5s
+- 敌方回合结束后新增 0.5s 过渡等待再回到玩家回合
+- `DiceDebugPanel.crest_label` 高度从 180 缩减为 140，为意图标签腾出空间
+
+### 备注
+
+- AI 决策逻辑未变（仍为简单的优先攻击/朝最近玩家移动）
+- 本轮仅改善可读性，不增加 AI 策略复杂度
+- 面板只显示最后一条意图，不保留敌方行动历史日志
+- 预警闪烁使用与攻击反馈相同的 `_flash_cell` 机制，不会同时多格闪烁

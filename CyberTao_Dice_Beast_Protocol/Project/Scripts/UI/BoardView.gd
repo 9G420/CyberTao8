@@ -417,6 +417,29 @@ func play_pickup_feedback(cell: Vector2i, effect_text: String) -> void:
 	tw.set_parallel(false)
 	tw.tween_callback(lbl.queue_free)
 
+## 敌方攻击预警：在目标格显示橙色闪烁，提示即将受到攻击
+func play_enemy_warning(cell: Vector2i) -> void:
+	_flash_cell = cell
+	_flash_alpha = 0.6
+	var tw: Tween = create_tween()
+	tw.tween_method(_set_flash_alpha, 0.6, 0.15, 0.4)
+	tw.tween_method(_set_flash_alpha, 0.15, 0.5, 0.2)
+
+## 敌方移动意图：在目标格短暂显示橙色边框提示
+func play_enemy_move_indicator(cell: Vector2i, unit_name: String) -> void:
+	var lbl: Label = Label.new()
+	lbl.text = unit_name
+	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.6, 0.2))
+	var start_x: float = cell.x * CELL_SIZE + 8
+	var start_y: float = cell.y * CELL_SIZE - 4
+	lbl.position = Vector2(start_x, start_y)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw: Tween = lbl.create_tween()
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(lbl.queue_free)
+
 func _set_flash_alpha(val: float) -> void:
 	_flash_alpha = val
 	queue_redraw()

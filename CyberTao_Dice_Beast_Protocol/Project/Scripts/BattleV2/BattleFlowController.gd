@@ -10,6 +10,8 @@ signal summon_completed(unit_id: String, path_cells_created: Array[Vector2i], sp
 signal round_changed(round_number: int)
 signal terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String)
 signal item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i)
+signal enemy_action_announced(unit_id: String, action_type: String, detail: String)
+signal enemy_turn_ended
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -235,12 +237,20 @@ func _start_enemy_turn() -> void:
 	current_phase = BattlePhase.ENEMY_ROLL
 	emit_signal("phase_changed", _phase_name(current_phase))
 	dice_manager.roll_turn_dice()
-	await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(0.8).timeout
 	if is_battle_over():
 		return
 	_execute_enemy_actions()
 
-## 执行敌方行动：遍历每个敌方单位，尝试攻击或移动
+## 获取单位显示名称（用于意图广播）
+func _get_unit_display_name(unit_id: String) -> String:
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	var name: String = String(unit.get("display_name", ""))
+	if name == "":
+		name = unit_id
+	return name
+
+## 执行敌方行动：遍历每个敌方单位，尝试攻击或移动（含意图广播和加长停顿）
 func _execute_enemy_actions() -> void:
 	current_phase = BattlePhase.ENEMY_ACTION
 	emit_signal("phase_changed", _phase_name(current_phase))
@@ -252,18 +262,25 @@ func _execute_enemy_actions() -> void:
 		if unit.is_empty():
 			continue
 		var cell: Vector2i = unit["cell"]
+		var unit_name: String = _get_unit_display_name(uid)
 		# 优先检查相邻是否有玩家单位可攻击
 		var adjacent_players: Array[Vector2i] = battle_ai.get_adjacent_player_cells(cell)
 		if adjacent_players.size() > 0 and dice_manager.can_pay({"attack": 1}):
 			dice_manager.pay({"attack": 1})
 			var target_cell: Vector2i = adjacent_players[0]
 			var defender_id: String = String(unit_manager.units_by_cell[target_cell])
+			var defender_name: String = _get_unit_display_name(defender_id)
+			# 广播攻击意图，给玩家预读时间
+			emit_signal("enemy_action_announced", uid, "attack", unit_name + " → 攻击 " + defender_name)
+			await get_tree().create_timer(0.6).timeout
+			if is_battle_over():
+				break
 			var defender: Dictionary = unit_manager.get_unit(defender_id)
 			var damage: int = _calc_damage_with_terrain(unit, defender)
 			var killed: bool = unit_manager.apply_damage(defender_id, damage)
 			emit_signal("enemy_attack_completed", uid, defender_id, damage, killed, target_cell)
 			_check_battle_outcome()
-			await get_tree().create_timer(0.4).timeout
+			await get_tree().create_timer(0.7).timeout
 			continue
 		# 没有相邻目标则朝最近玩家移动
 		if dice_manager.can_pay({"move": 1}):
@@ -271,11 +288,16 @@ func _execute_enemy_actions() -> void:
 			if target_player_cell.x >= 0:
 				var move_cell: Vector2i = battle_ai.pick_move_toward(cell, target_player_cell)
 				if move_cell.x >= 0:
+					# 广播移动意图
+					emit_signal("enemy_action_announced", uid, "move", unit_name + " → 移动")
+					await get_tree().create_timer(0.5).timeout
+					if is_battle_over():
+						break
 					dice_manager.pay({"move": 1})
 					unit_manager.move_unit(uid, move_cell)
 					# 敌方移动后检查陷阱地形
 					_check_terrain_trap(uid, move_cell)
-					await get_tree().create_timer(0.3).timeout
+					await get_tree().create_timer(0.6).timeout
 					if is_battle_over():
 						break
 					# 如果该敌方单位已被陷阱击杀，跳过后续攻击
@@ -287,15 +309,23 @@ func _execute_enemy_actions() -> void:
 						dice_manager.pay({"attack": 1})
 						var atk_target_cell: Vector2i = new_adjacent[0]
 						var def_id: String = String(unit_manager.units_by_cell[atk_target_cell])
+						var def_name: String = _get_unit_display_name(def_id)
+						# 广播追击攻击意图
 						var refreshed_unit: Dictionary = unit_manager.get_unit(uid)
+						emit_signal("enemy_action_announced", uid, "attack", unit_name + " → 攻击 " + def_name)
+						await get_tree().create_timer(0.6).timeout
+						if is_battle_over():
+							break
 						var defender2: Dictionary = unit_manager.get_unit(def_id)
 						var dmg: int = _calc_damage_with_terrain(refreshed_unit, defender2)
 						var killed2: bool = unit_manager.apply_damage(def_id, dmg)
 						emit_signal("enemy_attack_completed", uid, def_id, dmg, killed2, atk_target_cell)
 						_check_battle_outcome()
-						await get_tree().create_timer(0.4).timeout
-	# 敌方回合结束，推进到下一玩家回合
+						await get_tree().create_timer(0.7).timeout
+	# 敌方回合结束
 	if not is_battle_over():
+		emit_signal("enemy_turn_ended")
+		await get_tree().create_timer(0.5).timeout
 		_advance_to_next_player_round()
 
 ## 推进到下一个玩家回合
