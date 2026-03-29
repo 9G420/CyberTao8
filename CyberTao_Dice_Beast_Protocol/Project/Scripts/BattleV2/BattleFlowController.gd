@@ -14,6 +14,8 @@ signal enemy_action_announced(unit_id: String, action_type: String, detail: Stri
 signal enemy_turn_ended
 signal encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i)
 signal encounter_resolved(encounter_id: String, cell: Vector2i)
+signal card_battle_started(encounter_id: String, enemy_name: String, enemy_hp: int, enemy_atk: int, unit_id: String, player_hp: int, player_max_hp: int)
+signal card_battle_ended(encounter_id: String, cell: Vector2i, victory: bool, player_hp_remaining: int)
 signal heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int)
 signal event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String)
 
@@ -503,6 +505,15 @@ func _check_item_pickup(unit_id: String, cell: Vector2i) -> void:
 	emit_signal("item_picked_up", unit_id, item_id, effect_text, cell)
 	board_manager.emit_signal("board_changed")
 
+## 获取遭遇敌方数据（Day 9：卡牌战斗原型）
+func get_encounter_enemy_data(encounter_id: String) -> Dictionary:
+	match encounter_id:
+		"encounter_01":
+			return {"name": "异常哨兵", "hp": 6, "atk": 2}
+		"encounter_02":
+			return {"name": "赛博游魂", "hp": 4, "atk": 3}
+	return {"name": "未知敌人", "hp": 4, "atk": 2}
+
 ## 检查遭遇格：玩家单位踩到遭遇格时触发遭遇，进入 ENCOUNTER 暂停状态
 func _check_encounter(unit_id: String, cell: Vector2i) -> void:
 	if not board_manager.encounter_cells.has(cell):
@@ -515,22 +526,53 @@ func _check_encounter(unit_id: String, cell: Vector2i) -> void:
 	# 进入 ENCOUNTER 暂停状态（棋盘禁止操作）
 	current_phase = BattlePhase.ENCOUNTER
 	emit_signal("phase_changed", _phase_name(current_phase))
-	# 触发遭遇信号（UI 层用于显示反馈和战斗占位面板）
+	# 触发遭遇信号（UI 层用于显示反馈）
 	emit_signal("encounter_triggered", unit_id, encounter_id, cell)
+	# 触发卡牌战斗信号（Day 9）
+	var enemy_data: Dictionary = get_encounter_enemy_data(encounter_id)
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	var p_hp: int = int(unit.get("hp", 1))
+	var p_max_hp: int = int(unit.get("max_hp", 1))
+	emit_signal("card_battle_started", encounter_id, enemy_data["name"], enemy_data["hp"], enemy_data["atk"], unit_id, p_hp, p_max_hp)
 
-## 遭遇结算（占位）：清除遭遇格，回到 PLAYER_ACTION 继续操作
-## 后续可在此接入真实卡牌战斗结果
-func resolve_encounter() -> void:
+## 遭遇结算：根据卡牌战斗结果清除遭遇格，处理胜败后果，回到 PLAYER_ACTION
+## victory=true：清除遭遇格，同步回复 HP
+## victory=false：单位受 2 点惩罚伤害，遭遇格仍清除（原型不重复战斗）
+func resolve_encounter(victory: bool = true, player_hp_remaining: int = -1) -> void:
 	if current_phase != BattlePhase.ENCOUNTER:
 		return
 	var resolved_id: String = _encounter_id
 	var resolved_cell: Vector2i = _encounter_cell
+	var unit_id: String = _encounter_unit_id
 	# 清除遭遇格（已完成的遭遇不再触发）
 	board_manager.clear_encounter_cell(resolved_cell)
+	# 处理战斗结果
+	if victory:
+		# 同步卡牌战斗后的 HP 到棋盘单位
+		if player_hp_remaining >= 0:
+			var unit: Dictionary = unit_manager.get_unit(unit_id)
+			if not unit.is_empty():
+				unit["hp"] = player_hp_remaining
+				unit_manager.units_by_id[unit_id] = unit
+				unit_manager.emit_signal("units_changed")
+	else:
+		# 败北惩罚：单位受 2 点伤害
+		if player_hp_remaining >= 0:
+			var unit: Dictionary = unit_manager.get_unit(unit_id)
+			if not unit.is_empty():
+				unit["hp"] = max(1, player_hp_remaining)
+				unit_manager.units_by_id[unit_id] = unit
+				unit_manager.emit_signal("units_changed")
+		else:
+			var killed: bool = unit_manager.apply_damage(unit_id, 2)
+			if killed:
+				_check_battle_outcome()
 	# 清空遭遇上下文
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)
+	# 发送卡牌战斗结束信号
+	emit_signal("card_battle_ended", resolved_id, resolved_cell, victory, player_hp_remaining)
 	# 回到玩家行动阶段
 	current_phase = BattlePhase.PLAYER_ACTION
 	emit_signal("encounter_resolved", resolved_id, resolved_cell)

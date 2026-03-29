@@ -593,6 +593,60 @@
 - 遭遇格被清除后不再触发（单次遭遇）
 - ENCOUNTER 阶段期间，掷骰/移动/攻击/召唤/结束回合均被禁止
 
+## v0.1.25 - 2026-03-29
+
+### 新增
+
+- 最小卡牌战斗原型（Day 9：卡牌战斗层）— 双层玩法结构首次完整跑通
+- `Scripts/UI/CardBattlePanel.gd`（全新文件）：独立卡牌战斗面板
+  - 5 张固定手牌：斩击(3伤害) / 重击(5伤害) / 防御(减伤2) / 修复(回复2HP) / 连斩(2伤害)
+  - 敌方每回合固定攻击（穿透防御最低 1 点）
+  - 战斗日志实时显示每回合事件
+  - 逃跑机制（-1 HP 惩罚后视为失败退出）
+  - HP 低于 30% 红色警告
+  - 战斗结束 1.2s 延迟后自动关闭面板
+  - 赛博朋克风格 UI（暗紫底+橙色边框）
+- `BattleFlowController.card_battle_started` 信号（encounter_id, enemy_name, enemy_hp, enemy_atk, unit_id, player_hp, player_max_hp）
+- `BattleFlowController.card_battle_ended` 信号（encounter_id, cell, victory, player_hp_remaining）
+- `BattleFlowController.get_encounter_enemy_data()`：遭遇敌方数据映射
+  - encounter_01 → 异常哨兵（HP 6, ATK 2）
+  - encounter_02 → 赛博游魂（HP 4, ATK 3）
+
+### 修改
+
+- `BattleFlowController._check_encounter()` 重写：触发遭遇后同时发射 `card_battle_started` 信号，传递遭遇敌方数据和当前单位 HP
+- `BattleFlowController.resolve_encounter()` 重写：接受 `victory` 和 `player_hp_remaining` 参数
+  - 胜利：卡牌战斗剩余 HP 同步回棋盘单位
+  - 败北/逃跑：剩余 HP 同步（保底 1 HP，原型阶段不因卡牌战斗直接全灭）
+  - 无论胜败均清除遭遇格
+- `DiceDebugPanel` 遭遇面板按钮改为禁用的"卡牌战斗进行中..."；连接 `card_battle_ended` 信号；战斗结束后更新按钮显示胜败文字
+- `Main.gd` 新增 `CardBattlePanel` 实例化和信号连线；新增 `_on_card_battle_started()` / `_on_card_battle_panel_ended()` / `_on_card_battle_ended()` 处理方法
+
+### 完整双层闭环
+
+```
+棋盘走位层                          卡牌战斗层
+踩遭遇格 → ENCOUNTER 暂停 ──────→ CardBattlePanel 启动
+                                    ↓
+                                  玩家选牌 → 效果结算
+                                    ↓
+                                  敌方攻击 → HP 检查
+                                    ↓
+                                  循环至一方 HP ≤ 0
+                                    ↓
+PLAYER_ACTION 恢复 ←────────────── battle_ended 信号
+棋盘单位 HP 同步 ←──────────────── resolve_encounter(victory, hp)
+```
+
+### 备注
+
+- 手牌固定不消耗（Day 10 加入费用系统和抽牌）
+- 敌方行为单一（Day 10 加入多种行为模式）
+- 卡牌战斗中的 HP 变化会同步回棋盘单位，使两层状态保持一致
+- 这是双层玩法结构的关键里程碑：从"占位按钮"进化为"真正的卡牌战斗子流程"
+
+---
+
 ## v0.1.24 - 2026-03-29
 
 ### 新增

@@ -56,6 +56,8 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
 	if battle_flow.event_cell_triggered and not battle_flow.event_cell_triggered.is_connected(_on_event_cell_triggered):
 		battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
+	if battle_flow.card_battle_ended and not battle_flow.card_battle_ended.is_connected(_on_card_battle_ended):
+		battle_flow.card_battle_ended.connect(_on_card_battle_ended)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -180,11 +182,11 @@ func _build_ui() -> void:
 	encounter_panel.add_child(encounter_title_label)
 
 	encounter_resolve_button = Button.new()
-	encounter_resolve_button.text = "战斗胜利（占位）"
+	encounter_resolve_button.text = "卡牌战斗进行中..."
 	encounter_resolve_button.position = Vector2(30, 80)
 	encounter_resolve_button.size = Vector2(200, 44)
 	encounter_resolve_button.add_theme_font_size_override("font_size", 16)
-	encounter_resolve_button.pressed.connect(_on_encounter_resolve_pressed)
+	encounter_resolve_button.disabled = true
 	encounter_panel.add_child(encounter_resolve_button)
 
 func _on_roll_pressed() -> void:
@@ -285,9 +287,12 @@ func _on_encounter_resolved(_encounter_id: String, _cell: Vector2i) -> void:
 	enemy_intent_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
 	enemy_intent_label.text = "遭遇已清除，继续行动"
 
-func _on_encounter_resolve_pressed() -> void:
-	if battle_flow:
-		battle_flow.resolve_encounter()
+func _on_card_battle_ended(_encounter_id: String, _cell: Vector2i, victory: bool, _player_hp: int) -> void:
+	if victory:
+		encounter_resolve_button.text = "战斗胜利！"
+	else:
+		encounter_resolve_button.text = "战斗失败..."
+	_refresh_crest_pool()
 
 func _on_heal_cell_triggered(_unit_id: String, _cell: Vector2i, _heal_amount: int, _actual_heal: int) -> void:
 	_refresh_crest_pool()

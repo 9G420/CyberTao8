@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-29
-**版本**: v0.1.24
+**版本**: v0.1.25
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- Day 8：棋盘格子事件化（棋盘走位层）
+- Day 9：最小卡牌战斗原型（卡牌战斗层）
 
 ---
 
 ## 根因目标
 
-让棋盘格子种类更丰富，走位路线选择更有策略意义。新增恢复格（持久回血）和事件格（一次性随机效果），使棋盘从 5 种可交互格子扩展到 7 种，形成"多条路线"的走位决策感。
+在遭遇入口（Day 7）和棋盘事件化（Day 8）基础上，实现双层结构的第二层——卡牌战斗层最小原型。玩家踩到遭遇格后，不再只看到占位按钮，而是进入一个真正的卡牌选择战斗子流程：选牌出击 → 敌方反击 → 循环至一方 HP 归零 → 回到棋盘层。这是双层玩法"棋盘走位层 + 卡牌战斗层"跑通的关键里程碑。
 
 ---
 
@@ -22,47 +22,50 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `BoardManager.gd` | 新增 `heal_cells`、`event_cells` 字典；新增 `add_heal_cell()`、`add_event_cell()`、`clear_event_cell()` 方法；`build_test_board()`/`clear_board()` 清空新字典 |
-| `BattleFlowController.gd` | 新增 `heal_cell_triggered`、`event_cell_triggered` 信号；新增 `_check_heal_cell()`（持久回血）、`_check_event_cell()`（随机三选一效果）；新增 `_spawn_debug_heal_cells()`（2 个回复格）、`_spawn_debug_event_cells()`（3 个事件格）；`try_move_unit()` 移动后增加恢复格和事件格检查；`_bootstrap()`/`restart_battle()` 调用新 spawn 方法 |
-| `BoardView.gd` | 新增 `_draw_heal_cells()`（蓝白色填充+边框+"回复"+回复量）、`_draw_event_cells()`（黄紫色填充+边框+"?"标记）；新增 `play_heal_feedback()`（蓝色飘字）、`play_event_feedback()`（正面黄色/负面红色飘字）；`_draw()` 调用新绘制方法 |
-| `DiceDebugPanel.gd` | 连接 `heal_cell_triggered`、`event_cell_triggered` 信号，触发后刷新 crest 池显示 |
-| `Main.gd` | 连接 `heal_cell_triggered`、`event_cell_triggered` 信号；新增 `_on_heal_cell_triggered()`、`_on_event_cell_triggered()` 反馈处理；提示栏新增 "蓝白=回复 黄紫=事件" |
+| `Scripts/UI/CardBattlePanel.gd` | **新增**。独立卡牌战斗面板，包含完整战斗逻辑+UI：5 张固定手牌（斩击/重击/防御/修复/连斩）、敌方每回合固定攻击、HP 双方对耗、防御减伤、逃跑机制、胜败判定、自动返回棋盘 |
+| `BattleFlowController.gd` | 新增 `card_battle_started`/`card_battle_ended` 信号；新增 `get_encounter_enemy_data()` 遭遇敌方数据映射；重写 `_check_encounter()` 增加卡牌战斗启动信号；重写 `resolve_encounter()` 接受胜败参数，同步战斗后 HP 到棋盘单位 |
+| `DiceDebugPanel.gd` | 遭遇面板按钮改为"卡牌战斗进行中..."（禁用状态）；连接 `card_battle_ended` 信号，战斗结束后更新按钮文字；移除旧的占位结算按钮回调 |
+| `Main.gd` | 新增 `CardBattlePanel` 引用和实例化；连接 `card_battle_started`/`card_battle_ended`/`battle_ended` 信号；新增 `_on_card_battle_started()`、`_on_card_battle_panel_ended()`、`_on_card_battle_ended()` 处理方法；战斗胜利显示绿色飘字，失败显示伤害飘字 |
 
 ---
 
 ## 实现内容
 
-1. **恢复格**（蓝白色）：持久地形，每次踩上回复 HP（不超过 max_hp），满血不触发
-   - 调试布局：(5,6) 回复 2 HP、(1,3) 回复 3 HP
-2. **事件格**（黄紫色 + "?" 标记）：一次性触发，踩后消失，随机三选一效果：
-   - 正面：回复 1 HP
-   - 正面：随机 +1 crest（6 种之一）
-   - 负面：受到 1 点伤害（可致死触发胜负判定）
-   - 调试布局：(3,5)、(6,3)、(4,6) 三个事件格
-3. 棋盘现有 **7 种可交互格子**：路径/高台/陷阱/道具/遭遇/恢复/事件
-4. 新增 2 个信号：`heal_cell_triggered`、`event_cell_triggered`
-5. 完整反馈链：触发 → 信号 → 飘字（蓝色回复/黄色正面/红色负面）→ 面板刷新
+1. **CardBattlePanel.gd**（全新文件，~200 行）
+   - 赛博朋克风格卡牌战斗面板（暗紫底色+橙色边框）
+   - 显示：战斗标题、敌方 HP、我方 HP、回合数、战斗日志、5 张手牌按钮、逃跑按钮
+   - 5 张固定手牌：
+     - 斩击（3 伤害）/ 重击（5 伤害）/ 防御（减伤 2）/ 修复（回复 2 HP）/ 连斩（2 伤害）
+   - 每回合流程：玩家选牌 → 效果结算 → 检查敌方死亡 → 敌方攻击 → 检查玩家死亡
+   - 防御牌机制：当回合敌方攻击减伤，最低 1 点穿透
+   - 逃跑机制：受 1 点惩罚伤害后退出战斗（视为失败）
+   - HP 低于 30% 时文字变红色警告
+   - 战斗结束后 1.2 秒延迟自动关闭面板
 
----
+2. **遭遇敌方数据**
+   - encounter_01（异常哨兵）：HP 6, ATK 2 — 肉盾型
+   - encounter_02（赛博游魂）：HP 4, ATK 3 — 高攻型
 
-## 调试棋盘布局总览（v0.1.24）
+3. **战斗结果同步**
+   - 胜利：卡牌战斗中剩余 HP 同步回棋盘单位
+   - 败北（逃跑）：剩余 HP 同步回棋盘单位（最低保底 1 HP）
+   - 败北（阵亡）：棋盘单位保底 1 HP（原型阶段不因卡牌战斗直接全灭）
+   - 遭遇格无论胜败均清除（原型阶段避免无限循环）
 
-| 格子 | 位置 | 类型 |
-|------|------|------|
-| 高台格 | (2,4) (2,5) | terrain: high_ground |
-| 陷阱格 | (1,5) (3,6) | terrain: trap |
-| 道具格 | (4,5) 补丁凉茶, (2,6) 超频骨头 | item |
-| 遭遇格 | (4,4) encounter_01, (6,5) encounter_02 | encounter |
-| 恢复格 | (5,6) HP+2, (1,3) HP+3 | heal |
-| 事件格 | (3,5) (6,3) (4,6) 随机效果 | event |
-| 玩家单位 | (0,6) 刀盾狗, (1,7) 灵狐骇客, (0,5) 鸦机术士 | unit: player |
-| 敌方单位 | (3,4) 哨兵甲, (5,3) 哨兵乙 | unit: enemy |
+4. **信号流完整链路**
+   - 踩遭遇格 → `encounter_triggered` + `card_battle_started`
+   - → CardBattlePanel 启动 → 玩家出牌 → 循环
+   - → 战斗结束 → `battle_ended` → `resolve_encounter(victory, hp)`
+   - → `card_battle_ended` + `encounter_resolved` → 棋盘继续
+
+5. **双层结构里程碑**：Day 9 标志着"遭遇触发 → 进入卡牌战斗 → 出牌 → 结算 → 回到棋盘"的完整闭环首次跑通
 
 ---
 
 ## 剩余问题
 
-- **遭遇面板为纯占位** — 无实际卡牌战斗（Day 9 实现）
+- **手牌固定不消耗** — Day 10 加入费用系统和抽牌机制
+- **敌方行为单一** — Day 10 加入 2~3 种敌方行为模式
 - **BuffManager.tick_turn() 仍未接入**
 - **BUG-001 分辨率切换无效**（低优先级）
 
@@ -70,5 +73,5 @@
 
 ## 建议下一步
 
-1. **Day 9：最小卡牌战斗原型** — 替换占位面板，接入简化版抽牌/出牌/结算
-2. **Day 10~12 按周计划继续**
+1. **Day 10：卡牌战斗丰富化** — 能量/费用系统、手牌抽取、2~3 种敌人行为模式、战斗奖励
+2. **Day 11~12 按周计划继续**

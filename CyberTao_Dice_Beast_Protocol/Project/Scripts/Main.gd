@@ -5,12 +5,14 @@ const BoardView = preload("res://Scripts/UI/BoardView.gd")
 const DiceDebugPanel = preload("res://Scripts/UI/DiceDebugPanel.gd")
 const DisplaySettings = preload("res://Scripts/System/DisplaySettings.gd")
 const SettingsPanel = preload("res://Scripts/UI/SettingsPanel.gd")
+const CardBattlePanel = preload("res://Scripts/UI/CardBattlePanel.gd")
 
 var _battle_flow: BattleFlowController
 var _board_view: BoardView
 var _dice_panel: DiceDebugPanel
 var _display_settings: DisplaySettings
 var _settings_panel: SettingsPanel
+var _card_battle_panel: CardBattlePanel
 var _result_label: Label
 var _restart_btn: Button
 var _last_attack_damage: int = 0
@@ -80,6 +82,10 @@ func _build_debug_view() -> void:
 	add_child(_settings_panel)
 	_settings_panel.bind_display_settings(_display_settings)
 
+	_card_battle_panel = CardBattlePanel.new()
+	_card_battle_panel.position = Vector2(300, 160)
+	add_child(_card_battle_panel)
+
 	_result_label = Label.new()
 	_result_label.position = Vector2(0, 44)
 	_result_label.size = Vector2(1280, 40)
@@ -115,6 +121,9 @@ func _wire_debug_views() -> void:
 	_battle_flow.encounter_resolved.connect(_on_encounter_resolved)
 	_battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
 	_battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
+	_battle_flow.card_battle_started.connect(_on_card_battle_started)
+	_battle_flow.card_battle_ended.connect(_on_card_battle_ended)
+	_card_battle_panel.battle_ended.connect(_on_card_battle_panel_ended)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -210,6 +219,23 @@ func _on_event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String,
 	# 事件格反馈：根据效果正负显示不同颜色飘字
 	var is_positive: bool = not effect_text.begins_with("HP-")
 	_board_view.play_event_feedback(cell, effect_text, is_positive)
+	_board_view.queue_redraw()
+
+func _on_card_battle_started(encounter_id: String, enemy_name: String, enemy_hp: int, enemy_atk: int, unit_id: String, player_hp: int, player_max_hp: int) -> void:
+	# 卡牌战斗开始：启动 CardBattlePanel
+	_card_battle_panel.start_battle(encounter_id, enemy_name, enemy_hp, enemy_atk, player_hp, player_max_hp)
+
+func _on_card_battle_panel_ended(victory: bool, player_hp_remaining: int) -> void:
+	# 卡牌战斗面板结束 → 调用 BattleFlowController 结算遭遇
+	_battle_flow.resolve_encounter(victory, player_hp_remaining)
+	_board_view.queue_redraw()
+
+func _on_card_battle_ended(encounter_id: String, cell: Vector2i, victory: bool, player_hp_remaining: int) -> void:
+	# 卡牌战斗结算完成反馈
+	if victory:
+		_board_view.play_pickup_feedback(cell, "战斗胜利！")
+	else:
+		_board_view.play_attack_feedback(cell, 2)
 	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:
