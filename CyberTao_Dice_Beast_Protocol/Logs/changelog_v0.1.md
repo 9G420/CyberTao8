@@ -62,3 +62,17 @@
 - no attack system implemented yet
 - no pathfinding beyond BFS range check
 - no movement animation; position updates are instant
+
+## v0.1.2 - 2026-03-29
+
+### Fixed
+
+- dice roll now limited to once per turn: `start_player_roll()` only executes during PLAYER_ROLL phase, then auto-transitions to PLAYER_ACTION
+- Roll Dice button in debug panel is disabled after rolling (re-enabled only in PLAYER_ROLL phase)
+- movable cell highlights now respect MOVE crest availability: `get_reachable_cells_for()` returns empty when MOVE <= 0
+- highlights refresh immediately after every move attempt (success or failure), clearing when MOVE is exhausted
+
+### Notes
+
+- no "End Turn" button yet; to roll again after spending resources, a phase-reset mechanism is still needed
+- the roll-once restriction is per phase transition, not a stored flag — future turn flow will manage this naturally

@@ -68,8 +68,10 @@ func _bootstrap() -> void:
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func start_player_roll() -> void:
-	current_phase = BattlePhase.PLAYER_ROLL
+	if current_phase != BattlePhase.PLAYER_ROLL:
+		return
 	dice_manager.roll_turn_dice()
+	current_phase = BattlePhase.PLAYER_ACTION
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func enter_player_action() -> void:
@@ -122,6 +124,11 @@ func _spawn_debug_units() -> void:
 func get_reachable_cells_for(unit_id: String) -> Array[Vector2i]:
 	var unit: Dictionary = unit_manager.get_unit(unit_id)
 	if unit.is_empty():
+		var empty: Array[Vector2i] = []
+		return empty
+	# No highlights if no MOVE resource available
+	var move_available: int = int(dice_manager.crest_pool.get("move", 0))
+	if move_available <= 0:
 		var empty: Array[Vector2i] = []
 		return empty
 	var cell: Vector2i = unit["cell"]

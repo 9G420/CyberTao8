@@ -7,6 +7,7 @@ var phase_label: Label
 var selected_label: Label
 var roll_label: Label
 var crest_label: RichTextLabel
+var roll_button: Button
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(280, 440)
@@ -67,7 +68,7 @@ func _build_ui() -> void:
 	selected_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 	add_child(selected_label)
 
-	var roll_button := Button.new()
+	roll_button = Button.new()
 	roll_button.text = "Roll Dice"
 	roll_button.position = Vector2(20, 108)
 	roll_button.size = Vector2(240, 42)
@@ -107,6 +108,7 @@ func _on_spawn_path_pressed() -> void:
 
 func _on_phase_changed(phase_name: String) -> void:
 	phase_label.text = "Phase: " + phase_name
+	roll_button.disabled = phase_name != "PLAYER_ROLL"
 
 func _on_dice_rolled(results: Array[String], next_crest_pool: Dictionary) -> void:
 	roll_label.text = "Last roll: " + ", ".join(results)

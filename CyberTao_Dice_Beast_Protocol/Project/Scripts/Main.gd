@@ -55,7 +55,6 @@ func _wire_debug_views() -> void:
 
 func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
-	if success:
-		# Refresh highlights after move (unit position changed)
-		_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
-		_board_view.queue_redraw()
+	# Always refresh highlights (clears if MOVE is now 0)
+	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+	_board_view.queue_redraw()
