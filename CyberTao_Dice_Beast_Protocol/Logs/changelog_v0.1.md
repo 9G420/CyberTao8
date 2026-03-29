@@ -224,3 +224,15 @@
 
 - all three UI scripts (Main.gd, DiceDebugPanel.gd, SettingsPanel.gd) verified as valid UTF-8 with correct Chinese encoding
 - no logic changes, text-only fix
+
+## v0.1.9 - 2026-03-29
+
+### Fixed
+
+- rewrote all three UI scripts (Main.gd, DiceDebugPanel.gd, SettingsPanel.gd) from scratch via Python with Unicode escape sequences to guarantee clean UTF-8 Chinese encoding
+- all Chinese text strings verified byte-by-byte after rewrite
+
+### Notes
+
+- no logic or layout changes; identical behavior to v0.1.8
+- rewrite approach used to eliminate any possible encoding layer corruption
