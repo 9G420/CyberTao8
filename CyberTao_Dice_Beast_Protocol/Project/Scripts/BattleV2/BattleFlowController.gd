@@ -3,6 +3,7 @@ class_name BattleFlowController
 
 signal setup_completed
 signal phase_changed(phase_name: String)
+signal move_completed(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -54,6 +55,7 @@ func _bootstrap() -> void:
 	action_resolver.board_manager = board_manager
 	action_resolver.unit_manager = unit_manager
 	action_resolver.buff_manager = buff_manager
+	unit_manager.board_manager = board_manager
 	battle_ai.board_manager = board_manager
 	battle_ai.unit_manager = unit_manager
 	battle_ai.action_resolver = action_resolver
@@ -66,8 +68,10 @@ func _bootstrap() -> void:
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func start_player_roll() -> void:
-	current_phase = BattlePhase.PLAYER_ROLL
+	if current_phase != BattlePhase.PLAYER_ROLL:
+		return
 	dice_manager.roll_turn_dice()
+	current_phase = BattlePhase.PLAYER_ACTION
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func enter_player_action() -> void:
@@ -103,6 +107,7 @@ func _spawn_debug_units() -> void:
 			"max_hp": dog_data.max_hp,
 			"atk": dog_data.atk,
 			"def": dog_data.def,
+			"move_range": dog_data.move_range,
 			"owner": "player",
 			"tags": dog_data.meme_tags,
 		}, Vector2i(0, 6))
@@ -110,10 +115,51 @@ func _spawn_debug_units() -> void:
 		"max_hp": 5,
 		"atk": 2,
 		"def": 0,
+		"move_range": 1,
 		"owner": "enemy",
 		"tags": ["grunt"],
 	}
 	unit_manager.spawn_unit("enemy_debug_grunt", enemy_data, Vector2i(7, 1))
+
+func get_reachable_cells_for(unit_id: String) -> Array[Vector2i]:
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		var empty: Array[Vector2i] = []
+		return empty
+	# No highlights if no MOVE resource available
+	var move_available: int = int(dice_manager.crest_pool.get("move", 0))
+	if move_available <= 0:
+		var empty: Array[Vector2i] = []
+		return empty
+	var cell: Vector2i = unit["cell"]
+	var move_range: int = int(unit.get("move_range", 1))
+	return board_manager.get_reachable_cells(cell, move_range)
+
+## Attempt to move a player unit, paying 1 MOVE crest. Returns true on success.
+func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return false
+	if String(unit.get("owner", "")) != "player":
+		return false
+	# Verify target is reachable
+	var reachable: Array[Vector2i] = get_reachable_cells_for(unit_id)
+	var found: bool = false
+	for rc in reachable:
+		if rc == target_cell:
+			found = true
+			break
+	if not found:
+		return false
+	# Pay 1 MOVE crest
+	var cost: Dictionary = {"move": 1}
+	if not dice_manager.can_pay(cost):
+		return false
+	dice_manager.pay(cost)
+	var old_cell: Vector2i = unit["cell"]
+	unit_manager.move_unit(unit_id, target_cell)
+	emit_signal("move_completed", unit_id, old_cell, target_cell)
+	return true
 
 func _phase_name(phase: BattlePhase) -> String:
 	match phase:

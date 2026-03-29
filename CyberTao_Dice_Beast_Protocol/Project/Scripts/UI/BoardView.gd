@@ -1,16 +1,25 @@
 extends Control
 class_name BoardView
 
+signal unit_selected(unit_id: String)
+signal unit_deselected
+signal move_requested(unit_id: String, target_cell: Vector2i)
+
 const CELL_SIZE: int = 72
 const GRID_W: int = 8
 const GRID_H: int = 8
 
 var board_manager: Node = null
 var unit_manager: Node = null
+var battle_flow: Node = null
+
+# Selection state
+var selected_unit_id: String = ""
+var highlight_cells: Array[Vector2i] = []
 
 func _ready() -> void:
 	size = Vector2(GRID_W * CELL_SIZE, GRID_H * CELL_SIZE)
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
 	board_manager = next_board_manager
@@ -21,13 +30,87 @@ func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
 		unit_manager.units_changed.connect(_on_state_changed)
 	queue_redraw()
 
+func bind_battle_flow(next_battle_flow: Node) -> void:
+	battle_flow = next_battle_flow
+
 func _on_state_changed() -> void:
+	# Refresh highlights if a unit is selected (board changed)
+	if selected_unit_id != "" and battle_flow:
+		highlight_cells = battle_flow.get_reachable_cells_for(selected_unit_id)
+	queue_redraw()
+
+func _gui_input(event: InputEvent) -> void:
+	if not event is InputEventMouseButton:
+		return
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
+		return
+	var cell: Vector2i = _pixel_to_cell(mb.position)
+	if not _is_valid_cell(cell):
+		return
+	_handle_cell_click(cell)
+
+func _pixel_to_cell(pixel_pos: Vector2) -> Vector2i:
+	var cx: int = int(pixel_pos.x) / CELL_SIZE
+	var cy: int = int(pixel_pos.y) / CELL_SIZE
+	return Vector2i(cx, cy)
+
+func _is_valid_cell(cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_W and cell.y < GRID_H
+
+func _handle_cell_click(cell: Vector2i) -> void:
+	# If a unit is selected and the clicked cell is a valid move target
+	if selected_unit_id != "":
+		var is_move_target: bool = false
+		for hc in highlight_cells:
+			if hc == cell:
+				is_move_target = true
+				break
+		if is_move_target:
+			emit_signal("move_requested", selected_unit_id, cell)
+			return
+		# Clicking the same unit again deselects
+		if unit_manager and unit_manager.units_by_cell.has(cell):
+			var clicked_id: String = String(unit_manager.units_by_cell[cell])
+			if clicked_id == selected_unit_id:
+				_deselect()
+				return
+			# Clicked a different player unit — select it instead
+			var clicked_unit: Dictionary = unit_manager.get_unit(clicked_id)
+			if String(clicked_unit.get("owner", "")) == "player":
+				_select_unit(clicked_id)
+				return
+		# Clicked empty cell or enemy — deselect
+		_deselect()
+		return
+	# No unit selected — check if clicking a player unit
+	if unit_manager and unit_manager.units_by_cell.has(cell):
+		var clicked_id: String = String(unit_manager.units_by_cell[cell])
+		var clicked_unit: Dictionary = unit_manager.get_unit(clicked_id)
+		if String(clicked_unit.get("owner", "")) == "player":
+			_select_unit(clicked_id)
+
+func _select_unit(unit_id: String) -> void:
+	selected_unit_id = unit_id
+	if battle_flow:
+		highlight_cells = battle_flow.get_reachable_cells_for(unit_id)
+	else:
+		highlight_cells = []
+	emit_signal("unit_selected", unit_id)
+	queue_redraw()
+
+func _deselect() -> void:
+	selected_unit_id = ""
+	highlight_cells = []
+	emit_signal("unit_deselected")
 	queue_redraw()
 
 func _draw() -> void:
 	_draw_board()
+	_draw_highlights()
 	_draw_paths()
 	_draw_units()
+	_draw_selection_ring()
 
 func _draw_board() -> void:
 	for y in range(GRID_H):
@@ -36,6 +119,15 @@ func _draw_board() -> void:
 			var base_color: Color = Color(0.11, 0.14, 0.19) if (x + y) % 2 == 0 else Color(0.08, 0.1, 0.15)
 			draw_rect(Rect2(pos, Vector2(CELL_SIZE - 2, CELL_SIZE - 2)), base_color, true)
 			draw_rect(Rect2(pos, Vector2(CELL_SIZE - 2, CELL_SIZE - 2)), Color(0.21, 0.28, 0.35, 0.6), false, 2.0)
+
+func _draw_highlights() -> void:
+	for cell in highlight_cells:
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 4, cell.y * CELL_SIZE + 4)
+		var sz: Vector2 = Vector2(CELL_SIZE - 10, CELL_SIZE - 10)
+		# Filled highlight
+		draw_rect(Rect2(pos, sz), Color(0.2, 0.8, 1.0, 0.22), true)
+		# Border highlight
+		draw_rect(Rect2(pos, sz), Color(0.2, 0.85, 1.0, 0.65), false, 2.0)
 
 func _draw_paths() -> void:
 	if board_manager == null:
@@ -55,3 +147,14 @@ func _draw_units() -> void:
 		var unit_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 12, cell.y * CELL_SIZE + 12)
 		draw_rect(Rect2(unit_pos, Vector2(CELL_SIZE - 26, CELL_SIZE - 26)), fill, true)
 		draw_rect(Rect2(unit_pos, Vector2(CELL_SIZE - 26, CELL_SIZE - 26)), Color(0.04, 0.04, 0.04, 0.9), false, 2.0)
+
+func _draw_selection_ring() -> void:
+	if selected_unit_id == "" or unit_manager == null:
+		return
+	var unit: Dictionary = unit_manager.get_unit(selected_unit_id)
+	if unit.is_empty():
+		return
+	var cell: Vector2i = unit["cell"]
+	var ring_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 6, cell.y * CELL_SIZE + 6)
+	var ring_sz: Vector2 = Vector2(CELL_SIZE - 14, CELL_SIZE - 14)
+	draw_rect(Rect2(ring_pos, ring_sz), Color(1.0, 0.85, 0.2, 0.85), false, 3.0)
