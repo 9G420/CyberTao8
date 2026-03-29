@@ -14,3 +14,9 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+
+# CyberTao: Dice Beast Protocol local noise
+*.uid
+*.import
+CyberTao_Dice_Beast_Protocol/Signals/*.json
+CyberTao_Dice_Beast_Protocol/Signals/*.log
