@@ -310,7 +310,7 @@ Git配置: user.name="9G420", user.email="9g420@users.noreply.github.com"
 - BattleManager.gd约3170行，是最核心也最大的文件
 - PixelArtGenerator.gd约2150行，128×128卡面+96×128角色+bloom/vignette后处理
 
-请先拉取代码并阅读项目结构，然后从🔴优先级任务开始工作。如有任何疑问请直接问我。
+请先拉取代码并阅读项目结构，然后从🔴优先级任务开始工作。等我确认没问题之后说开始再开始你的工作，如有任何疑问请直接问我。
 ```
 
 ---
