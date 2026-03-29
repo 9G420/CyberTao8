@@ -8,6 +8,7 @@ var occupied_cells: Dictionary = {}
 var path_cells: Dictionary = {}
 var item_cells: Dictionary = {}
 var terrain_cells: Dictionary = {}  # cell -> String ("high_ground" / "trap")
+var encounter_cells: Dictionary = {}  # cell -> String (encounter_id)
 
 func build_test_board(size: Vector2i) -> void:
 	board_size = size
@@ -15,6 +16,7 @@ func build_test_board(size: Vector2i) -> void:
 	path_cells.clear()
 	item_cells.clear()
 	terrain_cells.clear()
+	encounter_cells.clear()
 	emit_signal("board_changed")
 
 func clear_board() -> void:
@@ -22,6 +24,7 @@ func clear_board() -> void:
 	path_cells.clear()
 	item_cells.clear()
 	terrain_cells.clear()
+	encounter_cells.clear()
 	emit_signal("board_changed")
 
 func is_in_bounds(cell: Vector2i) -> bool:
@@ -112,3 +115,14 @@ func get_free_neighbors(cell: Vector2i) -> Array[Vector2i]:
 		if not occupied_cells.has(nb) and not path_cells.has(nb):
 			result.append(nb)
 	return result
+
+## 添加遭遇格（encounter_id 用于区分不同遭遇）
+func add_encounter_cell(cell: Vector2i, encounter_id: String) -> void:
+	if is_in_bounds(cell):
+		encounter_cells[cell] = encounter_id
+		emit_signal("board_changed")
+
+## 清除指定遭遇格
+func clear_encounter_cell(cell: Vector2i) -> void:
+	encounter_cells.erase(cell)
+	emit_signal("board_changed")

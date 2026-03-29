@@ -172,6 +172,7 @@ func _filter_summon_cells(raw_summon_cells: Array[Vector2i]) -> Array[Vector2i]:
 func _draw() -> void:
 	_draw_board()
 	_draw_terrain()
+	_draw_encounters()
 	_draw_highlights()
 	_draw_attack_highlights()
 	_draw_summon_highlights()
@@ -225,6 +226,23 @@ func _draw_terrain() -> void:
 			# 标记文字
 			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
 			draw_string(font, text_pos, "TRAP", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(1.0, 0.35, 0.25, 0.8))
+
+## 绘制遭遇格：橙红警告色填充 + 边框 + "遭遇" 文字标记
+func _draw_encounters() -> void:
+	if board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 10
+	for cell in board_manager.encounter_cells.keys():
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
+		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
+		# 橙红警告色填充
+		draw_rect(Rect2(pos, sz), Color(1.0, 0.35, 0.1, 0.35), true)
+		# 橙红边框（脉冲感）
+		draw_rect(Rect2(pos, sz), Color(1.0, 0.4, 0.15, 0.85), false, 2.5)
+		# "遭遇" 文字标记
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
+		draw_string(font, text_pos, "遭遇", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 0.5, 0.2, 0.9))
 
 func _draw_attack_highlights() -> void:
 	for cell in attack_highlight_cells:
@@ -448,3 +466,21 @@ func _clear_flash() -> void:
 	_flash_cell = Vector2i(-1, -1)
 	_flash_alpha = 0.0
 	queue_redraw()
+
+## 遭遇触发反馈：在遭遇格显示橙红色飘字
+func play_encounter_feedback(cell: Vector2i, text: String) -> void:
+	var lbl: Label = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 20)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.45, 0.15))
+	var start_x: float = cell.x * CELL_SIZE + 6
+	var start_y: float = cell.y * CELL_SIZE + 6
+	lbl.position = Vector2(start_x, start_y)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw: Tween = lbl.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(lbl, "position:y", start_y - 44.0, 0.9)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.9)
+	tw.set_parallel(false)
+	tw.tween_callback(lbl.queue_free)

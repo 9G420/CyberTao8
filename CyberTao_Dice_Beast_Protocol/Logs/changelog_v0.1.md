@@ -528,3 +528,34 @@
 - 本轮仅改善可读性，不增加 AI 策略复杂度
 - 面板只显示最后一条意图，不保留敌方行动历史日志
 - 预警闪烁使用与攻击反馈相同的 `_flash_cell` 机制，不会同时多格闪烁
+
+## v0.1.22 - 2026-03-29
+
+### 新增
+
+- 遭遇格原型入口（Day 6：棋盘走位层扩展）
+- `BoardManager` 新增 `encounter_cells` 字典（cell → encounter_id）
+- `BoardManager.add_encounter_cell()`：添加遭遇格，含边界检查
+- `BoardManager.clear_encounter_cell()`：清除指定遭遇格
+- `BattleFlowController` 新增 `encounter_triggered` 信号（unit_id, encounter_id, cell）
+- `BattleFlowController._spawn_debug_encounters()`：预置 2 个遭遇格 (4,4) encounter_01、(6,5) encounter_02
+- `BattleFlowController._check_encounter()`：玩家单位移动到遭遇格时触发遭遇信号
+- `BoardView._draw_encounters()`：遭遇格渲染为橙红色填充 + 边框 + "遭遇" 文字标记
+- `BoardView.play_encounter_feedback()`：遭遇触发时橙红色飘字反馈（"遭遇！"上浮渐隐 0.9s）
+- `DiceDebugPanel` 连接 `encounter_triggered` 信号，触发时显示 "遭遇！准备进入战斗... [encounter_id]"
+- `Main.gd` 连接 `encounter_triggered` 信号，触发橙红飘字反馈
+- 提示栏新增 "橙红=遭遇" 说明
+
+### 修改
+
+- `BoardManager.build_test_board()` 和 `clear_board()` 现在清空 `encounter_cells`
+- `BattleFlowController.try_move_unit()` 移动后增加遭遇格检查（道具拾取之后）
+- `BattleFlowController._bootstrap()` 和 `restart_battle()` 调用 `_spawn_debug_encounters()`
+
+### 备注
+
+- 本轮为遭遇入口最小验证，不切场景、不实现卡牌战斗
+- 当前踩遭遇格只触发信号和占位提示，不暂停棋盘流程
+- 遭遇格踩后不消失（Day 7 遭遇暂停流程中处理清除逻辑）
+- 遭遇格位置：(4,4) 在玩家前进路线中段，(6,5) 在侧翼可选绕行
+- 为 Day 7（遭遇暂停）和 Day 9（卡牌战斗）预留了信号接口

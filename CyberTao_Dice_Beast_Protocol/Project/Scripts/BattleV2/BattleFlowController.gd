@@ -12,6 +12,7 @@ signal terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, te
 signal item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i)
 signal enemy_action_announced(unit_id: String, action_type: String, detail: String)
 signal enemy_turn_ended
+signal encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -76,6 +77,7 @@ func _bootstrap() -> void:
 	_spawn_debug_units()
 	_spawn_debug_terrain()
 	_spawn_debug_items()
+	_spawn_debug_encounters()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -202,6 +204,13 @@ func _spawn_debug_items() -> void:
 	board_manager.add_item_cell(Vector2i(4, 5), "patch_tea_cache")
 	# 超频骨头：+1 MOVE crest，位于前进路线上
 	board_manager.add_item_cell(Vector2i(2, 6), "overclock_bone")
+
+## 放置调试用遭遇格（橙红警告色，踩上触发遭遇信号）
+func _spawn_debug_encounters() -> void:
+	# 遭遇格 1：玩家前进路线中段，难以绕过
+	board_manager.add_encounter_cell(Vector2i(4, 4), "encounter_01")
+	# 遭遇格 2：偏侧翼，可选择绕行或主动踩入
+	board_manager.add_encounter_cell(Vector2i(6, 5), "encounter_02")
 
 ## 单位进入格子后检查陷阱地形，触发 1 点伤害（陷阱适性单位免疫）
 func _check_terrain_trap(unit_id: String, cell: Vector2i) -> void:
@@ -381,6 +390,9 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 	# 检查道具拾取（单位存活时）
 	if not unit_manager.get_unit(unit_id).is_empty():
 		_check_item_pickup(unit_id, target_cell)
+	# 检查遭遇格（单位存活时）
+	if not unit_manager.get_unit(unit_id).is_empty():
+		_check_encounter(unit_id, target_cell)
 	return true
 
 ## Return attackable cells for a player unit. Empty if no ATTACK crest available.
@@ -459,6 +471,14 @@ func _check_item_pickup(unit_id: String, cell: Vector2i) -> void:
 	var effect_text: String = _apply_item_effect(item_id, unit_id)
 	emit_signal("item_picked_up", unit_id, item_id, effect_text, cell)
 	board_manager.emit_signal("board_changed")
+
+## 检查遭遇格：玩家单位踩到遭遇格时触发遭遇信号
+func _check_encounter(unit_id: String, cell: Vector2i) -> void:
+	if not board_manager.encounter_cells.has(cell):
+		return
+	var encounter_id: String = String(board_manager.encounter_cells[cell])
+	# 触发遭遇信号（当前版本仅发信号+提示，不切场景）
+	emit_signal("encounter_triggered", unit_id, encounter_id, cell)
 
 ## 执行道具效果并返回效果描述
 func _apply_item_effect(item_id: String, unit_id: String) -> String:
@@ -608,6 +628,7 @@ func restart_battle() -> void:
 	_spawn_debug_units()
 	_spawn_debug_terrain()
 	_spawn_debug_items()
+	_spawn_debug_encounters()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

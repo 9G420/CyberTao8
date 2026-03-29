@@ -51,7 +51,7 @@ func _build_debug_view() -> void:
 	add_child(subtitle)
 
 	var hint := Label.new()
-	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 | *=适性激活"
+	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 | *=适性激活"
 	hint.position = Vector2(0, 68)
 	hint.size = Vector2(1280, 22)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -111,6 +111,7 @@ func _wire_debug_views() -> void:
 	_battle_flow.item_picked_up.connect(_on_item_picked_up)
 	_battle_flow.enemy_action_announced.connect(_on_enemy_action_announced)
 	_battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
+	_battle_flow.encounter_triggered.connect(_on_encounter_triggered)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -185,6 +186,11 @@ func _on_enemy_action_announced(unit_id: String, action_type: String, detail: St
 
 func _on_enemy_turn_ended() -> void:
 	# 敌方回合结束，清除残留闪烁
+	_board_view.queue_redraw()
+
+func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i) -> void:
+	# 遭遇触发反馈：橙红色飘字提示
+	_board_view.play_encounter_feedback(cell, "遭遇！")
 	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:

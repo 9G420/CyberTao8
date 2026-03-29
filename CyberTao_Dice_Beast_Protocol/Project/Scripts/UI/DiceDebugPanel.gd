@@ -45,6 +45,8 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.enemy_action_announced.connect(_on_enemy_action_announced)
 	if battle_flow.enemy_turn_ended and not battle_flow.enemy_turn_ended.is_connected(_on_enemy_turn_ended):
 		battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
+	if battle_flow.encounter_triggered and not battle_flow.encounter_triggered.is_connected(_on_encounter_triggered):
+		battle_flow.encounter_triggered.connect(_on_encounter_triggered)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -223,6 +225,10 @@ func _on_enemy_action_announced(_unit_id: String, _action_type: String, detail: 
 
 func _on_enemy_turn_ended() -> void:
 	enemy_intent_label.text = "敌方回合结束"
+
+func _on_encounter_triggered(_unit_id: String, encounter_id: String, _cell: Vector2i) -> void:
+	enemy_intent_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.15))
+	enemy_intent_label.text = "遭遇！准备进入战斗... [" + encounter_id + "]"
 
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	var pool: Dictionary = next_crest_pool
