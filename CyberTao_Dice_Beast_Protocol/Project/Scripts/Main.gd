@@ -51,7 +51,7 @@ func _build_debug_view() -> void:
 	add_child(subtitle)
 
 	var hint := Label.new()
-	hint.text = "左侧棋盘：点击单位后 青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱"
+	hint.text = "左侧棋盘：点击单位后 青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 | *=适性激活"
 	hint.position = Vector2(0, 68)
 	hint.size = Vector2(1280, 22)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

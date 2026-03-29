@@ -15,4 +15,5 @@ class_name UnitData
 @export var traits: Array[String] = []
 @export var skill_ids: Array[String] = []
 @export var meme_tags: Array[String] = []
+@export var terrain_affinity: String = ""  # "high_ground" / "path" / "trap"
 @export var upgraded_version: String = ""

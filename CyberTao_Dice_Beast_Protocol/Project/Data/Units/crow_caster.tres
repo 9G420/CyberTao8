@@ -18,4 +18,5 @@ attack_range = 3
 traits = Array[String](["curse", "trap", "ranged"])
 skill_ids = Array[String](["black_feather_hex", "signal_snare"])
 meme_tags = Array[String](["鸦机", "远程控场", "阴间运营"])
+terrain_affinity = "high_ground"
 upgraded_version = ""

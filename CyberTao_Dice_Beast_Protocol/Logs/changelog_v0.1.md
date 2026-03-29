@@ -434,3 +434,35 @@
 - 根因：adjacent free cells 同时存在于 BFS 可达集和召唤候选集，原 summon 优先导致误触
 - 修复后行为：有 MOVE crest 时点击相邻格 = 移动；无 MOVE 但有 SUMMON 时 = 召唤
 - 调试面板"测试召唤"按钮不受影响，始终可用
+
+## v0.1.19 - 2026-03-29
+
+### 新增
+
+- 单位地形适性系统第一版：每种单位拥有不同的地形适性标签，影响战斗表现
+- `UnitData.gd` 新增 `terrain_affinity` 字段（"high_ground" / "path" / "trap"）
+- 刀盾狗（blade_shield_dog）：路径适性 — 站在路径格上 DEF +1
+- 灵狐骇客（hacker_fox）：陷阱适性 — 免疫陷阱伤害
+- 鸦机术士（crow_caster）：高台适性 — 高台攻击范围加成 +2（非通用的 +1）
+- 三个 .tres 单位文件均添加 `terrain_affinity` 属性
+- `BattleFlowController._calc_damage_with_terrain()`：含地形适性加成的伤害计算（路径格 DEF +1）
+- `BattleFlowController._check_terrain_trap()` 增加陷阱适性免疫检查
+- `ActionResolver.get_attackable_cells()` 高台适性单位在高台上攻击范围 +2
+- `UnitManager.spawn_unit()` 新增 `terrain_affinity` 和 `display_name` 字段传递
+- `BoardView._draw_unit_names()`：单位名称缩写显示（区分不同单位）
+- `BoardView._draw_terrain_affinity_indicator()`：单位站在匹配地形上时显示 * 指示器
+- 调试布局升级为 3 个玩家单位 + 2 个敌方单位
+- 提示栏新增 "*=适性激活" 说明
+
+### 修改
+
+- `_spawn_debug_units()` 重写：生成刀盾狗(0,6)、灵狐骇客(1,7)、鸦机术士(0,5) 三个玩家单位
+- 敌方从 1 个增加到 2 个：哨兵甲(3,4) HP5/ATK2 + 哨兵乙(5,3) HP4/ATK3
+- 所有伤害计算（玩家攻击、敌方攻击）统一使用 `_calc_damage_with_terrain()`
+
+### 备注
+
+- 三种适性效果简洁且互不重叠：攻击增强（高台）、防御增强（路径）、生存增强（陷阱）
+- 适性激活需要"站在匹配地形上"，鼓励地形策略
+- 敌方单位暂无地形适性（可在 AI 增强版本中添加）
+- 召唤单位暂无地形适性

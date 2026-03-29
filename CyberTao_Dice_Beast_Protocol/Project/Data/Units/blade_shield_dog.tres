@@ -18,4 +18,5 @@ attack_range = 1
 traits = Array[String](["guard", "retaliate", "push"])
 skill_ids = Array[String](["my_blade_and_shield", "rough_counter"])
 meme_tags = Array[String](["刀盾狗", "抽象", "硬汉"])
+terrain_affinity = "path"
 upgraded_version = ""

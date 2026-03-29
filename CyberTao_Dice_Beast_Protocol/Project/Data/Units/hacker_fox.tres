@@ -18,4 +18,5 @@ attack_range = 2
 traits = Array[String](["hack", "shift", "debuff"])
 skill_ids = Array[String](["ghost_shift", "steal_signal"])
 meme_tags = Array[String](["灵狐", "偷资源", "赛博诡道"])
+terrain_affinity = "trap"
 upgraded_version = ""

@@ -178,6 +178,8 @@ func _draw() -> void:
 	_draw_paths()
 	_draw_units()
 	_draw_unit_hp()
+	_draw_unit_names()
+	_draw_terrain_affinity_indicator()
 	_draw_selection_ring()
 	_draw_attack_flash()
 
@@ -286,6 +288,47 @@ func _draw_unit_hp() -> void:
 		var hp_text: String = str(hp) + "/" + str(max_hp)
 		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE - 8)
 		draw_string(font, text_pos, hp_text, HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 1.0, 1.0, 0.95))
+
+## 绘制单位名称缩写（区分不同单位）
+func _draw_unit_names() -> void:
+	if unit_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 9
+	for cell in unit_manager.units_by_cell.keys():
+		var uid: String = String(unit_manager.units_by_cell[cell])
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		var display_name: String = String(unit.get("display_name", ""))
+		if display_name == "":
+			continue
+		# 取前两个字符作为缩写
+		var short_name: String = display_name.substr(0, 2)
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + 22)
+		var name_color: Color = Color(0.9, 0.95, 1.0, 0.85) if String(unit.get("owner", "")) == "player" else Color(1.0, 0.85, 0.8, 0.85)
+		draw_string(font, text_pos, short_name, HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, name_color)
+
+## 绘制地形适性激活指示器（单位站在匹配地形上时显示 ★）
+func _draw_terrain_affinity_indicator() -> void:
+	if unit_manager == null or board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 12
+	for cell in unit_manager.units_by_cell.keys():
+		var uid: String = String(unit_manager.units_by_cell[cell])
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		var affinity: String = String(unit.get("terrain_affinity", ""))
+		if affinity == "":
+			continue
+		var active: bool = false
+		if affinity == "high_ground" and board_manager.get_terrain_type(cell) == "high_ground":
+			active = true
+		elif affinity == "path" and board_manager.path_cells.has(cell):
+			active = true
+		elif affinity == "trap" and board_manager.get_terrain_type(cell) == "trap":
+			active = true
+		if active:
+			var star_pos: Vector2 = Vector2(cell.x * CELL_SIZE + CELL_SIZE - 18, cell.y * CELL_SIZE + 14)
+			draw_string(font, star_pos, "*", HORIZONTAL_ALIGNMENT_LEFT, 14, font_size, Color(1.0, 0.95, 0.3, 0.95))
 
 func _draw_selection_ring() -> void:
 	if selected_unit_id == "" or unit_manager == null:

@@ -20,6 +20,8 @@ func spawn_unit(unit_id: String, payload: Dictionary, cell: Vector2i) -> void:
 		"attack_range": int(payload.get("attack_range", 1)),
 		"owner": String(payload.get("owner", "player")),
 		"tags": payload.get("tags", []),
+		"terrain_affinity": String(payload.get("terrain_affinity", "")),
+		"display_name": String(payload.get("display_name", "")),
 	}
 	units_by_id[unit_id] = unit_state
 	units_by_cell[cell] = unit_id

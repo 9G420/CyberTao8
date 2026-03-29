@@ -115,6 +115,7 @@ func spawn_demo_path() -> void:
 		board_manager.add_path_cell(Vector2i(x, 6), owner_id)
 
 func _spawn_debug_units() -> void:
+	# 玩家单位 1：刀盾狗（前排坦克，路径适性）
 	var dog_data := load("res://Data/Units/blade_shield_dog.tres") as UnitData
 	if dog_data:
 		unit_manager.spawn_unit(dog_data.unit_id, {
@@ -125,8 +126,39 @@ func _spawn_debug_units() -> void:
 			"attack_range": dog_data.attack_range,
 			"owner": "player",
 			"tags": dog_data.meme_tags,
+			"terrain_affinity": dog_data.terrain_affinity,
+			"display_name": dog_data.unit_name,
 		}, Vector2i(0, 6))
-	var enemy_data := {
+	# 玩家单位 2：灵狐骇客（控制型，陷阱适性）
+	var fox_data := load("res://Data/Units/hacker_fox.tres") as UnitData
+	if fox_data:
+		unit_manager.spawn_unit(fox_data.unit_id, {
+			"max_hp": fox_data.max_hp,
+			"atk": fox_data.atk,
+			"def": fox_data.def,
+			"move_range": fox_data.move_range,
+			"attack_range": fox_data.attack_range,
+			"owner": "player",
+			"tags": fox_data.meme_tags,
+			"terrain_affinity": fox_data.terrain_affinity,
+			"display_name": fox_data.unit_name,
+		}, Vector2i(1, 7))
+	# 玩家单位 3：鸦机术士（远程控场，高台适性）
+	var crow_data := load("res://Data/Units/crow_caster.tres") as UnitData
+	if crow_data:
+		unit_manager.spawn_unit(crow_data.unit_id, {
+			"max_hp": crow_data.max_hp,
+			"atk": crow_data.atk,
+			"def": crow_data.def,
+			"move_range": crow_data.move_range,
+			"attack_range": crow_data.attack_range,
+			"owner": "player",
+			"tags": crow_data.meme_tags,
+			"terrain_affinity": crow_data.terrain_affinity,
+			"display_name": crow_data.unit_name,
+		}, Vector2i(0, 5))
+	# 敌方单位 1
+	var enemy_data_1: Dictionary = {
 		"max_hp": 5,
 		"atk": 2,
 		"def": 0,
@@ -134,8 +166,21 @@ func _spawn_debug_units() -> void:
 		"attack_range": 1,
 		"owner": "enemy",
 		"tags": ["grunt"],
+		"display_name": "哨兵甲",
 	}
-	unit_manager.spawn_unit("enemy_debug_grunt", enemy_data, Vector2i(3, 4))
+	unit_manager.spawn_unit("enemy_grunt_1", enemy_data_1, Vector2i(3, 4))
+	# 敌方单位 2
+	var enemy_data_2: Dictionary = {
+		"max_hp": 4,
+		"atk": 3,
+		"def": 0,
+		"move_range": 1,
+		"attack_range": 1,
+		"owner": "enemy",
+		"tags": ["grunt"],
+		"display_name": "哨兵乙",
+	}
+	unit_manager.spawn_unit("enemy_grunt_2", enemy_data_2, Vector2i(5, 3))
 
 ## 放置调试用地形格
 func _spawn_debug_terrain() -> void:
@@ -146,9 +191,13 @@ func _spawn_debug_terrain() -> void:
 	board_manager.add_terrain_cell(Vector2i(1, 5), "trap")
 	board_manager.add_terrain_cell(Vector2i(3, 6), "trap")
 
-## 单位进入格子后检查陷阱地形，触发 1 点伤害
+## 单位进入格子后检查陷阱地形，触发 1 点伤害（陷阱适性单位免疫）
 func _check_terrain_trap(unit_id: String, cell: Vector2i) -> void:
 	if board_manager.get_terrain_type(cell) != "trap":
+		return
+	# 陷阱适性单位免疫陷阱伤害
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if String(unit.get("terrain_affinity", "")) == "trap":
 		return
 	var trap_damage: int = 1
 	var killed: bool = unit_manager.apply_damage(unit_id, trap_damage)
@@ -200,7 +249,7 @@ func _execute_enemy_actions() -> void:
 			var target_cell: Vector2i = adjacent_players[0]
 			var defender_id: String = String(unit_manager.units_by_cell[target_cell])
 			var defender: Dictionary = unit_manager.get_unit(defender_id)
-			var damage: int = AttackRuleHelper.calc_basic_damage(unit, defender)
+			var damage: int = _calc_damage_with_terrain(unit, defender)
 			var killed: bool = unit_manager.apply_damage(defender_id, damage)
 			emit_signal("enemy_attack_completed", uid, defender_id, damage, killed, target_cell)
 			_check_battle_outcome()
@@ -230,7 +279,7 @@ func _execute_enemy_actions() -> void:
 						var def_id: String = String(unit_manager.units_by_cell[atk_target_cell])
 						var refreshed_unit: Dictionary = unit_manager.get_unit(uid)
 						var defender2: Dictionary = unit_manager.get_unit(def_id)
-						var dmg: int = AttackRuleHelper.calc_basic_damage(refreshed_unit, defender2)
+						var dmg: int = _calc_damage_with_terrain(refreshed_unit, defender2)
 						var killed2: bool = unit_manager.apply_damage(def_id, dmg)
 						emit_signal("enemy_attack_completed", uid, def_id, dmg, killed2, atk_target_cell)
 						_check_battle_outcome()
@@ -330,9 +379,9 @@ func try_attack_unit(attacker_id: String, target_cell: Vector2i) -> bool:
 	if not dice_manager.can_pay(cost):
 		return false
 	dice_manager.pay(cost)
-	# Calculate damage and apply
+	# Calculate damage and apply (含地形适性加成)
 	var defender: Dictionary = unit_manager.get_unit(defender_id)
-	var damage: int = AttackRuleHelper.calc_basic_damage(attacker, defender)
+	var damage: int = _calc_damage_with_terrain(attacker, defender)
 	var killed: bool = unit_manager.apply_damage(defender_id, damage)
 	emit_signal("attack_completed", attacker_id, defender_id, damage, killed)
 	# Check for battle end after attack
@@ -345,6 +394,18 @@ func _check_battle_outcome() -> void:
 		mark_victory()
 	elif outcome == "DEFEAT" or outcome == "DRAW":
 		mark_defeat()
+
+## 计算含地形适性加成的伤害值
+## 路径适性：防御方站在路径格上时 DEF +1
+func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> int:
+	var def_bonus: int = 0
+	var defender_cell: Vector2i = defender.get("cell", Vector2i(-1, -1))
+	if String(defender.get("terrain_affinity", "")) == "path":
+		if board_manager.path_cells.has(defender_cell):
+			def_bonus = 1
+	var raw_attack: int = int(attacker.get("atk", 0))
+	var raw_defense: int = int(defender.get("def", 0)) + def_bonus
+	return max(1, raw_attack - raw_defense)
 
 ## 获取以指定单位为原点的可召唤格（空闲相邻格）。如果 SUMMON crest 不足返回空。
 func get_summon_cells_for(unit_id: String) -> Array[Vector2i]:
