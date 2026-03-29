@@ -38,6 +38,8 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.summon_completed.connect(_on_summon_completed)
 	if battle_flow.terrain_damage_triggered and not battle_flow.terrain_damage_triggered.is_connected(_on_terrain_damage_triggered):
 		battle_flow.terrain_damage_triggered.connect(_on_terrain_damage_triggered)
+	if battle_flow.item_picked_up and not battle_flow.item_picked_up.is_connected(_on_item_picked_up):
+		battle_flow.item_picked_up.connect(_on_item_picked_up)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -193,6 +195,9 @@ func _on_summon_completed(_unit_id: String, _path_cells: Array[Vector2i], _spawn
 	_refresh_crest_pool()
 
 func _on_terrain_damage_triggered(_unit_id: String, _cell: Vector2i, _damage: int, _terrain_type: String) -> void:
+	_refresh_crest_pool()
+
+func _on_item_picked_up(_unit_id: String, _item_id: String, _effect_text: String, _cell: Vector2i) -> void:
 	_refresh_crest_pool()
 
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:

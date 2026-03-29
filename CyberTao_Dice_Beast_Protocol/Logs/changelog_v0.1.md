@@ -466,3 +466,36 @@
 - 适性激活需要"站在匹配地形上"，鼓励地形策略
 - 敌方单位暂无地形适性（可在 AI 增强版本中添加）
 - 召唤单位暂无地形适性
+
+## v0.1.20 - 2026-03-29
+
+### 新增
+
+- 道具拾取系统第一版：棋盘上放置可拾取道具格，单位移动经过时自动拾取
+- `BattleFlowController._spawn_debug_items()`：预置 2 个道具格（补丁凉茶 + 超频骨头）
+- `BattleFlowController._check_item_pickup()`：单位移动后检查目标格是否有道具
+- `BattleFlowController._apply_item_effect()`：执行道具效果并返回效果描述
+- `BattleFlowController.item_picked_up` 信号（unit_id, item_id, effect_text, cell）
+- 接入 `ItemEffectLibrary`：3 种道具效果从 stub 变为实际生效
+  - 补丁凉茶（patch_tea_cache）：回复 2 HP
+  - 超频骨头（overclock_bone）：+1 MOVE crest
+  - 故障零食盒（glitch_snack_box）：随机 +1 ATTACK/DEFEND/SKILL crest
+- `BoardView._draw_items()`：绿色填充+边框+道具名称缩写渲染
+- `BoardView.play_pickup_feedback()`：拾取时绿色飘字显示效果（HP+2 / MOVE+1 等）
+- `DiceDebugPanel` 连接 `item_picked_up` 信号，拾取后刷新 crest 池显示
+- `Main.gd` 连接 `item_picked_up` 信号，触发拾取反馈
+- 提示栏新增 "绿色=道具" 说明
+
+### 修改
+
+- `try_move_unit()` 移动后增加道具拾取检查（陷阱检查之后，确保存活才拾取）
+- `restart_battle()` 重开时重新放置调试道具
+- `BoardManager.item_cells` 字典从死链变为实际使用
+
+### 备注
+
+- 道具格被拾取后从棋盘消失（不可重复拾取）
+- 当前为固定放置，不支持随机生成
+- 仅玩家单位触发拾取，敌方移动不触发
+- 道具效果为即时生效，无持续 buff（BuffManager.tick_turn 仍未接入）
+- 补丁凉茶回复不超过 max_hp

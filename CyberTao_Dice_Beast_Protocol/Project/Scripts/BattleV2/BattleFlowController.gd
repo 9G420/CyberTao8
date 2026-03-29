@@ -9,6 +9,7 @@ signal enemy_attack_completed(attacker_id: String, defender_id: String, damage: 
 signal summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i)
 signal round_changed(round_number: int)
 signal terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String)
+signal item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -19,6 +20,7 @@ const BattleAI = preload("res://Scripts/BattleV2/BattleAI.gd")
 const AttackRuleHelper = preload("res://Scripts/BattleV2/AttackRuleHelper.gd")
 const VictoryRuleHelper = preload("res://Scripts/BattleV2/VictoryRuleHelper.gd")
 const UnitData = preload("res://Scripts/Data/UnitData.gd")
+const ItemEffectLibrary = preload("res://Scripts/BattleV2/ItemEffectLibrary.gd")
 
 enum BattlePhase {
 	BOOT,
@@ -71,6 +73,7 @@ func _bootstrap() -> void:
 	board_manager.build_test_board(Vector2i(8, 8))
 	_spawn_debug_units()
 	_spawn_debug_terrain()
+	_spawn_debug_items()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -190,6 +193,13 @@ func _spawn_debug_terrain() -> void:
 	# 陷阱格：玩家前进路线上，2 格
 	board_manager.add_terrain_cell(Vector2i(1, 5), "trap")
 	board_manager.add_terrain_cell(Vector2i(3, 6), "trap")
+
+## 放置调试用道具格
+func _spawn_debug_items() -> void:
+	# 补丁凉茶：回复 2 HP，位于中部（值得绕路去拿）
+	board_manager.add_item_cell(Vector2i(4, 5), "patch_tea_cache")
+	# 超频骨头：+1 MOVE crest，位于前进路线上
+	board_manager.add_item_cell(Vector2i(2, 6), "overclock_bone")
 
 ## 单位进入格子后检查陷阱地形，触发 1 点伤害（陷阱适性单位免疫）
 func _check_terrain_trap(unit_id: String, cell: Vector2i) -> void:
@@ -338,6 +348,9 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 	emit_signal("move_completed", unit_id, old_cell, target_cell)
 	# 检查陷阱地形
 	_check_terrain_trap(unit_id, target_cell)
+	# 检查道具拾取（单位存活时）
+	if not unit_manager.get_unit(unit_id).is_empty():
+		_check_item_pickup(unit_id, target_cell)
 	return true
 
 ## Return attackable cells for a player unit. Empty if no ATTACK crest available.
@@ -406,6 +419,63 @@ func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> in
 	var raw_attack: int = int(attacker.get("atk", 0))
 	var raw_defense: int = int(defender.get("def", 0)) + def_bonus
 	return max(1, raw_attack - raw_defense)
+
+## 检查并执行道具拾取
+func _check_item_pickup(unit_id: String, cell: Vector2i) -> void:
+	if not board_manager.item_cells.has(cell):
+		return
+	var item_id: String = String(board_manager.item_cells[cell])
+	board_manager.item_cells.erase(cell)
+	var effect_text: String = _apply_item_effect(item_id, unit_id)
+	emit_signal("item_picked_up", unit_id, item_id, effect_text, cell)
+	board_manager.emit_signal("board_changed")
+
+## 执行道具效果并返回效果描述
+func _apply_item_effect(item_id: String, unit_id: String) -> String:
+	var context: Dictionary = {"unit_id": unit_id}
+	var effect_id: String = ""
+	# 从 item_id 映射到 effect_id
+	match item_id:
+		"patch_tea_cache":
+			effect_id = "heal_and_cleanse"
+		"overclock_bone":
+			effect_id = "gain_move_and_attack_boost"
+		"glitch_snack_box":
+			effect_id = "random_crest_gain"
+		_:
+			return ""
+	var result: Dictionary = ItemEffectLibrary.execute(effect_id, context)
+	if not result.get("ok", false):
+		return ""
+	# 应用效果
+	var effect: String = String(result.get("effect", ""))
+	match effect:
+		"heal_and_cleanse":
+			var heal: int = int(result.get("heal", 0))
+			var unit: Dictionary = unit_manager.get_unit(unit_id)
+			if not unit.is_empty():
+				var new_hp: int = min(int(unit.get("hp", 0)) + heal, int(unit.get("max_hp", 1)))
+				unit["hp"] = new_hp
+				unit_manager.units_by_id[unit_id] = unit
+				unit_manager.emit_signal("units_changed")
+			return "HP+" + str(heal)
+		"gain_move_and_attack_boost":
+			var crest_bonus: Dictionary = result.get("crest_bonus", {})
+			for crest_type in crest_bonus.keys():
+				var amount: int = int(crest_bonus[crest_type])
+				var current: int = int(dice_manager.crest_pool.get(crest_type, 0))
+				dice_manager.crest_pool[crest_type] = current + amount
+			return "MOVE+1"
+		"random_crest_gain":
+			var crest_bonus: Dictionary = result.get("crest_bonus", {})
+			var gained_type: String = ""
+			for crest_type in crest_bonus.keys():
+				var amount: int = int(crest_bonus[crest_type])
+				var current: int = int(dice_manager.crest_pool.get(crest_type, 0))
+				dice_manager.crest_pool[crest_type] = current + amount
+				gained_type = String(crest_type)
+			return gained_type.to_upper() + "+1"
+	return ""
 
 ## 获取以指定单位为原点的可召唤格（空闲相邻格）。如果 SUMMON crest 不足返回空。
 func get_summon_cells_for(unit_id: String) -> Array[Vector2i]:
@@ -507,6 +577,7 @@ func restart_battle() -> void:
 	_summon_counter = 0
 	_spawn_debug_units()
 	_spawn_debug_terrain()
+	_spawn_debug_items()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

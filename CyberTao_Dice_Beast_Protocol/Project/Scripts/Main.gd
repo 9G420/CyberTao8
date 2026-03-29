@@ -51,7 +51,7 @@ func _build_debug_view() -> void:
 	add_child(subtitle)
 
 	var hint := Label.new()
-	hint.text = "左侧棋盘：点击单位后 青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 | *=适性激活"
+	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 | *=适性激活"
 	hint.position = Vector2(0, 68)
 	hint.size = Vector2(1280, 22)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -108,6 +108,7 @@ func _wire_debug_views() -> void:
 	_battle_flow.enemy_attack_completed.connect(_on_enemy_attack_completed)
 	_battle_flow.summon_completed.connect(_on_summon_completed)
 	_battle_flow.terrain_damage_triggered.connect(_on_terrain_damage_triggered)
+	_battle_flow.item_picked_up.connect(_on_item_picked_up)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -163,6 +164,11 @@ func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], 
 func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String) -> void:
 	# 地形伤害反馈：在受伤格显示伤害飘字
 	_board_view.play_attack_feedback(cell, damage)
+	_board_view.queue_redraw()
+
+func _on_item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i) -> void:
+	# 道具拾取反馈：在拾取格显示绿色效果飘字
+	_board_view.play_pickup_feedback(cell, effect_text)
 	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:

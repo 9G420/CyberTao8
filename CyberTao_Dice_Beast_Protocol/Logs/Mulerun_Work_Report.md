@@ -1,29 +1,29 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-29
-**版本**: v0.1.19
+**版本**: v0.1.20
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 单位地形适性第一版（Weekly Plan Day 3）
+- buff / item 格第一版（Weekly Plan Day 4）
 
 ---
 
 ## 根因/目标
 
 ### 根因
-- 当前地形系统（高台、陷阱）对所有单位效果相同，缺乏单位差异化
-- 已有 3 种 UnitData（刀盾狗、灵狐骇客、鸦机术士）但只生成 1 个玩家单位
-- 单位间只有数值差异，没有"定位感"
+- `BoardManager.item_cells`、`ActionResolver.try_pickup()`、`BuffManager`、`ItemEffectLibrary` 四个系统全部存在但处于死链状态
+- 棋盘上没有可交互的资源点，战斗缺少"抢点 vs 推线"的策略选择
+- 3 个 ItemData .tres 文件已定义但从未被使用
 
 ### 目标
-- 给 3 种单位各自赋予不同的地形适性标签
-- 地形适性直接影响战斗表现（攻击、防御、生存）
-- 生成 3 个玩家单位 + 2 个敌方单位，展示差异
-- 添加视觉区分（名称显示、适性激活指示器）
+- 接通现有道具管道：放置 → 拾取 → 效果生效
+- 在棋盘上放置 2 种可拾取道具
+- 拾取后即时生效并有视觉反馈
+- 不做复杂持续 buff，只做即时效果
 
 ---
 
@@ -31,58 +31,55 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/Data/UnitData.gd` | 新增 `terrain_affinity` 导出字段 |
-| `Project/Data/Units/blade_shield_dog.tres` | 添加 `terrain_affinity = "path"` |
-| `Project/Data/Units/hacker_fox.tres` | 添加 `terrain_affinity = "trap"` |
-| `Project/Data/Units/crow_caster.tres` | 添加 `terrain_affinity = "high_ground"` |
-| `Project/Scripts/BattleV2/UnitManager.gd` | spawn_unit 传递 terrain_affinity 和 display_name |
-| `Project/Scripts/BattleV2/ActionResolver.gd` | 高台适性单位攻击范围 +2（非通用 +1） |
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 陷阱适性免疫；路径适性 DEF+1；3 玩家+2 敌方单位 |
-| `Project/Scripts/UI/BoardView.gd` | 单位名称缩写绘制；适性激活 * 指示器 |
-| `Project/Scripts/Main.gd` | 提示栏新增 "*=适性激活" |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | 添加 item_picked_up 信号、_spawn_debug_items()、_check_item_pickup()、_apply_item_effect()；try_move_unit 增加拾取检查；restart 增加道具重置 |
+| `Project/Scripts/UI/BoardView.gd` | 添加 _draw_items() 绿色道具格渲染；添加 play_pickup_feedback() 绿色飘字 |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | 连接 item_picked_up 信号，拾取后刷新 crest 池 |
+| `Project/Scripts/Main.gd` | 连接 item_picked_up 信号，触发拾取反馈；提示栏新增"绿色=道具" |
 | `Logs/Mulerun_Work_Report.md` | 本报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.19 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.20 条目 |
 
 ---
 
 ## 实现内容
 
-### 1. 地形适性数据层
-- `UnitData.gd` 新增 `@export var terrain_affinity: String = ""`
-- 三个 .tres 文件分别标记为 "path" / "trap" / "high_ground"
-- `UnitManager.spawn_unit()` 传递 terrain_affinity 和 display_name 到运行时字典
+### 1. 道具放置
+- `_spawn_debug_items()` 在棋盘上固定放置 2 个道具：
+  - 补丁凉茶 (4,5)：回复 2 HP
+  - 超频骨头 (2,6)：+1 MOVE crest
+- 使用已有的 `BoardManager.add_item_cell()` 方法
 
-### 2. 适性效果实现
-- **鸦机术士 (high_ground)**：`ActionResolver.get_attackable_cells()` 检测适性标签，高台上攻击范围 +2（总计 3+2=5），非适性单位仍为 +1
-- **刀盾狗 (path)**：`_calc_damage_with_terrain()` 检测防御方是否有路径适性且站在路径格上，是则 DEF +1
-- **灵狐骇客 (trap)**：`_check_terrain_trap()` 检测单位是否有陷阱适性，是则跳过陷阱伤害
+### 2. 拾取触发
+- `try_move_unit()` 在移动完成、陷阱检查之后，检查目标格是否有道具
+- 条件：单位存活（陷阱未击杀）才触发拾取
+- 拾取后道具格从 `item_cells` 中移除
 
-### 3. 全局伤害统一
-- 新增 `_calc_damage_with_terrain(attacker, defender)` 方法
-- 玩家攻击（`try_attack_unit`）和敌方攻击（`_execute_enemy_actions` 两处）统一使用此方法
+### 3. 效果执行
+- `_apply_item_effect()` 调用 `ItemEffectLibrary.execute()` 获取效果描述
+- 根据返回的 effect 类型实际应用：
+  - `heal_and_cleanse`：回复 HP（不超过 max_hp）
+  - `gain_move_and_attack_boost`：向 crest_pool 添加 MOVE
+  - `random_crest_gain`：随机添加 ATTACK/DEFEND/SKILL
 
-### 4. 调试布局升级
-- 玩家：刀盾狗(0,6) + 灵狐骇客(1,7) + 鸦机术士(0,5)
-- 敌方：哨兵甲(3,4) HP5/ATK2 + 哨兵乙(5,3) HP4/ATK3
-- 现有地形布局不变
+### 4. 视觉呈现
+- `_draw_items()`：绿色填充+边框+道具中文名缩写（"凉茶"/"骨头"）
+- `play_pickup_feedback()`：绿色飘字上浮淡出（0.7 秒），显示效果文本（如"HP+2"）
 
-### 5. 视觉区分
-- 单位方块上显示名称缩写（前两字："刀盾" "灵狐" "鸦机" "哨兵"）
-- 站在匹配地形上时右上角显示 * 金色指示器
-- 提示栏新增 "*=适性激活" 说明
+### 5. 信号接通
+- `item_picked_up` 信号 → Main.gd 触发飘字 → DiceDebugPanel 刷新 crest 池
 
 ---
 
 ## 当前剩余问题
 
-- **召唤单位无地形适性** — summoned_fox 仍为 hardcoded 数据
-- **敌方无地形适性** — 可在 AI 增强版本中添加
-- **适性效果无浮字提示** — 激活时仅有 * 指示器，无"DEF+1"等文字
-- **调试面板不显示适性信息** — 选中单位时未显示其地形适性标签
+- **道具为固定放置** — 无随机生成，无每回合补充
+- **仅玩家触发拾取** — 敌方移动到道具格不触发
+- **BuffManager.tick_turn() 仍未接入** — 持续 buff 暂不生效
+- **无道具数量限制** — 理论上可无限放置
+- **故障零食盒未放置** — 数据已就绪但调试布局只放了 2 个
 
 ---
 
 ## 建议下一步
 
-1. 在编辑器中验证三种适性效果是否如预期工作
-2. 按 Weekly Plan 继续推进 Day 4：buff / item 格第一版
+1. 在编辑器中验证道具拾取流程
+2. 按 Weekly Plan 继续推进 Day 5：敌方 AI 可读性增强

@@ -176,6 +176,7 @@ func _draw() -> void:
 	_draw_attack_highlights()
 	_draw_summon_highlights()
 	_draw_paths()
+	_draw_items()
 	_draw_units()
 	_draw_unit_hp()
 	_draw_unit_names()
@@ -262,6 +263,29 @@ func _draw_paths() -> void:
 		var path_sz: Vector2 = Vector2(CELL_SIZE - 6, CELL_SIZE - 6)
 		draw_rect(Rect2(path_pos, path_sz), fill_color, true)
 		draw_rect(Rect2(path_pos, path_sz), border_color, false, 2.0)
+
+## 绘制道具格：绿色菱形标记 + 道具名称缩写
+func _draw_items() -> void:
+	if board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 9
+	var item_names: Dictionary = {
+		"patch_tea_cache": "凉茶",
+		"overclock_bone": "骨头",
+		"glitch_snack_box": "零食",
+	}
+	for cell in board_manager.item_cells.keys():
+		var item_id: String = String(board_manager.item_cells[cell])
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 3, cell.y * CELL_SIZE + 3)
+		var sz: Vector2 = Vector2(CELL_SIZE - 8, CELL_SIZE - 8)
+		# 绿色填充 + 边框
+		draw_rect(Rect2(pos, sz), Color(0.2, 0.85, 0.4, 0.25), true)
+		draw_rect(Rect2(pos, sz), Color(0.25, 0.9, 0.45, 0.75), false, 2.0)
+		# 道具名称
+		var display: String = String(item_names.get(item_id, "?"))
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
+		draw_string(font, text_pos, display, HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(0.3, 1.0, 0.5, 0.9))
 
 func _draw_units() -> void:
 	if unit_manager == null:
@@ -374,6 +398,24 @@ func play_attack_feedback(cell: Vector2i, damage: int) -> void:
 	tw2.tween_property(_damage_label, "modulate:a", 0.0, 0.6)
 	tw2.set_parallel(false)
 	tw2.tween_callback(_damage_label.queue_free)
+
+## Play item pickup feedback: green floating text showing effect
+func play_pickup_feedback(cell: Vector2i, effect_text: String) -> void:
+	var lbl: Label = Label.new()
+	lbl.text = effect_text
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+	var start_x: float = cell.x * CELL_SIZE + 10
+	var start_y: float = cell.y * CELL_SIZE + 8
+	lbl.position = Vector2(start_x, start_y)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw: Tween = lbl.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(lbl, "position:y", start_y - 36.0, 0.7)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.7)
+	tw.set_parallel(false)
+	tw.tween_callback(lbl.queue_free)
 
 func _set_flash_alpha(val: float) -> void:
 	_flash_alpha = val
