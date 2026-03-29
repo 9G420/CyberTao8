@@ -14,6 +14,8 @@ signal enemy_action_announced(unit_id: String, action_type: String, detail: Stri
 signal enemy_turn_ended
 signal encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i)
 signal encounter_resolved(encounter_id: String, cell: Vector2i)
+signal heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int)
+signal event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -83,6 +85,8 @@ func _bootstrap() -> void:
 	_spawn_debug_terrain()
 	_spawn_debug_items()
 	_spawn_debug_encounters()
+	_spawn_debug_heal_cells()
+	_spawn_debug_event_cells()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -216,6 +220,22 @@ func _spawn_debug_encounters() -> void:
 	board_manager.add_encounter_cell(Vector2i(4, 4), "encounter_01")
 	# 遭遇格 2：偏侧翼，可选择绕行或主动踩入
 	board_manager.add_encounter_cell(Vector2i(6, 5), "encounter_02")
+
+## 放置调试用恢复格（蓝白色，持久回复，可重复踩）
+func _spawn_debug_heal_cells() -> void:
+	# 恢复格 1：玩家路线侧翼，值得绕路回复
+	board_manager.add_heal_cell(Vector2i(5, 6), 2)
+	# 恢复格 2：棋盘深处，冒险奖励
+	board_manager.add_heal_cell(Vector2i(1, 3), 3)
+
+## 放置调试用事件格（黄紫色，一次性随机效果）
+func _spawn_debug_event_cells() -> void:
+	# 事件格 1：中路必经之路
+	board_manager.add_event_cell(Vector2i(3, 5), "random_event")
+	# 事件格 2：侧翼探索奖励
+	board_manager.add_event_cell(Vector2i(6, 3), "random_event")
+	# 事件格 3：玩家出发路线附近
+	board_manager.add_event_cell(Vector2i(4, 6), "random_event")
 
 ## 单位进入格子后检查陷阱地形，触发 1 点伤害（陷阱适性单位免疫）
 func _check_terrain_trap(unit_id: String, cell: Vector2i) -> void:
@@ -395,6 +415,12 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 	# 检查道具拾取（单位存活时）
 	if not unit_manager.get_unit(unit_id).is_empty():
 		_check_item_pickup(unit_id, target_cell)
+	# 检查恢复格（单位存活时）
+	if not unit_manager.get_unit(unit_id).is_empty():
+		_check_heal_cell(unit_id, target_cell)
+	# 检查事件格（单位存活时）
+	if not unit_manager.get_unit(unit_id).is_empty():
+		_check_event_cell(unit_id, target_cell)
 	# 检查遭遇格（单位存活时）
 	if not unit_manager.get_unit(unit_id).is_empty():
 		_check_encounter(unit_id, target_cell)
@@ -509,6 +535,64 @@ func resolve_encounter() -> void:
 	current_phase = BattlePhase.PLAYER_ACTION
 	emit_signal("encounter_resolved", resolved_id, resolved_cell)
 	emit_signal("phase_changed", _phase_name(current_phase))
+
+## 检查恢复格：玩家单位踩到恢复格时回复 HP（持久，不消失）
+func _check_heal_cell(unit_id: String, cell: Vector2i) -> void:
+	if not board_manager.heal_cells.has(cell):
+		return
+	var heal_amount: int = int(board_manager.heal_cells[cell])
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return
+	var current_hp: int = int(unit.get("hp", 0))
+	var max_hp: int = int(unit.get("max_hp", 1))
+	if current_hp >= max_hp:
+		# 已满血，不触发回复
+		return
+	var actual_heal: int = min(heal_amount, max_hp - current_hp)
+	unit["hp"] = current_hp + actual_heal
+	unit_manager.units_by_id[unit_id] = unit
+	unit_manager.emit_signal("units_changed")
+	emit_signal("heal_cell_triggered", unit_id, cell, heal_amount, actual_heal)
+
+## 检查事件格：玩家单位踩到事件格时触发随机效果（一次性，踩后消失）
+func _check_event_cell(unit_id: String, cell: Vector2i) -> void:
+	if not board_manager.event_cells.has(cell):
+		return
+	var event_id: String = String(board_manager.event_cells[cell])
+	# 消耗事件格（一次性）
+	board_manager.clear_event_cell(cell)
+	# 随机决定效果（3 种可能）
+	var roll: int = randi() % 3
+	var effect_text: String = ""
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return
+	match roll:
+		0:
+			# 正面：回复 1 HP
+			var current_hp: int = int(unit.get("hp", 0))
+			var max_hp: int = int(unit.get("max_hp", 1))
+			var actual_heal: int = min(1, max_hp - current_hp)
+			if actual_heal > 0:
+				unit["hp"] = current_hp + actual_heal
+				unit_manager.units_by_id[unit_id] = unit
+				unit_manager.emit_signal("units_changed")
+			effect_text = "HP+1"
+		1:
+			# 正面：随机获得 1 crest
+			var crest_types: Array[String] = ["move", "attack", "defend", "skill", "trick", "summon"]
+			var picked: String = crest_types[randi() % crest_types.size()]
+			var current: int = int(dice_manager.crest_pool.get(picked, 0))
+			dice_manager.crest_pool[picked] = current + 1
+			effect_text = picked.to_upper() + "+1"
+		2:
+			# 负面：受到 1 点伤害
+			var killed: bool = unit_manager.apply_damage(unit_id, 1)
+			effect_text = "HP-1"
+			if killed:
+				_check_battle_outcome()
+	emit_signal("event_cell_triggered", unit_id, cell, event_id, effect_text)
 
 ## 执行道具效果并返回效果描述
 func _apply_item_effect(item_id: String, unit_id: String) -> String:
@@ -664,6 +748,8 @@ func restart_battle() -> void:
 	_spawn_debug_terrain()
 	_spawn_debug_items()
 	_spawn_debug_encounters()
+	_spawn_debug_heal_cells()
+	_spawn_debug_event_cells()
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

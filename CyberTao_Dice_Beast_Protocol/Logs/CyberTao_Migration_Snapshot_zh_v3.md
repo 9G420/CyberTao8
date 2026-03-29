@@ -1,7 +1,7 @@
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
 **更新时间**: 2026-03-29
-**当前版本**: v0.1.23
+**当前版本**: v0.1.24
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要开发分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
@@ -15,11 +15,11 @@
 **你正在接手一个 Godot 赛博朋克战术 Roguelike 项目。** 请按以下顺序阅读文件：
 
 1. **本文件**（`Logs/CyberTao_Migration_Snapshot_zh_v3.md`）— 项目全貌、架构、数据结构、当前状态、下一步
-2. **`Logs/Weekly_Mulerun_Plan_zh_v2.md`** — 当前周计划（Day 1~7 已完成，从 Day 8 开始执行）
+2. **`Logs/Weekly_Mulerun_Plan_zh_v2.md`** — 当前周计划（Day 1~8 已完成，从 Day 9 开始执行）
 3. **`Logs/Board_Card_Battle_Concept_zh.md`** — 双层玩法机制方案（棋盘走位层 + 卡牌战斗层的设计文档）
 4. **`Logs/Demo_Roadmap_2p5D_zh.md`** — 中长期 Demo 路线（六阶段开发规划）
-5. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告（v0.1.23 遭遇暂停流程）
-6. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.23）
+5. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告（v0.1.24 棋盘格子事件化）
+6. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.24）
 
 **关键规则：**
 - **只在 `CyberTao_Dice_Beast_Protocol/Project/` 目录下开发**，不要修改旧项目 `CyberTao8` 根目录
@@ -28,7 +28,7 @@
 - 每次任务前确认：服务于棋盘走位层 or 卡牌战斗层入口，两者都不是则不优先做
 - 工作报告必须包含：本轮任务 / 根因目标 / 修改文件 / 实现内容 / 剩余问题 / 建议下一步
 
-**当前最优先任务：执行 Day 8 — 棋盘格子事件化**（详见第 5 节）
+**当前最优先任务：执行 Day 9 — 最小卡牌战斗原型**（详见第 5 节）
 
 ---
 
@@ -54,9 +54,9 @@
 
 ---
 
-## 2. 当前已完成内容（v0.1.0 → v0.1.23）
+## 2. 当前已完成内容（v0.1.0 → v0.1.24）
 
-### 棋盘走位层（外层基础已成型 + 遭遇暂停流程已闭环）
+### 棋盘走位层（外层基础已成型 + 遭遇暂停流程已闭环 + 7种格子事件化）
 
 | 系统 | 版本 | 状态 |
 |------|------|------|
@@ -74,6 +74,7 @@
 | 敌方意图广播 + 攻击预警 | v0.1.21 | 稳定 |
 | 遭遇格原型入口 | v0.1.22 | 稳定 |
 | **遭遇暂停与战斗占位流程** | **v0.1.23** | **稳定** |
+| **恢复格 + 事件格（棋盘格子事件化）** | **v0.1.24** | **稳定** |
 | 显示设置系统 | v0.1.7 | 有 BUG-001 |
 
 ### v0.1.23 新增：遭遇暂停与战斗占位流程
@@ -180,6 +181,7 @@ move_completed / attack_completed / enemy_attack_completed
 summon_completed / terrain_damage_triggered / item_picked_up
 enemy_action_announced / enemy_turn_ended
 encounter_triggered / encounter_resolved          ← v0.1.23 暂停+结算
+heal_cell_triggered / event_cell_triggered        ← v0.1.24 恢复格+事件格
 ```
 
 ### 关键数据结构
@@ -191,6 +193,8 @@ BoardManager:
   item_cells: Dictionary      # cell -> item_id
   terrain_cells: Dictionary   # cell -> "high_ground" / "trap"
   encounter_cells: Dictionary # cell -> encounter_id  ← v0.1.22 新增
+  heal_cells: Dictionary      # cell -> int (heal_amount)  ← v0.1.24 新增
+  event_cells: Dictionary     # cell -> String (event_id)  ← v0.1.24 新增
 
 UnitManager:
   units_by_id: Dictionary     # unit_id -> {hp, max_hp, atk, def, move_range, attack_range, owner, cell, terrain_affinity, display_name, ...}
@@ -223,13 +227,11 @@ BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → [ENCOUNTER → PLAYER_AC
 
 遭遇格入口 + 暂停流程已闭环。踩格 → 暂停 → 占位面板 → 点击返回 → 遭遇格消失 → 棋盘继续。
 
-### 最高优先级：棋盘格子事件化（Day 8）
+### 已完成：棋盘格子事件化（Day 8 → v0.1.24）
 
-- 恢复格（踩上回复 HP）
-- 事件格（随机 buff/debuff）
-- 走位路线更有策略意义
+恢复格（蓝白色，持久回血）+ 事件格（黄紫色，一次性随机效果）已完成。棋盘现有 7 种可交互格子，走位路线有多条选择。
 
-### 第二优先级：最小卡牌战斗原型（Day 9）
+### 最高优先级：最小卡牌战斗原型（Day 9）
 
 - 替换 Day 7 的占位面板，接入简化版抽牌/出牌/结算
 - 战斗结果影响棋盘
@@ -316,4 +318,4 @@ BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → [ENCOUNTER → PLAYER_AC
 
 ## 9. 一句话状态
 
-**v0.1.23 遭遇暂停流程已闭环（踩格→ENCOUNTER暂停→战斗占位面板→点击返回→遭遇格消失→棋盘继续），双层结构的"进入-退出"骨架已成立。下一步核心是 Day 8 棋盘格子事件化（恢复格/事件格），然后 Day 9 替换占位面板接入最小卡牌战斗原型。**
+**v0.1.24 棋盘格子事件化已完成（7 种可交互格子：路径/高台/陷阱/道具/遭遇/恢复/事件），走位路线有多条选择。棋盘走位层基础底座完备，下一步核心是 Day 9 最小卡牌战斗原型，替换遭遇占位面板接入简化版抽牌/出牌/结算。**

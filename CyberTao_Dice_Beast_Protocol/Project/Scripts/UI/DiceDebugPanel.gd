@@ -52,6 +52,10 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.encounter_triggered.connect(_on_encounter_triggered)
 	if battle_flow.encounter_resolved and not battle_flow.encounter_resolved.is_connected(_on_encounter_resolved):
 		battle_flow.encounter_resolved.connect(_on_encounter_resolved)
+	if battle_flow.heal_cell_triggered and not battle_flow.heal_cell_triggered.is_connected(_on_heal_cell_triggered):
+		battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
+	if battle_flow.event_cell_triggered and not battle_flow.event_cell_triggered.is_connected(_on_event_cell_triggered):
+		battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -284,6 +288,12 @@ func _on_encounter_resolved(_encounter_id: String, _cell: Vector2i) -> void:
 func _on_encounter_resolve_pressed() -> void:
 	if battle_flow:
 		battle_flow.resolve_encounter()
+
+func _on_heal_cell_triggered(_unit_id: String, _cell: Vector2i, _heal_amount: int, _actual_heal: int) -> void:
+	_refresh_crest_pool()
+
+func _on_event_cell_triggered(_unit_id: String, _cell: Vector2i, _event_id: String, _effect_text: String) -> void:
+	_refresh_crest_pool()
 
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	var pool: Dictionary = next_crest_pool

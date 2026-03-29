@@ -173,6 +173,8 @@ func _draw() -> void:
 	_draw_board()
 	_draw_terrain()
 	_draw_encounters()
+	_draw_heal_cells()
+	_draw_event_cells()
 	_draw_highlights()
 	_draw_attack_highlights()
 	_draw_summon_highlights()
@@ -243,6 +245,44 @@ func _draw_encounters() -> void:
 		# "遭遇" 文字标记
 		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
 		draw_string(font, text_pos, "遭遇", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 0.5, 0.2, 0.9))
+
+## 绘制恢复格：蓝白色填充 + 边框 + "回复" 文字标记 + 回复量
+func _draw_heal_cells() -> void:
+	if board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 10
+	for cell in board_manager.heal_cells.keys():
+		var heal_amount: int = int(board_manager.heal_cells[cell])
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
+		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
+		# 蓝白色填充
+		draw_rect(Rect2(pos, sz), Color(0.3, 0.6, 1.0, 0.25), true)
+		# 蓝白色边框
+		draw_rect(Rect2(pos, sz), Color(0.4, 0.7, 1.0, 0.8), false, 2.0)
+		# "回复" 文字标记
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
+		draw_string(font, text_pos, "回复", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(0.5, 0.8, 1.0, 0.9))
+		# 回复量
+		var amount_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
+		draw_string(font, amount_pos, "+" + str(heal_amount), HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(0.6, 0.9, 1.0, 0.85))
+
+## 绘制事件格：黄紫色填充 + 边框 + "?" 标记
+func _draw_event_cells() -> void:
+	if board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 16
+	for cell in board_manager.event_cells.keys():
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
+		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
+		# 黄紫色填充
+		draw_rect(Rect2(pos, sz), Color(0.8, 0.5, 1.0, 0.25), true)
+		# 黄紫色边框
+		draw_rect(Rect2(pos, sz), Color(0.85, 0.55, 1.0, 0.8), false, 2.0)
+		# "?" 标记
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + CELL_SIZE / 2 - 6, cell.y * CELL_SIZE + CELL_SIZE / 2 + 6)
+		draw_string(font, text_pos, "?", HORIZONTAL_ALIGNMENT_LEFT, 20, font_size, Color(0.95, 0.8, 0.3, 0.9))
 
 func _draw_attack_highlights() -> void:
 	for cell in attack_highlight_cells:
@@ -484,3 +524,40 @@ func play_encounter_feedback(cell: Vector2i, text: String) -> void:
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.9)
 	tw.set_parallel(false)
 	tw.tween_callback(lbl.queue_free)
+
+## 恢复格反馈：蓝色飘字显示回复量
+func play_heal_feedback(cell: Vector2i, text: String) -> void:
+	var lbl: Label = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+	var start_x: float = cell.x * CELL_SIZE + 10
+	var start_y: float = cell.y * CELL_SIZE + 8
+	lbl.position = Vector2(start_x, start_y)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw2: Tween = lbl.create_tween()
+	tw2.set_parallel(true)
+	tw2.tween_property(lbl, "position:y", start_y - 36.0, 0.7)
+	tw2.tween_property(lbl, "modulate:a", 0.0, 0.7)
+	tw2.set_parallel(false)
+	tw2.tween_callback(lbl.queue_free)
+
+## 事件格反馈：黄紫色飘字显示效果
+func play_event_feedback(cell: Vector2i, text: String, is_positive: bool) -> void:
+	var lbl: Label = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 18)
+	var color: Color = Color(0.9, 0.8, 0.3) if is_positive else Color(1.0, 0.35, 0.25)
+	lbl.add_theme_color_override("font_color", color)
+	var start_x: float = cell.x * CELL_SIZE + 10
+	var start_y: float = cell.y * CELL_SIZE + 8
+	lbl.position = Vector2(start_x, start_y)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw3: Tween = lbl.create_tween()
+	tw3.set_parallel(true)
+	tw3.tween_property(lbl, "position:y", start_y - 36.0, 0.7)
+	tw3.tween_property(lbl, "modulate:a", 0.0, 0.7)
+	tw3.set_parallel(false)
+	tw3.tween_callback(lbl.queue_free)

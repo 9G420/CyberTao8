@@ -51,7 +51,7 @@ func _build_debug_view() -> void:
 	add_child(subtitle)
 
 	var hint := Label.new()
-	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 | *=适性激活"
+	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 蓝白=回复 黄紫=事件 | *=适性激活"
 	hint.position = Vector2(0, 68)
 	hint.size = Vector2(1280, 22)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -113,6 +113,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
 	_battle_flow.encounter_triggered.connect(_on_encounter_triggered)
 	_battle_flow.encounter_resolved.connect(_on_encounter_resolved)
+	_battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
+	_battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 
@@ -197,6 +199,17 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 func _on_encounter_resolved(encounter_id: String, cell: Vector2i) -> void:
 	# 遭遇结算反馈：绿色飘字提示
 	_board_view.play_pickup_feedback(cell, "遭遇清除")
+	_board_view.queue_redraw()
+
+func _on_heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int) -> void:
+	# 恢复格反馈：蓝色飘字显示回复量
+	_board_view.play_heal_feedback(cell, "HP+" + str(actual_heal))
+	_board_view.queue_redraw()
+
+func _on_event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String) -> void:
+	# 事件格反馈：根据效果正负显示不同颜色飘字
+	var is_positive: bool = not effect_text.begins_with("HP-")
+	_board_view.play_event_feedback(cell, effect_text, is_positive)
 	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:

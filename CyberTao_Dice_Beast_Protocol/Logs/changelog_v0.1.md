@@ -592,3 +592,51 @@
 - `resolve_encounter()` 预留了战斗结果参数扩展空间
 - 遭遇格被清除后不再触发（单次遭遇）
 - ENCOUNTER 阶段期间，掷骰/移动/攻击/召唤/结束回合均被禁止
+
+## v0.1.24 - 2026-03-29
+
+### 新增
+
+- 棋盘格子事件化（Day 8：棋盘走位层）
+- `BoardManager` 新增 `heal_cells` 字典（cell → heal_amount）和 `event_cells` 字典（cell → event_id）
+- `BoardManager.add_heal_cell()`：添加恢复格（持久地形）
+- `BoardManager.add_event_cell()` / `clear_event_cell()`：添加/清除事件格（一次性触发）
+- `BattleFlowController.heal_cell_triggered` 信号（unit_id, cell, heal_amount, actual_heal）
+- `BattleFlowController.event_cell_triggered` 信号（unit_id, cell, event_id, effect_text）
+- `BattleFlowController._check_heal_cell()`：单位踩恢复格时回复 HP（不超 max_hp，满血不触发）
+- `BattleFlowController._check_event_cell()`：单位踩事件格时随机三选一（HP+1 / 随机 crest+1 / HP-1）
+- `BattleFlowController._spawn_debug_heal_cells()`：预置 2 个恢复格 (5,6) HP+2、(1,3) HP+3
+- `BattleFlowController._spawn_debug_event_cells()`：预置 3 个事件格 (3,5)、(6,3)、(4,6)
+- `BoardView._draw_heal_cells()`：蓝白色填充+边框+"回复"+回复量渲染
+- `BoardView._draw_event_cells()`：黄紫色填充+边框+"?"标记渲染
+- `BoardView.play_heal_feedback()`：蓝色飘字显示回复量
+- `BoardView.play_event_feedback()`：正面黄色/负面红色飘字显示效果
+- 提示栏新增 "蓝白=回复 黄紫=事件" 说明
+
+### 修改
+
+- `BoardManager.build_test_board()` 和 `clear_board()` 现在清空 `heal_cells` 和 `event_cells`
+- `BattleFlowController.try_move_unit()` 移动后增加恢复格和事件格检查（道具拾取之后、遭遇格之前）
+- `BattleFlowController._bootstrap()` 和 `restart_battle()` 调用 `_spawn_debug_heal_cells()` 和 `_spawn_debug_event_cells()`
+- `DiceDebugPanel` 连接 `heal_cell_triggered` 和 `event_cell_triggered` 信号
+- `Main.gd` 连接新信号，触发对应飘字反馈
+
+### 棋盘格子种类（7 种可交互）
+
+| 格子类型 | 颜色 | 行为 | 持久性 |
+|----------|------|------|--------|
+| 路径格 | 青色 | 路径适性 DEF+1 | 持久 |
+| 高台格 | 金色 | 移动消耗 2，攻击范围+1/+2 | 持久 |
+| 陷阱格 | 暗红 | 进入受 1 伤害（陷阱适性免疫） | 持久 |
+| 道具格 | 绿色 | 拾取道具获得效果 | 一次性 |
+| 遭遇格 | 橙红 | 触发遭遇暂停→战斗 | 一次性 |
+| 恢复格 | 蓝白 | 踩上回复 HP | 持久 |
+| 事件格 | 黄紫 | 踩上随机正/负效果 | 一次性 |
+
+### 备注
+
+- 恢复格为持久地形（可重复踩），满血时不触发
+- 事件格为一次性触发（踩后消失），效果等概率三选一
+- 事件格负面效果（HP-1）可致死，会触发胜负判定
+- 走位路线开始有多条选择：安全路线（回避陷阱/事件）vs 冒险路线（高收益但有风险）
+- 仅玩家单位触发恢复格和事件格，敌方不触发

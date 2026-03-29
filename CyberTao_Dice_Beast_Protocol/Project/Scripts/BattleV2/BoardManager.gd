@@ -9,6 +9,8 @@ var path_cells: Dictionary = {}
 var item_cells: Dictionary = {}
 var terrain_cells: Dictionary = {}  # cell -> String ("high_ground" / "trap")
 var encounter_cells: Dictionary = {}  # cell -> String (encounter_id)
+var heal_cells: Dictionary = {}  # cell -> int (heal_amount)
+var event_cells: Dictionary = {}  # cell -> String (event_id)
 
 func build_test_board(size: Vector2i) -> void:
 	board_size = size
@@ -17,6 +19,8 @@ func build_test_board(size: Vector2i) -> void:
 	item_cells.clear()
 	terrain_cells.clear()
 	encounter_cells.clear()
+	heal_cells.clear()
+	event_cells.clear()
 	emit_signal("board_changed")
 
 func clear_board() -> void:
@@ -25,6 +29,8 @@ func clear_board() -> void:
 	item_cells.clear()
 	terrain_cells.clear()
 	encounter_cells.clear()
+	heal_cells.clear()
+	event_cells.clear()
 	emit_signal("board_changed")
 
 func is_in_bounds(cell: Vector2i) -> bool:
@@ -125,4 +131,21 @@ func add_encounter_cell(cell: Vector2i, encounter_id: String) -> void:
 ## 清除指定遭遇格
 func clear_encounter_cell(cell: Vector2i) -> void:
 	encounter_cells.erase(cell)
+	emit_signal("board_changed")
+
+## 添加恢复格（持久地形，每次踩上回复 heal_amount HP）
+func add_heal_cell(cell: Vector2i, heal_amount: int) -> void:
+	if is_in_bounds(cell):
+		heal_cells[cell] = heal_amount
+		emit_signal("board_changed")
+
+## 添加事件格（一次性触发，踩后消失）
+func add_event_cell(cell: Vector2i, event_id: String) -> void:
+	if is_in_bounds(cell):
+		event_cells[cell] = event_id
+		emit_signal("board_changed")
+
+## 清除指定事件格
+func clear_event_cell(cell: Vector2i) -> void:
+	event_cells.erase(cell)
 	emit_signal("board_changed")
