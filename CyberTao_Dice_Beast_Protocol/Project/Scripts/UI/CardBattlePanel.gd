@@ -1,7 +1,7 @@
 extends Panel
 class_name CardBattlePanel
 
-## 卡牌战斗 UI 面板（纯显示层 — Day 10 丰富化版）
+## 卡牌战斗 UI 面板（纯显示层 — Day 11 风格化版）
 ## 动态手牌按钮 + 能量显示 + 敌方意图 + 牌堆计数
 
 const CardBattleController = preload("res://Scripts/BattleV2/CardBattleController.gd")
@@ -111,9 +111,9 @@ func _on_flee_pressed() -> void:
 func _rebuild_card_buttons(new_hand: Array, cur_energy: int) -> void:
 	_clear_card_buttons()
 	var btn_w: float = 105.0
-	var btn_h: float = 50.0
+	var btn_h: float = 48.0
 	var gap: float = 6.0
-	var start_x: float = 10.0
+	var start_x: float = 8.0
 	var start_y: float = 0.0
 	for i in range(new_hand.size()):
 		var card: Dictionary = new_hand[i]
@@ -125,8 +125,9 @@ func _rebuild_card_buttons(new_hand: Array, cur_energy: int) -> void:
 		btn.position = Vector2(start_x + col * (btn_w + gap), start_y + row * (btn_h + 18))
 		btn.size = Vector2(btn_w, btn_h)
 		btn.text = String(card["name"]) + " (" + str(card["value"]) + ")"
-		btn.add_theme_font_size_override("font_size", 13)
+		btn.add_theme_font_size_override("font_size", 12)
 		btn.disabled = not can_play
+		CyberStyle.style_button(btn, "orange")
 		var idx: int = i
 		btn.pressed.connect(func(): _on_card_pressed(idx))
 		_card_container.add_child(btn)
@@ -134,10 +135,10 @@ func _rebuild_card_buttons(new_hand: Array, cur_energy: int) -> void:
 		# 费用标签
 		var clbl := Label.new()
 		clbl.text = str(cost) + "E"
-		clbl.position = Vector2(btn.position.x + btn_w - 28, btn.position.y + btn_h)
+		clbl.position = Vector2(btn.position.x + btn_w - 28, btn.position.y + btn_h + 1)
 		clbl.size = Vector2(30, 14)
 		clbl.add_theme_font_size_override("font_size", 10)
-		var cost_color: Color = Color(0.5, 0.85, 1.0) if can_play else Color(0.6, 0.3, 0.3)
+		var cost_color: Color = CyberStyle.TEXT_ENERGY if can_play else CyberStyle.TEXT_WARN
 		clbl.add_theme_color_override("font_color", cost_color)
 		_card_container.add_child(clbl)
 		_card_cost_labels.append(clbl)
@@ -165,117 +166,138 @@ func _refresh_status() -> void:
 	_deck_label.text = "牌堆 " + str(_controller.get_draw_count()) + " | 弃牌 " + str(_controller.get_discard_count())
 	# HP 颜色
 	if _controller.enemy_hp <= _controller.enemy_max_hp * 0.3:
-		_enemy_hp_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3))
+		_enemy_hp_label.add_theme_color_override("font_color", CyberStyle.HP_ENEMY_LOW)
 	else:
-		_enemy_hp_label.add_theme_color_override("font_color", Color(0.95, 0.5, 0.35))
+		_enemy_hp_label.add_theme_color_override("font_color", CyberStyle.HP_ENEMY)
 	if _controller.player_hp <= _controller.player_max_hp * 0.3:
-		_player_hp_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+		_player_hp_label.add_theme_color_override("font_color", CyberStyle.HP_PLAYER_LOW)
 	else:
-		_player_hp_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.7))
+		_player_hp_label.add_theme_color_override("font_color", CyberStyle.HP_PLAYER)
 
 # --- UI 构建 ---
 
 func _build_ui() -> void:
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.07, 0.05, 0.12, 0.97)
-	bg.border_color = Color(0.9, 0.45, 0.15, 0.9)
-	bg.set_border_width_all(3)
-	bg.set_corner_radius_all(10)
-	add_theme_stylebox_override("panel", bg)
+	add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.BORDER_ORANGE, 8))
+
+	# 顶部分隔线
+	var sep_top := ColorRect.new()
+	sep_top.position = Vector2(16, 34)
+	sep_top.size = Vector2(448, 1)
+	sep_top.color = Color(1.0, 0.5, 0.15, 0.25)
+	sep_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep_top)
 
 	_title_label = Label.new()
 	_title_label.text = "卡牌战斗"
 	_title_label.position = Vector2(0, 8)
-	_title_label.size = Vector2(480, 28)
+	_title_label.size = Vector2(480, 26)
 	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title_label.add_theme_font_size_override("font_size", 20)
-	_title_label.add_theme_color_override("font_color", Color(1.0, 0.65, 0.25))
+	_title_label.add_theme_font_size_override("font_size", 18)
+	_title_label.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
 	add_child(_title_label)
 
 	_turn_label = Label.new()
 	_turn_label.text = "回合 1"
 	_turn_label.position = Vector2(400, 10)
 	_turn_label.size = Vector2(70, 20)
-	_turn_label.add_theme_font_size_override("font_size", 12)
-	_turn_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.6))
+	_turn_label.add_theme_font_size_override("font_size", 11)
+	_turn_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
 	add_child(_turn_label)
 
 	# 敌方区域
 	_enemy_hp_label = Label.new()
 	_enemy_hp_label.text = "敌方 HP：0 / 0"
-	_enemy_hp_label.position = Vector2(16, 38)
+	_enemy_hp_label.position = Vector2(16, 40)
 	_enemy_hp_label.size = Vector2(230, 22)
-	_enemy_hp_label.add_theme_font_size_override("font_size", 15)
-	_enemy_hp_label.add_theme_color_override("font_color", Color(0.95, 0.5, 0.35))
+	_enemy_hp_label.add_theme_font_size_override("font_size", 14)
+	_enemy_hp_label.add_theme_color_override("font_color", CyberStyle.HP_ENEMY)
 	add_child(_enemy_hp_label)
 
 	_enemy_intent_label = Label.new()
 	_enemy_intent_label.text = ""
-	_enemy_intent_label.position = Vector2(250, 38)
+	_enemy_intent_label.position = Vector2(250, 40)
 	_enemy_intent_label.size = Vector2(220, 22)
 	_enemy_intent_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_enemy_intent_label.add_theme_font_size_override("font_size", 13)
-	_enemy_intent_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.25))
+	_enemy_intent_label.add_theme_font_size_override("font_size", 12)
+	_enemy_intent_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	add_child(_enemy_intent_label)
 
 	# 玩家区域
 	_player_hp_label = Label.new()
 	_player_hp_label.text = "我方 HP：0 / 0"
-	_player_hp_label.position = Vector2(16, 62)
+	_player_hp_label.position = Vector2(16, 64)
 	_player_hp_label.size = Vector2(200, 22)
-	_player_hp_label.add_theme_font_size_override("font_size", 15)
-	_player_hp_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.7))
+	_player_hp_label.add_theme_font_size_override("font_size", 14)
+	_player_hp_label.add_theme_color_override("font_color", CyberStyle.HP_PLAYER)
 	add_child(_player_hp_label)
 
 	_energy_label = Label.new()
 	_energy_label.text = "能量：3 / 3"
-	_energy_label.position = Vector2(220, 62)
+	_energy_label.position = Vector2(220, 64)
 	_energy_label.size = Vector2(110, 22)
-	_energy_label.add_theme_font_size_override("font_size", 15)
-	_energy_label.add_theme_color_override("font_color", Color(0.55, 0.75, 1.0))
+	_energy_label.add_theme_font_size_override("font_size", 14)
+	_energy_label.add_theme_color_override("font_color", CyberStyle.TEXT_ENERGY)
 	add_child(_energy_label)
 
 	_deck_label = Label.new()
 	_deck_label.text = "牌堆 0 | 弃牌 0"
-	_deck_label.position = Vector2(340, 62)
+	_deck_label.position = Vector2(340, 64)
 	_deck_label.size = Vector2(130, 22)
 	_deck_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_deck_label.add_theme_font_size_override("font_size", 12)
-	_deck_label.add_theme_color_override("font_color", Color(0.65, 0.65, 0.6))
+	_deck_label.add_theme_font_size_override("font_size", 11)
+	_deck_label.add_theme_color_override("font_color", CyberStyle.TEXT_MUTED)
 	add_child(_deck_label)
+
+	# 分隔线
+	var sep_mid := ColorRect.new()
+	sep_mid.position = Vector2(16, 88)
+	sep_mid.size = Vector2(448, 1)
+	sep_mid.color = Color(1.0, 0.5, 0.15, 0.15)
+	sep_mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep_mid)
 
 	# 战斗日志
 	_log_label = Label.new()
 	_log_label.text = ""
-	_log_label.position = Vector2(16, 88)
-	_log_label.size = Vector2(448, 66)
+	_log_label.position = Vector2(16, 92)
+	_log_label.size = Vector2(448, 60)
 	_log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_log_label.add_theme_font_size_override("font_size", 13)
-	_log_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.75))
+	_log_label.add_theme_font_size_override("font_size", 12)
+	_log_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	add_child(_log_label)
 
-	# 手牌容器（动态生成按钮区域）
+	# 手牌容器
 	_card_container = Control.new()
-	_card_container.position = Vector2(16, 160)
+	_card_container.position = Vector2(16, 158)
 	_card_container.size = Vector2(448, 140)
 	add_child(_card_container)
+
+	# 分隔线
+	var sep_btm := ColorRect.new()
+	sep_btm.position = Vector2(16, 306)
+	sep_btm.size = Vector2(448, 1)
+	sep_btm.color = Color(1.0, 0.5, 0.15, 0.15)
+	sep_btm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep_btm)
 
 	# 结束回合按钮
 	_end_turn_button = Button.new()
 	_end_turn_button.text = "结束回合"
-	_end_turn_button.position = Vector2(16, 310)
+	_end_turn_button.position = Vector2(16, 314)
 	_end_turn_button.size = Vector2(220, 36)
 	_end_turn_button.add_theme_font_size_override("font_size", 14)
 	_end_turn_button.pressed.connect(_on_end_turn_pressed)
 	_end_turn_button.disabled = true
+	CyberStyle.style_button(_end_turn_button, "cyan")
 	add_child(_end_turn_button)
 
 	# 逃跑按钮
 	_flee_button = Button.new()
 	_flee_button.text = "逃跑（-1 HP）"
-	_flee_button.position = Vector2(244, 310)
+	_flee_button.position = Vector2(244, 314)
 	_flee_button.size = Vector2(220, 36)
 	_flee_button.add_theme_font_size_override("font_size", 14)
 	_flee_button.pressed.connect(_on_flee_pressed)
 	_flee_button.disabled = true
+	CyberStyle.style_button(_flee_button, "orange")
 	add_child(_flee_button)

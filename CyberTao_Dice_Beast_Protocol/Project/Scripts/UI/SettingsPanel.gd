@@ -1,4 +1,4 @@
-﻿extends Panel
+extends Panel
 class_name SettingsPanel
 
 signal settings_closed
@@ -19,28 +19,31 @@ func bind_display_settings(ds: Node) -> void:
 	_sync_from_settings()
 
 func _build_ui() -> void:
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.07, 0.09, 0.14, 0.97)
-	bg.border_color = Color(0.6, 0.75, 1.0, 0.6)
-	bg.set_border_width_all(2)
-	bg.set_corner_radius_all(10)
-	add_theme_stylebox_override("panel", bg)
+	add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.BORDER_CYAN, 10))
 
 	var title := Label.new()
 	title.text = "显示设置"
 	title.position = Vector2(0, 14)
 	title.size = Vector2(400, 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
 	add_child(title)
+
+	# 分隔线
+	var sep := ColorRect.new()
+	sep.position = Vector2(30, 48)
+	sep.size = Vector2(340, 1)
+	sep.color = Color(0.0, 0.7, 0.9, 0.2)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep)
 
 	var res_label := Label.new()
 	res_label.text = "分辨率"
 	res_label.position = Vector2(30, 60)
 	res_label.size = Vector2(120, 28)
-	res_label.add_theme_font_size_override("font_size", 16)
-	res_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+	res_label.add_theme_font_size_override("font_size", 15)
+	res_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	add_child(res_label)
 
 	resolution_option = OptionButton.new()
@@ -55,8 +58,8 @@ func _build_ui() -> void:
 	mode_label.text = "窗口模式"
 	mode_label.position = Vector2(30, 108)
 	mode_label.size = Vector2(120, 28)
-	mode_label.add_theme_font_size_override("font_size", 16)
-	mode_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+	mode_label.add_theme_font_size_override("font_size", 15)
+	mode_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	add_child(mode_label)
 
 	mode_option = OptionButton.new()
@@ -71,21 +74,27 @@ func _build_ui() -> void:
 	apply_btn.text = "应用"
 	apply_btn.position = Vector2(30, 170)
 	apply_btn.size = Vector2(160, 40)
+	apply_btn.add_theme_font_size_override("font_size", 14)
 	apply_btn.pressed.connect(_on_apply_pressed)
+	CyberStyle.style_button(apply_btn, "orange")
 	add_child(apply_btn)
 
 	var reset_btn := Button.new()
 	reset_btn.text = "恢复默认"
 	reset_btn.position = Vector2(210, 170)
 	reset_btn.size = Vector2(160, 40)
+	reset_btn.add_theme_font_size_override("font_size", 14)
 	reset_btn.pressed.connect(_on_reset_pressed)
+	CyberStyle.style_button(reset_btn, "cyan")
 	add_child(reset_btn)
 
 	var close_btn := Button.new()
 	close_btn.text = "关闭"
 	close_btn.position = Vector2(120, 230)
 	close_btn.size = Vector2(160, 40)
+	close_btn.add_theme_font_size_override("font_size", 14)
 	close_btn.pressed.connect(_on_close_pressed)
+	CyberStyle.style_button(close_btn, "cyan")
 	add_child(close_btn)
 
 func _sync_from_settings() -> void:

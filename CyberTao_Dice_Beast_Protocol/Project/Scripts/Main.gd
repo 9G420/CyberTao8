@@ -32,7 +32,7 @@ func _ready() -> void:
 func _build_debug_view() -> void:
 	var bg := ColorRect.new()
 	bg.set_anchors_preset(PRESET_FULL_RECT)
-	bg.color = Color(0.05, 0.06, 0.1)
+	bg.color = Color(0.03, 0.03, 0.07)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
@@ -41,28 +41,28 @@ func _build_debug_view() -> void:
 	title.position = Vector2(0, 4)
 	title.size = Vector2(1280, 42)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", Color(1.0, 0.56, 0.26))
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "原型战斗沙盒已启动：掷骰、移动、攻击、结束回合"
+	subtitle.text = "原型战斗沙盒 — 掷骰 / 移动 / 攻击 / 遭遇 / 卡牌战斗"
 	subtitle.position = Vector2(0, 44)
-	subtitle.size = Vector2(1280, 26)
+	subtitle.size = Vector2(1280, 22)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 16)
-	subtitle.add_theme_color_override("font_color", Color(0.7, 0.9, 0.86))
+	subtitle.add_theme_font_size_override("font_size", 14)
+	subtitle.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
 	subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(subtitle)
 
 	var hint := Label.new()
 	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 蓝白=回复 黄紫=事件 | *=适性激活"
-	hint.position = Vector2(0, 68)
-	hint.size = Vector2(1280, 22)
+	hint.position = Vector2(0, 66)
+	hint.size = Vector2(1280, 20)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size", 13)
-	hint.add_theme_color_override("font_color", Color(0.98, 0.86, 0.58))
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hint)
 
@@ -78,7 +78,9 @@ func _build_debug_view() -> void:
 	settings_btn.text = "设置"
 	settings_btn.position = Vector2(1180, 4)
 	settings_btn.size = Vector2(80, 32)
+	settings_btn.add_theme_font_size_override("font_size", 13)
 	settings_btn.pressed.connect(_on_settings_pressed)
+	CyberStyle.style_button(settings_btn, "cyan")
 	add_child(settings_btn)
 
 	_settings_panel = SettingsPanel.new()
@@ -103,8 +105,10 @@ func _build_debug_view() -> void:
 	_restart_btn.text = "重新开始"
 	_restart_btn.position = Vector2(560, 4)
 	_restart_btn.size = Vector2(160, 36)
+	_restart_btn.add_theme_font_size_override("font_size", 14)
 	_restart_btn.visible = false
 	_restart_btn.pressed.connect(_on_restart_pressed)
+	CyberStyle.style_button(_restart_btn, "orange")
 	add_child(_restart_btn)
 
 func _wire_debug_views() -> void:
@@ -160,12 +164,12 @@ func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
 func _on_phase_changed(phase_name: String) -> void:
 	if phase_name == "VICTORY":
 		_result_label.text = "胜利"
-		_result_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
+		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 		_result_label.visible = true
 		_restart_btn.visible = true
 	elif phase_name == "DEFEAT":
 		_result_label.text = "失败"
-		_result_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_WARN)
 		_result_label.visible = true
 		_restart_btn.visible = true
 	else:

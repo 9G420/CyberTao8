@@ -1,4 +1,4 @@
-﻿extends Panel
+extends Panel
 class_name DiceDebugPanel
 
 signal test_card_battle_requested
@@ -70,133 +70,173 @@ func bind_board_view(board_view: Node) -> void:
 		board_view.unit_deselected.connect(_on_unit_deselected)
 
 func _build_ui() -> void:
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.09, 0.11, 0.16, 0.95)
-	bg.border_color = Color(1.0, 0.55, 0.25, 0.7)
-	bg.set_border_width_all(2)
-	bg.set_corner_radius_all(8)
-	add_theme_stylebox_override("panel", bg)
+	# --- 面板背景 ---
+	add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.BORDER_CYAN, 8))
 
+	# --- 分隔线辅助 ---
+	var sep1 := ColorRect.new()
+	sep1.position = Vector2(16, 38)
+	sep1.size = Vector2(248, 1)
+	sep1.color = Color(0.0, 0.7, 0.9, 0.25)
+	sep1.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep1)
+
+	# --- 标题 ---
 	var title := Label.new()
-	title.text = "战斗调试"
-	title.position = Vector2(0, 10)
+	title.text = "骰兽协议"
+	title.position = Vector2(0, 8)
 	title.size = Vector2(280, 28)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(1.0, 0.8, 0.6))
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
 	add_child(title)
 
+	# --- 回合 + 阶段 + 选中 ---
 	round_label = Label.new()
 	round_label.text = "回合：1"
-	round_label.position = Vector2(20, 42)
-	round_label.size = Vector2(240, 22)
-	round_label.add_theme_font_size_override("font_size", 16)
-	round_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
+	round_label.position = Vector2(20, 44)
+	round_label.size = Vector2(120, 20)
+	round_label.add_theme_font_size_override("font_size", 14)
+	round_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	add_child(round_label)
 
 	phase_label = Label.new()
 	phase_label.text = "阶段：玩家掷骰"
-	phase_label.position = Vector2(20, 64)
-	phase_label.size = Vector2(240, 22)
-	phase_label.add_theme_font_size_override("font_size", 15)
-	phase_label.add_theme_color_override("font_color", Color(0.72, 0.9, 0.84))
+	phase_label.position = Vector2(140, 44)
+	phase_label.size = Vector2(130, 20)
+	phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	phase_label.add_theme_font_size_override("font_size", 13)
+	phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
 	add_child(phase_label)
 
 	selected_label = Label.new()
 	selected_label.text = "选中：无"
-	selected_label.position = Vector2(20, 86)
-	selected_label.size = Vector2(240, 22)
-	selected_label.add_theme_font_size_override("font_size", 14)
-	selected_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	selected_label.position = Vector2(20, 66)
+	selected_label.size = Vector2(240, 20)
+	selected_label.add_theme_font_size_override("font_size", 13)
+	selected_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
 	add_child(selected_label)
 
+	# --- 分隔线 ---
+	var sep2 := ColorRect.new()
+	sep2.position = Vector2(16, 88)
+	sep2.size = Vector2(248, 1)
+	sep2.color = Color(0.0, 0.7, 0.9, 0.15)
+	sep2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep2)
+
+	# --- 操作按钮区 ---
 	roll_button = Button.new()
-	roll_button.text = "掷骰"
-	roll_button.position = Vector2(20, 116)
-	roll_button.size = Vector2(240, 40)
+	roll_button.text = "掷 骰"
+	roll_button.position = Vector2(16, 96)
+	roll_button.size = Vector2(248, 38)
+	roll_button.add_theme_font_size_override("font_size", 15)
 	roll_button.pressed.connect(_on_roll_pressed)
+	CyberStyle.style_button(roll_button, "orange")
 	add_child(roll_button)
 
 	end_turn_button = Button.new()
 	end_turn_button.text = "结束回合"
-	end_turn_button.position = Vector2(20, 162)
-	end_turn_button.size = Vector2(240, 40)
+	end_turn_button.position = Vector2(16, 140)
+	end_turn_button.size = Vector2(248, 36)
+	end_turn_button.add_theme_font_size_override("font_size", 14)
 	end_turn_button.disabled = true
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
+	CyberStyle.style_button(end_turn_button, "cyan")
 	add_child(end_turn_button)
 
 	var path_button := Button.new()
-	path_button.text = "测试召唤（需选中单位+显化）"
-	path_button.position = Vector2(20, 210)
-	path_button.size = Vector2(240, 36)
+	path_button.text = "召唤（需选中+显化）"
+	path_button.position = Vector2(16, 182)
+	path_button.size = Vector2(248, 32)
 	path_button.add_theme_font_size_override("font_size", 12)
 	path_button.pressed.connect(_on_spawn_path_pressed)
+	CyberStyle.style_button(path_button, "cyan")
 	add_child(path_button)
 
 	var card_test_button := Button.new()
 	card_test_button.text = "测试卡牌战斗"
-	card_test_button.position = Vector2(20, 250)
-	card_test_button.size = Vector2(240, 36)
-	card_test_button.add_theme_font_size_override("font_size", 13)
-	card_test_button.add_theme_color_override("font_color", Color(1.0, 0.6, 0.2))
+	card_test_button.position = Vector2(16, 218)
+	card_test_button.size = Vector2(248, 32)
+	card_test_button.add_theme_font_size_override("font_size", 12)
 	card_test_button.pressed.connect(_on_test_card_battle_pressed)
+	CyberStyle.style_button(card_test_button, "orange")
 	add_child(card_test_button)
 
+	# --- 分隔线 ---
+	var sep3 := ColorRect.new()
+	sep3.position = Vector2(16, 256)
+	sep3.size = Vector2(248, 1)
+	sep3.color = Color(0.0, 0.7, 0.9, 0.15)
+	sep3.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep3)
+
+	# --- 掷骰结果 ---
 	roll_label = Label.new()
 	roll_label.text = "上次掷骰：-"
-	roll_label.position = Vector2(20, 294)
-	roll_label.size = Vector2(240, 44)
+	roll_label.position = Vector2(16, 262)
+	roll_label.size = Vector2(248, 40)
 	roll_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	roll_label.add_theme_font_size_override("font_size", 14)
-	roll_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.72))
+	roll_label.add_theme_font_size_override("font_size", 13)
+	roll_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	add_child(roll_label)
 
+	# --- Crest 资源池 ---
 	crest_label = RichTextLabel.new()
-	crest_label.position = Vector2(20, 342)
-	crest_label.size = Vector2(240, 140)
+	crest_label.position = Vector2(16, 306)
+	crest_label.size = Vector2(248, 140)
 	crest_label.scroll_active = false
-	crest_label.add_theme_font_size_override("normal_font_size", 14)
+	crest_label.add_theme_font_size_override("normal_font_size", 13)
 	add_child(crest_label)
 
+	# --- 敌方意图 ---
 	enemy_intent_label = Label.new()
 	enemy_intent_label.text = ""
-	enemy_intent_label.position = Vector2(20, 488)
-	enemy_intent_label.size = Vector2(240, 40)
+	enemy_intent_label.position = Vector2(16, 452)
+	enemy_intent_label.size = Vector2(248, 40)
 	enemy_intent_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	enemy_intent_label.add_theme_font_size_override("font_size", 14)
-	enemy_intent_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.25))
+	enemy_intent_label.add_theme_font_size_override("font_size", 13)
+	enemy_intent_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	add_child(enemy_intent_label)
 
-	# 遭遇战斗占位面板（默认隐藏）
+	# --- 版本标记 ---
+	var ver_label := Label.new()
+	ver_label.text = "v0.1.29"
+	ver_label.position = Vector2(210, 520)
+	ver_label.size = Vector2(60, 16)
+	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ver_label.add_theme_font_size_override("font_size", 10)
+	ver_label.add_theme_color_override("font_color", CyberStyle.TEXT_MUTED)
+	add_child(ver_label)
+
+	# --- 遭遇战斗占位面板（默认隐藏） ---
 	encounter_panel = Panel.new()
-	encounter_panel.position = Vector2(10, 116)
-	encounter_panel.size = Vector2(260, 140)
+	encounter_panel.position = Vector2(8, 96)
+	encounter_panel.size = Vector2(264, 140)
 	encounter_panel.visible = false
-	var enc_bg := StyleBoxFlat.new()
-	enc_bg.bg_color = Color(0.15, 0.08, 0.05, 0.95)
-	enc_bg.border_color = Color(1.0, 0.4, 0.15, 0.9)
-	enc_bg.set_border_width_all(2)
-	enc_bg.set_corner_radius_all(6)
-	encounter_panel.add_theme_stylebox_override("panel", enc_bg)
+	encounter_panel.add_theme_stylebox_override("panel", CyberStyle.make_encounter_panel_bg())
 	add_child(encounter_panel)
 
 	encounter_title_label = Label.new()
 	encounter_title_label.text = ""
 	encounter_title_label.position = Vector2(10, 12)
-	encounter_title_label.size = Vector2(240, 50)
+	encounter_title_label.size = Vector2(244, 50)
 	encounter_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	encounter_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	encounter_title_label.add_theme_font_size_override("font_size", 18)
-	encounter_title_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.2))
+	encounter_title_label.add_theme_font_size_override("font_size", 17)
+	encounter_title_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	encounter_panel.add_child(encounter_title_label)
 
 	encounter_resolve_button = Button.new()
 	encounter_resolve_button.text = "卡牌战斗进行中..."
-	encounter_resolve_button.position = Vector2(30, 80)
-	encounter_resolve_button.size = Vector2(200, 44)
-	encounter_resolve_button.add_theme_font_size_override("font_size", 16)
+	encounter_resolve_button.position = Vector2(22, 80)
+	encounter_resolve_button.size = Vector2(220, 42)
+	encounter_resolve_button.add_theme_font_size_override("font_size", 15)
 	encounter_resolve_button.disabled = true
+	CyberStyle.style_button(encounter_resolve_button, "orange")
 	encounter_panel.add_child(encounter_resolve_button)
+
+# --- 按钮回调 ---
 
 func _on_roll_pressed() -> void:
 	if battle_flow:
@@ -209,20 +249,20 @@ func _on_end_turn_pressed() -> void:
 func _on_spawn_path_pressed() -> void:
 	if battle_flow == null:
 		return
-	# 需要选中一个玩家单位才能召唤
 	if _selected_unit_id_cache == "":
 		return
 	var summon_cells: Array[Vector2i] = battle_flow.get_summon_cells_for(_selected_unit_id_cache)
 	if summon_cells.is_empty():
 		return
-	# 选第一个可用格进行召唤
 	battle_flow.try_summon(_selected_unit_id_cache, summon_cells[0])
 
 func _on_test_card_battle_pressed() -> void:
 	test_card_battle_requested.emit()
 
+# --- 信号回调 ---
+
 func _on_phase_changed(phase_name: String) -> void:
-	phase_label.text = "阶段：" + _phase_label_text(phase_name)
+	phase_label.text = _phase_label_text(phase_name)
 	var is_terminal: bool = phase_name == "VICTORY" or phase_name == "DEFEAT"
 	if is_terminal:
 		roll_button.disabled = true
@@ -230,20 +270,18 @@ func _on_phase_changed(phase_name: String) -> void:
 		enemy_intent_label.text = ""
 		encounter_panel.visible = false
 		if phase_name == "VICTORY":
-			phase_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.4))
+			phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 		else:
-			phase_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+			phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_WARN)
 	elif phase_name == "ENCOUNTER":
-		# 遭遇暂停状态：禁用所有常规按钮，显示遭遇面板
 		roll_button.disabled = true
 		end_turn_button.disabled = true
-		phase_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.15))
+		phase_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	else:
-		phase_label.add_theme_color_override("font_color", Color(0.72, 0.9, 0.84))
+		phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
 		roll_button.disabled = phase_name != "PLAYER_ROLL"
 		end_turn_button.disabled = phase_name != "PLAYER_ACTION"
 		encounter_panel.visible = false
-		# 进入玩家阶段时清空敌方意图
 		if phase_name == "PLAYER_ROLL" or phase_name == "PLAYER_ACTION":
 			enemy_intent_label.text = ""
 	_refresh_crest_pool()
@@ -288,15 +326,14 @@ func _on_enemy_turn_ended() -> void:
 	enemy_intent_label.text = "敌方回合结束"
 
 func _on_encounter_triggered(_unit_id: String, encounter_id: String, _cell: Vector2i) -> void:
-	enemy_intent_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.15))
+	enemy_intent_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	enemy_intent_label.text = "遭遇！准备进入战斗... [" + encounter_id + "]"
-	# 显示遭遇战斗占位面板
 	encounter_title_label.text = "战斗开始\n[" + encounter_id + "]"
 	encounter_panel.visible = true
 
 func _on_encounter_resolved(_encounter_id: String, _cell: Vector2i) -> void:
 	encounter_panel.visible = false
-	enemy_intent_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+	enemy_intent_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 	enemy_intent_label.text = "遭遇已清除，继续行动"
 
 func _on_heal_cell_triggered(_unit_id: String, _cell: Vector2i, _heal_amount: int, _actual_heal: int) -> void:
@@ -310,12 +347,31 @@ func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	if pool.is_empty() and dice_manager:
 		pool = dice_manager.crest_pool
 	crest_label.clear()
-	crest_label.append_text("显化：" + str(pool.get("summon", 0)) + "\n")
-	crest_label.append_text("步进：" + str(pool.get("move", 0)) + "\n")
-	crest_label.append_text("杀伐：" + str(pool.get("attack", 0)) + "\n")
-	crest_label.append_text("护持：" + str(pool.get("defend", 0)) + "\n")
-	crest_label.append_text("术式：" + str(pool.get("skill", 0)) + "\n")
-	crest_label.append_text("机巧：" + str(pool.get("trick", 0)) + "\n")
+	# 使用 BBCode 上色
+	crest_label.push_color(CyberStyle.ACCENT_CYAN)
+	crest_label.append_text("显化")
+	crest_label.pop()
+	crest_label.append_text("：" + str(pool.get("summon", 0)) + "  ")
+	crest_label.push_color(CyberStyle.ACCENT_CYAN)
+	crest_label.append_text("步进")
+	crest_label.pop()
+	crest_label.append_text("：" + str(pool.get("move", 0)) + "\n")
+	crest_label.push_color(CyberStyle.ACCENT_ORANGE)
+	crest_label.append_text("杀伐")
+	crest_label.pop()
+	crest_label.append_text("：" + str(pool.get("attack", 0)) + "  ")
+	crest_label.push_color(CyberStyle.ACCENT_ORANGE)
+	crest_label.append_text("护持")
+	crest_label.pop()
+	crest_label.append_text("：" + str(pool.get("defend", 0)) + "\n")
+	crest_label.push_color(CyberStyle.ACCENT_MAGENTA)
+	crest_label.append_text("术式")
+	crest_label.pop()
+	crest_label.append_text("：" + str(pool.get("skill", 0)) + "  ")
+	crest_label.push_color(CyberStyle.ACCENT_MAGENTA)
+	crest_label.append_text("机巧")
+	crest_label.pop()
+	crest_label.append_text("：" + str(pool.get("trick", 0)) + "\n")
 
 func _phase_label_text(phase_name: String) -> String:
 	match phase_name:
