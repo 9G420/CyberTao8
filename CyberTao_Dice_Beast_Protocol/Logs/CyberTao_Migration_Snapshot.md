@@ -52,6 +52,7 @@ Current state at v0.1.3:
 - a first item effect library now exists
 - a first prototype core resource now exists
 - first attack helper and attack rule support docs now exist
+- first HP / victory support helper and prototype battle-end rules now exist
 - board is now interactive: clicking player units selects them
 - selected unit shows gold ring and cyan-highlighted reachable cells
 - clicking a highlighted cell moves the unit, consuming 1 MOVE crest
@@ -141,10 +142,12 @@ Combat support:
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/SkillEffectLibrary.gd`
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/ItemEffectLibrary.gd`
 - `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/AttackRuleHelper.gd`
+- `CyberTao_Dice_Beast_Protocol/Project/Scripts/BattleV2/VictoryRuleHelper.gd`
 - `CyberTao_Dice_Beast_Protocol/Docs/COMBAT_RULES_v0.1.md`
 - `CyberTao_Dice_Beast_Protocol/Docs/CONTENT_ROADMAP_v0.1.md`
 - `CyberTao_Dice_Beast_Protocol/Docs/UNIT_KEYWORDS_v0.1.md`
 - `CyberTao_Dice_Beast_Protocol/Docs/ATTACK_RULES_v0.1.md`
+- `CyberTao_Dice_Beast_Protocol/Docs/HP_VICTORY_RULES_v0.1.md`
 
 Logs and handoff:
 
@@ -199,8 +202,8 @@ Completed through v0.1.3:
 Next priority targets:
 
 5. implement basic attack system (ATTACK crest spending, adjacent target, damage resolution)
-6. implement simple enemy AI turn (ENEMY_ROLL → ENEMY_ACTION)
-7. add HP display on units and victory/defeat checks
+6. add HP display on units and hook in victory/defeat checks
+7. implement simple enemy AI turn (ENEMY_ROLL → ENEMY_ACTION)
 
 ---
 

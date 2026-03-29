@@ -35,6 +35,8 @@
 - added first attack helper and target query support
 - added prototype attack rule documentation
 - added early attack-oriented skill resources for dog and fox units
+- added first victory-rule helper for post-attack battle-end checks
+- added explicit HP and victory rule documentation for prototype combat
 
 ### Notes
 
