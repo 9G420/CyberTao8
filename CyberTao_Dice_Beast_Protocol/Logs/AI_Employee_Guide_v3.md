@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.50
+**当前版本**: v0.1.52
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.50）
+### 2.2 当前完成状态总览（v0.1.52）
 
 **棋盘走位层（全部稳定）**
 
@@ -114,6 +114,8 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 美化 Phase 4.1（CyberBackground 背景氛围升级） | v0.1.48 | 稳定 |
 | 掷骰演出升级（伪3D等距骰子+全屏居中） | v0.1.49 | 稳定 |
 | Boss锁定+哨兵前置+传送门机制 | v0.1.50 | 稳定 |
+| Boss/遭遇格击败消失 Bug 修复（resolve_encounter 三分支） | v0.1.51 | 稳定 |
+| 单位精简（1主角+伙伴槽系统）+ 英雄存活制胜负判定 | v0.1.52 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -304,7 +306,7 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.50 Work Report，按优先级排列：
+以下任务来自 v0.1.52 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心 — 美术美化）
 
@@ -337,6 +339,8 @@ Main：                Scripts/Main.gd
 | 美化 Phase 4.1（CyberBackground 背景氛围升级） | v0.1.48 |
 | 掷骰演出升级（伪3D等距骰子+全屏居中） | v0.1.49 |
 | Boss锁定+哨兵前置+传送门机制 | v0.1.50 |
+| Boss/遭遇格击败消失 Bug 修复 | v0.1.51 |
+| 单位精简（1主角+伙伴槽系统）| v0.1.52 |
 | 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |
@@ -371,11 +375,16 @@ Main：                Scripts/Main.gd
 5. 自查六项闭环是否完好：
    掷骰 / 移动 / 攻击 / 召唤 / 敌方回合 / 胜负重开
    + 遭遇触发 / 卡牌战斗 / 选牌奖励 / HP同步回棋盘
-6. 更新 Mulerun_Work_Report.md（必须，所有字段）
-7. 更新 changelog_v0.1.md（必须，版本号递增）
-8. 提交并推送
-9. 聊天里回复一句：已完成 v0.1.XX，日志已写入并推送
+6. 更新以下四个日志文件（全部强制，缺一不推送）：
+   ✅ Logs/Mulerun_Work_Report.md        — 本轮精确状态
+   ✅ Logs/changelog_v0.1.md             — 追加版本条目
+   ✅ Logs/AI_Employee_Guide_v3.md       — 同步版本号+§2.2完成列表+§6任务优先级
+   ✅ 如有架构变化：Logs/CyberTao_Migration_Snapshot_zh_v3.md
+7. 提交并推送
+8. 聊天里回复一句：已完成 v0.1.XX，日志已写入并推送
 ```
+
+> **⚠️ 日志完整性检查**：推送前自查——Mulerun_Work_Report.md、changelog_v0.1.md、AI_Employee_Guide_v3.md 是否全部在本次 commit 中？如果缺少任何一个，**停下来补上再推送**。
 
 ---
 
@@ -384,14 +393,16 @@ Main：                Scripts/Main.gd
 ### 8.1 每轮必须更新
 
 ```
-必须（每轮）：
-  Logs/Mulerun_Work_Report.md
-  Logs/changelog_v0.1.md
+必须（每轮，缺一不可）：
+  Logs/Mulerun_Work_Report.md            — 本轮精确状态（覆盖）
+  Logs/changelog_v0.1.md                 — 版本条目（追加）
+  Logs/AI_Employee_Guide_v3.md           — 版本号+完成列表+任务优先级（同步）
 
 条件更新（阶段状态明显变化时）：
   Logs/CyberTao_Migration_Snapshot_zh_v3.md
-  Logs/AI_Employee_Guide_v3.md           ← 见 §14
 ```
+
+> **注意**：AI_Employee_Guide_v3.md 从 v0.1.52 起由"条件更新"升级为**每轮强制更新**。每个版本完成后至少同步三处：文件头版本号、§2.2 完成列表、§6 已完成任务列表。忘记更新等同于未完成任务。
 
 ### 8.2 Work Report 完整格式
 
@@ -469,7 +480,7 @@ Main：                Scripts/Main.gd
 ✗ 不要在 ENCOUNTER 阶段允许棋盘操作
 ✗ 不要在一个任务里自行扩大范围
 ✗ 不要新增硬编码颜色，统一使用 CyberStyle 常量
-✗ 不要跳过日志更新
+✗ 不要跳过日志更新（Work Report + Changelog + AI_Employee_Guide 三件套缺一不可）
 ```
 
 ---
