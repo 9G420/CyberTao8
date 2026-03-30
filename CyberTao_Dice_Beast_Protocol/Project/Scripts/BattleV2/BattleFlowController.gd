@@ -30,6 +30,7 @@ const AttackRuleHelper = preload("res://Scripts/BattleV2/AttackRuleHelper.gd")
 const VictoryRuleHelper = preload("res://Scripts/BattleV2/VictoryRuleHelper.gd")
 const UnitData = preload("res://Scripts/Data/UnitData.gd")
 const ItemEffectLibrary = preload("res://Scripts/BattleV2/ItemEffectLibrary.gd")
+const BoardGenerator = preload("res://Scripts/BattleV2/BoardGenerator.gd")
 
 enum BattlePhase {
 	BOOT,
@@ -84,12 +85,8 @@ func _bootstrap() -> void:
 	battle_ai.action_resolver = action_resolver
 
 	board_manager.build_test_board(Vector2i(8, 8))
-	_spawn_debug_units()
-	_spawn_debug_terrain()
-	_spawn_debug_items()
-	_spawn_debug_encounters()
-	_spawn_debug_heal_cells()
-	_spawn_debug_event_cells()
+	_spawn_player_units()
+	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8))
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -133,7 +130,7 @@ func spawn_demo_path() -> void:
 	for x in range(1, 4):
 		board_manager.add_path_cell(Vector2i(x, 6), owner_id)
 
-func _spawn_debug_units() -> void:
+func _spawn_player_units() -> void:
 	# 玩家单位 1：刀盾狗（前排坦克，路径适性）
 	var dog_data := load("res://Data/Units/blade_shield_dog.tres") as UnitData
 	if dog_data:
@@ -176,75 +173,6 @@ func _spawn_debug_units() -> void:
 			"terrain_affinity": crow_data.terrain_affinity,
 			"display_name": crow_data.unit_name,
 		}, Vector2i(0, 5))
-	# 敌方单位 1
-	var enemy_data_1: Dictionary = {
-		"max_hp": 5,
-		"atk": 2,
-		"def": 0,
-		"move_range": 1,
-		"attack_range": 1,
-		"owner": "enemy",
-		"tags": ["grunt"],
-		"display_name": "哨兵甲",
-	}
-	unit_manager.spawn_unit("enemy_grunt_1", enemy_data_1, Vector2i(3, 4))
-	# 敌方单位 2
-	var enemy_data_2: Dictionary = {
-		"max_hp": 4,
-		"atk": 3,
-		"def": 0,
-		"move_range": 1,
-		"attack_range": 1,
-		"owner": "enemy",
-		"tags": ["grunt"],
-		"display_name": "哨兵乙",
-	}
-	unit_manager.spawn_unit("enemy_grunt_2", enemy_data_2, Vector2i(5, 3))
-
-## 放置调试用地形格
-func _spawn_debug_terrain() -> void:
-	# 高台格：棋盘中部偏上，2 格
-	board_manager.add_terrain_cell(Vector2i(2, 4), "high_ground")
-	board_manager.add_terrain_cell(Vector2i(2, 5), "high_ground")
-	# 陷阱格：玩家前进路线上，2 格
-	board_manager.add_terrain_cell(Vector2i(1, 5), "trap")
-	board_manager.add_terrain_cell(Vector2i(3, 6), "trap")
-
-## 放置调试用道具格
-func _spawn_debug_items() -> void:
-	# 补丁凉茶：回复 2 HP，位于中部（值得绕路去拿）
-	board_manager.add_item_cell(Vector2i(4, 5), "patch_tea_cache")
-	# 超频骨头：+1 MOVE crest，位于前进路线上
-	board_manager.add_item_cell(Vector2i(2, 6), "overclock_bone")
-
-## 放置调试用遭遇格（橙红警告色，踩上触发遭遇信号）
-func _spawn_debug_encounters() -> void:
-	# 遭遇格 1：玩家前进路线中段，难以绕过
-	board_manager.add_encounter_cell(Vector2i(4, 4), "encounter_01")
-	# 遭遇格 2：偏侧翼，可选择绕行或主动踩入
-	board_manager.add_encounter_cell(Vector2i(6, 5), "encounter_02")
-	# 遭遇格 3：上方区域，早期路线分支
-	board_manager.add_encounter_cell(Vector2i(2, 2), "encounter_03")
-	# 遭遇格 4：右侧纵深，冒险路线高威胁
-	board_manager.add_encounter_cell(Vector2i(7, 4), "encounter_04")
-	# 遭遇格 5：中部偏下，玩家必经之路附近
-	board_manager.add_encounter_cell(Vector2i(5, 1), "encounter_05")
-
-## 放置调试用恢复格（蓝白色，持久回复，可重复踩）
-func _spawn_debug_heal_cells() -> void:
-	# 恢复格 1：玩家路线侧翼，值得绕路回复
-	board_manager.add_heal_cell(Vector2i(5, 6), 2)
-	# 恢复格 2：棋盘深处，冒险奖励
-	board_manager.add_heal_cell(Vector2i(1, 3), 3)
-
-## 放置调试用事件格（黄紫色，一次性随机效果）
-func _spawn_debug_event_cells() -> void:
-	# 事件格 1：中路必经之路
-	board_manager.add_event_cell(Vector2i(3, 5), "random_event")
-	# 事件格 2：侧翼探索奖励
-	board_manager.add_event_cell(Vector2i(6, 3), "random_event")
-	# 事件格 3：玩家出发路线附近
-	board_manager.add_event_cell(Vector2i(4, 6), "random_event")
 
 ## 单位进入格子后检查陷阱地形，触发 1 点伤害（陷阱适性单位免疫）
 func _check_terrain_trap(unit_id: String, cell: Vector2i) -> void:
@@ -849,12 +777,8 @@ func restart_battle() -> void:
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)
-	_spawn_debug_units()
-	_spawn_debug_terrain()
-	_spawn_debug_items()
-	_spawn_debug_encounters()
-	_spawn_debug_heal_cells()
-	_spawn_debug_event_cells()
+	_spawn_player_units()
+	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8))
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.34
+**当前版本**: v0.1.35
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.34）
+### 2.2 当前完成状态总览（v0.1.35）
 
 **棋盘走位层（全部稳定）**
 
@@ -105,6 +105,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 遭遇暂停与ENCOUNTER阶段 | v0.1.23 | 稳定 |
 | 统一赛博朋克视觉风格（CyberStyle） | v0.1.29 | 稳定 |
 | DEFEND/SKILL/TRICK crest 消耗入口 | v0.1.33 | 稳定 |
+| 棋盘随机生成（BoardGenerator） | v0.1.35 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -168,6 +169,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 BattleFlowController（棋盘层核心控制器）         ~785行 ⚠️ 已接近上限
 ├── DiceManager          — 掷骰 + crest 资源池
 ├── BoardManager         — 棋盘状态（7个格子字典 + BFS）
+├── BoardGenerator       — 棋盘程序化生成（静态工具类）
 ├── UnitManager          — 单位状态（生成/移动/伤害/击杀）
 ├── ActionResolver       — 攻击范围计算
 ├── BuffManager          — buff管理（tick_turn 未接入）⚠️
@@ -210,6 +212,7 @@ resolve_encounter(victory, hp) ←─── Main._on_card_battle_ended()
 BattleFlowController：Scripts/BattleV2/BattleFlowController.gd
 CardBattleController：Scripts/BattleV2/CardBattleController.gd
 BoardManager：        Scripts/BattleV2/BoardManager.gd
+BoardGenerator：      Scripts/BattleV2/BoardGenerator.gd
 UnitManager：         Scripts/BattleV2/UnitManager.gd
 BoardView：           Scripts/UI/BoardView.gd
 DiceDebugPanel：      Scripts/UI/DiceDebugPanel.gd
@@ -256,20 +259,19 @@ Main：                Scripts/Main.gd
 | BuffManager.tick_turn() 未接入 | 中 | 否 | 下阶段D方向 |
 | BattleFlowController debug spawn 未剥离 | 中 | 否 | 随机棋盘生成前 |
 | BoardView 563行，职责混杂 | 中 | 否 | 视觉升级前 |
-| 遭遇格为一次性，5格打完后棋盘无遭遇 | 中 | 否 | 随机棋盘生成时解决 |
+| 遭遇格为一次性，但每局随机生成 3~4 个 | 低 | 否 | 已缓解（v0.1.35 随机生成） |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 
 ---
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.34 Work Report，按优先级排列：
+以下任务来自 v0.1.35 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心）
 
 | 任务 | 说明 |
 |------|------|
-| **棋盘随机生成** | 从固定布局升级为程序化生成，控制遭遇密度（3~4个/棋盘） |
 | **卡牌升级机制** | 基础牌可升级为强化版本（参考STS） |
 
 ### 🟡 中优先级
@@ -293,6 +295,7 @@ Main：                Scripts/Main.gd
 
 | 任务 | 版本 |
 |------|------|
+| 棋盘随机生成 | v0.1.35 |
 | 牌组查看面板 | v0.1.34 |
 | DEFEND/SKILL/TRICK crest 消耗入口 | v0.1.33 |
 

@@ -921,3 +921,23 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 纯 UI 查看功能，无逻辑变更，不影响棋盘层和卡牌层闭环
 - 面板位置 (160,120)，覆盖棋盘中心区域，使用时需手动关闭
 - 支持 RichTextLabel 滚动，牌组变大后可滚动浏览
+
+## v0.1.35 - 2026-03-30
+
+### 新增
+- 棋盘随机生成系统（BoardGenerator.gd）：每局/每次重开布局随机化
+- 高台 2~3 个、陷阱 2~3 个、道具 2 个、遭遇 3~4 个、恢复 2 个、事件 2~3 个随机放置
+- 敌方单位 2 个随机生成在棋盘上半区域
+- 玩家出生区保护（左下 col0~1 row5~7 不放危险格子）
+- 防重叠机制：used_cells 追踪 + Fisher-Yates 洗牌选取
+
+### 修改
+- BattleFlowController 删除 5 个 _spawn_debug_* 方法，改用 BoardGenerator.generate_board()
+- _spawn_debug_units 改名为 _spawn_player_units（仅保留玩家单位）
+- _bootstrap() 和 restart_battle() 统一调用 BoardGenerator
+
+### 备注
+- 每局遭遇格从 5 种中随机选 3~4 种，位置每局不同
+- 重新开始后自动生成新布局，重玩性大幅提升
+- BFC 行数维持 785 行（删除 50 行 debug spawn，新增少量调用）
+- 棋盘层和卡牌层完整闭环不受影响
