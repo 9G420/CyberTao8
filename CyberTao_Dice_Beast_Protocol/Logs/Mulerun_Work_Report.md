@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.39
+**版本**: v0.1.40
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- Day 21：BuffManager 接入（tick_turn 在回合流程中正式调用）
+- Day 22：BattleFlowController 瘦身（从 795 行降至 588 行，目标 600 行以下）
 
 ---
 
 ## 根因目标
 
-BuffManager 自 v0.1.0 即存在，但 tick_turn() 从未被回合流程调用，active_buffs 无法自动衰减，get_stat_modifier() 也不存在，导致 buff 系统名存实亡。本轮任务的目标是让 BuffManager 成为真正可用的棋盘层 buff 基础设施：回合自动 tick、伤害计算集成 buff 修正、UI 显示 buff 状态，并用 overclock_bone 道具的 ATK+1 buff 作为首个实际接入示例。服务于棋盘走位层。
+BattleFlowController 作为棋盘层核心控制器，职责过多导致代码膨胀至 795 行，包含格子效果处理、Crest 消耗逻辑、道具效果执行等本应独立的职责。这导致维护困难、新功能接入时行数持续增长。本轮任务将这些可独立的职责剥离到两个新模块，BFC 仅保留薄代理和信号发射。服务于棋盘走位层架构健康度。
 
 ---
 
@@ -22,108 +22,109 @@ BuffManager 自 v0.1.0 即存在，但 tick_turn() 从未被回合流程调用�
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/BattleV2/BuffManager.gd` | 全面重写：新增 apply_buff()、get_stat_modifier()、get_active_buffs()、get_buff_summary()、clear_all()、clear_unit()；新增信号 buff_applied/buff_expired；tick_turn() 增加过期信号发射 |
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 3 处最小修改：_advance_to_next_player_round() 调用 tick_turn()；restart_battle() 调用 clear_all()；_calc_damage_with_terrain() 集成 buff atk/def 修正；overclock_bone 道具新增 ATK+1 buff（3回合） |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | 连接 buff_manager.buff_applied/buff_expired 信号；新增 _on_buff_applied()/_on_buff_expired() 回调；crest 池显示区增加选中单位 buff 摘要；版本号更新为 v0.1.39 |
-| `Logs/Mulerun_Work_Report.md` | 本文件，Day 21 工作报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.39 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步更新至 v0.1.39 状态 |
+| `Project/Scripts/BattleV2/CrestActionHandler.gd` | **新建**（66行）：从 BFC 剥离的 DEFEND/SKILL/TRICK crest 使用逻辑 + clear_temp_def |
+| `Project/Scripts/BattleV2/CellEffectHandler.gd` | **新建**（139行）：从 BFC 剥离的陷阱/道具/恢复/事件格效果处理 + 道具效果执行 |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | **重写**（795行→588行）：替换为薄代理模式，委托 CrestActionHandler/CellEffectHandler；压缩 _spawn_player_units 为辅助函数调用；移除 ItemEffectLibrary 直接引用 |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | 版本号更新为 v0.1.40 |
+| `Logs/Mulerun_Work_Report.md` | 本文件，Day 22 工作报告 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.40 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步更新至 v0.1.40 状态 |
 
 ---
 
 ## 实现内容
 
-1. **BuffManager 完整重写（23行 → 97行）**
-   - 支持 4 种 buff 类型：atk_up / atk_down / def_up / def_down
-   - `apply_buff(unit_id, type, value, duration)` — 施加 buff
-   - `get_stat_modifier(unit_id, stat)` — 查询 atk/def 总修正值
-   - `get_active_buffs(unit_id)` — 获取所有活跃 buff
-   - `get_buff_summary(unit_id)` — 获取文本摘要供 UI 显示
-   - `tick_turn()` — 所有 buff 持续回合 -1，到期发射 buff_expired 信号
-   - `clear_all()` / `clear_unit()` — 清除全部或指定单位 buff
-   - 信号：buff_applied(unit_id, type, value, duration) / buff_expired(unit_id, type)
+1. **CrestActionHandler.gd（新建，66行）**
+   - `try_use_defend(unit_id) -> Dictionary` — 护持 crest 使用，返回 {ok, new_temp_def}
+   - `try_use_skill(unit_id) -> Dictionary` — 术式 crest 使用，返回 {ok, heal}
+   - `try_use_trick() -> Dictionary` — 机巧 crest 使用，返回 {ok, gained_crest}
+   - `clear_temp_def()` — 清除所有玩家单位的临时防御
+   - 持有 unit_manager 和 dice_manager 引用
 
-2. **回合流程接入（BFC +9行）**
-   - `_advance_to_next_player_round()` 中调用 `buff_manager.tick_turn()`（每回合开始时 buff 自动衰减）
-   - `restart_battle()` 中调用 `buff_manager.clear_all()`（重开时清空所有 buff）
+2. **CellEffectHandler.gd（新建，139行）**
+   - `check_terrain_trap(unit_id, cell) -> Dictionary` — 陷阱检测，返回 {triggered, damage, killed}
+   - `check_item_pickup(unit_id, cell) -> Dictionary` — 道具拾取+效果执行，返回 {picked, item_id, effect_text}
+   - `check_heal_cell(unit_id, cell) -> Dictionary` — 恢复格检测，返回 {healed, heal_amount, actual_heal}
+   - `check_event_cell(unit_id, cell) -> Dictionary` — 事件格触发，返回 {triggered, event_id, effect_text, killed}
+   - `_apply_item_effect()` — 从 BFC 完整迁移的道具效果执行逻辑
+   - 持有 board_manager、unit_manager、dice_manager、buff_manager 引用
 
-3. **伤害计算集成 buff 修正**
-   - `_calc_damage_with_terrain()` 通过 unit dict 中的 "id" 字段查询 buff 修正
-   - 攻击方 ATK 加上 atk buff 修正（正/负）
-   - 防御方 DEF 加上 def buff 修正（正/负）
-   - 无需修改函数签名，3 处调用方无需改动
+3. **BFC 瘦身（795行→588行，减少 207 行，降幅 26%）**
+   - Crest 使用函数从 ~62 行内联逻辑 → 3 个 ~6 行薄代理（委托 + 信号发射）
+   - 格子效果函数从 ~120 行内联逻辑 → 4 个 ~5 行薄代理
+   - _spawn_player_units 从 43 行 → 14 行（引入 _spawn_unit_from_data 辅助函数）
+   - _apply_item_effect 46 行完整迁移到 CellEffectHandler
+   - _clear_temp_def 6 行迁移到 CrestActionHandler
+   - ItemEffectLibrary 引用从 BFC 移除（转入 CellEffectHandler）
 
-4. **首个实际 buff 来源：overclock_bone 道具**
-   - 拾取 overclock_bone 后，除原有 MOVE+1 crest 外，额外施加 ATK+1 buff 持续 3 回合
-   - 效果文本更新为 "MOVE+1 ATK+1(3回合)"
-
-5. **HUD buff 显示（DiceDebugPanel）**
-   - 连接 BuffManager 的 buff_applied/buff_expired 信号
-   - buff 获得/消失时在意图区域显示提示
-   - crest 资源池下方显示选中单位的 buff 摘要
+4. **接口兼容性**
+   - BFC 对外信号签名完全不变（18 个信号）
+   - BFC 公共方法签名完全不变（try_move_unit、try_attack_unit、try_summon 等）
+   - DiceDebugPanel、Main.gd、BoardView 等消费方无需任何修改
 
 ---
 
 ## 接口变更
 
-### 新增信号（BuffManager）
-- `buff_applied(unit_id: String, buff_type: String, value: int, duration: int)` — buff 施加时发射
-- `buff_expired(unit_id: String, buff_type: String)` — buff 到期移除时发射
+### 新增文件
+- `Scripts/BattleV2/CrestActionHandler.gd`（class_name CrestActionHandler）
+- `Scripts/BattleV2/CellEffectHandler.gd`（class_name CellEffectHandler）
 
-### 新增方法（BuffManager）
-- `apply_buff(unit_id, buff_type, value, duration)` — 施加 buff
-- `get_stat_modifier(unit_id, stat) -> int` — 查询属性修正
-- `get_active_buffs(unit_id) -> Array` — 获取活跃 buff 列表
-- `get_buff_summary(unit_id) -> String` — 获取 buff 文本摘要
-- `clear_all()` — 清除所有 buff
-- `clear_unit(unit_id)` — 清除指定单位 buff
+### 新增 BFC 变量
+- `var crest_handler: CrestActionHandler`
+- `var cell_effect_handler: CellEffectHandler`
 
-### 修改方法（BattleFlowController）
-- `_calc_damage_with_terrain()` — 注释更新，新增 buff 修正计算（签名不变）
-- `_apply_item_effect()` — overclock_bone 效果文本变更为 "MOVE+1 ATK+1(3回合)"
+### 新增 BFC 内部方法
+- `_spawn_unit_from_data(res_path, cell)` — 单位生成辅助函数
+
+### 移除 BFC 引用
+- `const ItemEffectLibrary = preload(...)` — 已转入 CellEffectHandler
 
 ---
 
 ## 测试确认
 
 代码逻辑自查通过：
-- BuffManager.tick_turn() 在 _advance_to_next_player_round() 中调用，每回合开始时所有 buff duration -1
-- buff duration 降至 0 时正确发射 buff_expired 信号并从列表移除
-- BuffManager.clear_all() 在 restart_battle() 中调用，重开时 buff 全部清空
-- get_stat_modifier() 正确累加同单位的多个同类 buff
-- _calc_damage_with_terrain() 通过 attacker.get("id") 获取 unit_id，UnitManager.spawn_unit() 已在 line 13 存储 "id" 字段
-- overclock_bone 拾取后施加 atk_up buff：ATK+1 持续 3 回合，3 回合后自动消失
-- DiceDebugPanel 正确连接 buff_manager 信号，buff_applied 显示青色提示，buff_expired 显示警告色提示
-- crest 池区域在选中单位有 buff 时显示摘要文本
-- 棋盘层完整闭环不受影响：掷骰/移动/攻击/召唤/敌方回合/胜负重开均正常
-- 卡牌层完整闭环不受影响：未触碰 CardBattleController
-- BFC 仅增加 9 行（786→795），未添加新逻辑模块
+- BFC 588 行，低于 600 行目标 ✅
+- 18 个信号声明完全保留，签名不变
+- _bootstrap() 中正确实例化 crest_handler 和 cell_effect_handler，设置所有引用
+- restart_battle() 中无需重置 handler（无状态），buff_manager.clear_all() 保留
+- try_use_defend/skill/trick_crest 薄代理：先检查 is_battle_over + phase，再委托 handler，最后发信号
+- _check_terrain_trap 薄代理：委托 handler → 发 terrain_damage_triggered → killed 时 _check_battle_outcome
+- _check_item_pickup 薄代理：委托 handler → 发 item_picked_up
+- _check_heal_cell 薄代理：委托 handler → 发 heal_cell_triggered
+- _check_event_cell 薄代理：委托 handler → 发 event_cell_triggered → killed 时 _check_battle_outcome
+- try_move_unit 内的格子检查调用链不变（_check_terrain_trap → _check_item_pickup → _check_heal_cell → _check_event_cell → _check_encounter）
+- _execute_enemy_actions 内的 _check_terrain_trap 调用不变
+- _spawn_player_units 使用 _spawn_unit_from_data 辅助函数，3 个单位的资源路径和位置不变
+- CellEffectHandler._apply_item_effect 完整保留 overclock_bone 的 ATK+1 buff 逻辑
+- 棋盘层完整闭环：掷骰/移动/攻击/召唤/敌方回合/胜负重开均不受影响
+- 卡牌层完整闭环：未触碰 CardBattleController 及其 UI 面板
 
 ---
 
 ## 剩余问题
 
-- BuffManager 目前只有 overclock_bone 一个 buff 来源，后续可扩展事件格/技能/卡牌效果
-- buff 对卡牌战斗层无影响（设计如此：卡牌层独立状态机）
-- buff 显示在 DiceDebugPanel 的意图区域，可能与敌方意图文本冲突（低优先级，不阻塞）
-- 未测试多个 buff 叠加的极端情况（如同时 atk_up +1 和 atk_down -2）
-- BFC 795 行，继续增长需警惕，下一阶段应考虑瘦身
+- _execute_enemy_actions 仍有 72 行在 BFC，是最大的单体函数，未来可考虑迁移到 BattleAI 但涉及 async/await 和信号发射，风险较高
+- CellEffectHandler 持有 4 个 manager 引用，耦合度偏高（但职责单一，可接受）
+- 总代码量未减少（795 行拆为 588+66+139=793 行），但职责分离使各文件更聚焦
 
 ---
 
 ## 建议下一步
 
-1. **BattleFlowController 瘦身**（中优先）— 剥离逻辑到独立模块，目标降至 600 行以下
-2. **更多格子类型**（中低优先）— 商店格、宝箱格
-3. **多层地图**（中低优先）— 通关当前棋盘后进入下一层
-4. **BUG-001 修复**（中低优先）— 分辨率切换无效（Demo 前必须解决）
+1. **更多格子类型**（中优先）— 商店格、宝箱格
+2. **多层地图**（中优先）— 通关当前棋盘后进入下一层
+3. **BUG-001 修复**（中低优先）— 分辨率切换无效（Demo 前必须解决）
 
 ---
 
 ## Codex 复审标注
 
-1. **架构判断**：BuffManager 从 23 行扩展到 97 行，职责清晰（只管 buff 的存储/查询/衰减），不涉及具体游戏逻辑判断。BFC 仅增加 9 行调用代码，未引入新的模块依赖。选择在 _calc_damage_with_terrain() 内部通过 dict["id"] 查询 buff 修正，避免了修改函数签名和 3 处调用方，是最小侵入方案。
+1. **架构判断**：选择"薄代理"模式而非"完全解耦"模式。BFC 保留所有 18 个信号和公共方法签名，外部消费方（DiceDebugPanel、Main.gd、BoardView）零修改。Handler 返回结果字典，BFC 负责信号发射和战斗结算。这比让 Handler 自行发信号更简单，避免引入新的信号转发链。
 
-2. **设计选择**：overclock_bone 道具新增 ATK+1 buff 是 buff 系统的首个实际接入点。选择 3 回合持续时间是因为一局棋盘对战平均 5-8 回合，3 回合覆盖约一半战局，有意义但不过于持久。如果测试中 ATK+1 影响过大（敌方 DEF 普遍为 0-1），可将 value 改为 0 或 duration 改为 2。
+2. **设计选择：薄代理 vs 直接内联**：格子效果检查保留为 BFC 薄代理方法（如 _check_terrain_trap），而非在 try_move_unit 中直接内联 handler 调用。原因：_check_terrain_trap 在两个地方被调用（try_move_unit 和 _execute_enemy_actions），薄代理避免重复代码。
 
-3. **buff 不跨层**：buff 系统仅影响棋盘层伤害计算，不影响卡牌战斗层。这是设计选择——两层各自独立管理战斗状态。如果未来需要跨层 buff（如"棋盘 buff 影响卡牌战斗伤害"），需要新的接口设计，当前不做。
+3. **_spawn_player_units 压缩**：引入 _spawn_unit_from_data 辅助函数，将 3 个 12 行的 spawn 块压缩为 3 行调用。辅助函数 10 行。净减 26 行。如果未来增加更多玩家单位，只需增加一行调用。
+
+4. **未提取 _execute_enemy_actions 的理由**：该函数大量使用 await、emit_signal、is_battle_over 和 _calc_damage_with_terrain，与 BFC 状态深度耦合。强行提取需要传递 BFC 引用或大量 Callable，收益不大且增加调试难度。保留在 BFC 是当前最保守的方案。

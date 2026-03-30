@@ -922,6 +922,25 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 面板位置 (160,120)，覆盖棋盘中心区域，使用时需手动关闭
 - 支持 RichTextLabel 滚动，牌组变大后可滚动浏览
 
+## v0.1.40 - 2026-03-30
+
+### 新增
+- CrestActionHandler.gd（66行）：从 BFC 剥离的 DEFEND/SKILL/TRICK crest 使用逻辑
+- CellEffectHandler.gd（139行）：从 BFC 剥离的陷阱/道具/恢复/事件格效果处理
+- _spawn_unit_from_data() 辅助函数：压缩玩家单位生成代码
+
+### 修改
+- BattleFlowController 从 795 行瘦身至 588 行（降幅 26%）
+- Crest 使用函数替换为薄代理模式（委托 Handler + 信号发射）
+- 格子效果函数替换为薄代理模式（委托 Handler + 信号发射）
+- _spawn_player_units 压缩为 3 行辅助函数调用
+- ItemEffectLibrary 引用从 BFC 转入 CellEffectHandler
+
+### 备注
+- 所有 BFC 信号签名和公共方法签名完全不变，消费方零修改
+- 总代码量未减少（拆分前 795 行，拆分后 588+66+139=793 行），但职责分离
+- _execute_enemy_actions（72行）仍在 BFC，因 async/await 耦合暂不提取
+
 ## v0.1.39 - 2026-03-30
 
 ### 新增

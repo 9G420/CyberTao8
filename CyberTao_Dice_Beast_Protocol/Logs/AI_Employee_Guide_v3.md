@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.39
+**当前版本**: v0.1.40
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -173,7 +173,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 ### 3.1 模块结构
 
 ```
-BattleFlowController（棋盘层核心控制器）         ~795行 ⚠️ 已接近上限
+BattleFlowController（棋盘层核心控制器）         ~588行 ✅ 已瘦身
 ├── DiceManager          — 掷骰 + crest 资源池
 ├── BoardManager         — 棋盘状态（7个格子字典 + BFS）
 ├── BoardGenerator       — 棋盘程序化生成（静态工具类）
@@ -183,7 +183,8 @@ BattleFlowController（棋盘层核心控制器）         ~795行 ⚠️ 已接
 ├── BattleAI             — 敌方决策
 ├── AttackRuleHelper     — 伤害公式
 ├── VictoryRuleHelper    — 胜负判定
-└── ItemEffectLibrary    — 道具效果
+├── CrestActionHandler   — Crest消耗操作（从BFC剥离）      ~66行
+└── CellEffectHandler    — 格子效果处理（从BFC剥离）       ~139行
 
 CardBattleController（卡牌层独立状态机）         ~515行
 └── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
@@ -221,6 +222,8 @@ CardBattleController：Scripts/BattleV2/CardBattleController.gd
 BoardManager：        Scripts/BattleV2/BoardManager.gd
 BoardGenerator：      Scripts/BattleV2/BoardGenerator.gd
 UnitManager：         Scripts/BattleV2/UnitManager.gd
+CrestActionHandler：  Scripts/BattleV2/CrestActionHandler.gd
+CellEffectHandler：   Scripts/BattleV2/CellEffectHandler.gd
 BoardView：           Scripts/UI/BoardView.gd
 DiceDebugPanel：      Scripts/UI/DiceDebugPanel.gd
 CardBattlePanel：     Scripts/UI/CardBattlePanel.gd
@@ -264,7 +267,7 @@ Main：                Scripts/Main.gd
 |------|----------|----------|--------------|
 | BUG-001：分辨率/窗口模式切换无效 | 低 | 否 | Demo前必须修 |
 | ~~BuffManager.tick_turn() 未接入~~ | ~~中~~ | ~~否~~ | ✅ v0.1.39 已解决 |
-| BattleFlowController 795行，需瘦身 | 中 | 否 | 下一阶段 |
+| ~~BattleFlowController 795行，需瘦身~~ | ~~中~~ | ~~否~~ | ✅ v0.1.40 已瘦身至588行 |
 | BoardView 563行，职责混杂 | 中 | 否 | 视觉升级前 |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 | 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
@@ -279,13 +282,12 @@ Main：                Scripts/Main.gd
 
 | 任务 | 说明 |
 |------|------|
-| **BattleFlowController 瘦身** | 剥离逻辑到独立模块，目标降至 600 行以下 |
+| **更多格子类型** | 商店格、宝箱格 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **更多格子类型** | 商店格、宝箱格 |
 | **多层地图** | 通关当前棋盘后进入下一层 |
 
 ### 🟢 中低优先级
@@ -298,6 +300,7 @@ Main：                Scripts/Main.gd
 
 | 任务 | 版本 |
 |------|------|
+| BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |
 | 能量成长机制 | v0.1.38 |
 | Boss 遭遇（零号协议） | v0.1.37 |
