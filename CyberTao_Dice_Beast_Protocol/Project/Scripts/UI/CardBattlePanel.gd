@@ -133,7 +133,10 @@ func _rebuild_card_buttons(new_hand: Array, cur_energy: int) -> void:
 		btn.text = String(card["name"]) + " (" + str(card["value"]) + ")"
 		btn.add_theme_font_size_override("font_size", 12)
 		btn.disabled = not can_play
-		CyberStyle.style_button(btn, "orange")
+		var btn_accent: String = "orange"
+		if card.get("upgraded", false):
+			btn_accent = "cyan"
+		CyberStyle.style_button(btn, btn_accent)
 		var idx: int = i
 		btn.pressed.connect(func(): _on_card_pressed(idx))
 		_card_container.add_child(btn)

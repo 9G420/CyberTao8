@@ -58,6 +58,7 @@ func _refresh_deck_list() -> void:
 				"type": String(card["type"]),
 				"cost": int(card.get("cost", 1)),
 				"value": int(card.get("value", 0)),
+				"upgraded": bool(card.get("upgraded", false)),
 			}
 	# 按费用排序后按名称排序
 	var sorted_keys: Array[String] = []
@@ -74,8 +75,12 @@ func _refresh_deck_list() -> void:
 		var value: int = int(info["value"])
 		var type_display: String = _get_type_display(card_type)
 		var type_color: Color = _get_type_color(card_type)
-		# 卡牌名称（带颜色）
-		_card_list.push_color(type_color)
+		var is_upgraded: bool = bool(info.get("upgraded", false))
+		# 卡牌名称（带颜色，升级牌用青色高亮）
+		if is_upgraded:
+			_card_list.push_color(CyberStyle.TEXT_CYAN)
+		else:
+			_card_list.push_color(type_color)
 		_card_list.append_text(card_name)
 		_card_list.pop()
 		# 数量
