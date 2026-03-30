@@ -22,6 +22,7 @@ var _deck_view_panel: DeckViewPanel
 var _result_label: Label
 var _restart_btn: Button
 var _last_attack_damage: int = 0
+var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
 
 func _ready() -> void:
@@ -173,7 +174,7 @@ func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
 	if success:
-		_board_view.play_attack_feedback(target_cell, _last_attack_damage)
+		_board_view.play_attack_feedback(target_cell, _last_attack_damage, _last_attack_killed)
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
@@ -209,9 +210,10 @@ func _on_phase_changed(phase_name: String) -> void:
 
 func _on_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool) -> void:
 	_last_attack_damage = damage
+	_last_attack_killed = killed
 
 func _on_enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i) -> void:
-	_board_view.play_attack_feedback(target_cell, damage)
+	_board_view.play_attack_feedback(target_cell, damage, killed)
 
 func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i) -> void:
 	_board_view.queue_redraw()

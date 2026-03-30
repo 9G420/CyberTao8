@@ -7,6 +7,7 @@ signal deck_view_requested
 var battle_flow: Node = null
 var dice_manager: Node = null
 var _selected_unit_id_cache: String = ""
+var _dice_anim: DiceRollAnimation = null
 var phase_label: Label
 var round_label: Label
 var selected_label: Label
@@ -241,6 +242,12 @@ func _build_ui() -> void:
 	roll_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	add_child(roll_label)
 
+	# --- 掷骰演出动画（覆盖掷骰结果区域） ---
+	_dice_anim = DiceRollAnimation.new()
+	_dice_anim.position = Vector2(16, 290)
+	_dice_anim.animation_finished.connect(_on_dice_anim_finished)
+	add_child(_dice_anim)
+
 	# --- Crest 资源池 ---
 	crest_label = RichTextLabel.new()
 	crest_label.position = Vector2(16, 340)
@@ -261,7 +268,7 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.45"
+	ver_label.text = "v0.1.46"
 	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -377,8 +384,13 @@ func _on_round_changed(round_number: int) -> void:
 		floor_label.text = "层数：" + str(battle_flow.current_floor) + "/" + str(battle_flow.get_max_floor())
 
 func _on_dice_rolled(results: Array[String], next_crest_pool: Dictionary) -> void:
-	roll_label.text = "上次掷骰：" + ", ".join(results)
+	# 立即更新 crest 池（玩家可在动画期间行动）
 	_refresh_crest_pool(next_crest_pool)
+	# 播放掷骰演出动画
+	_dice_anim.play(results, next_crest_pool)
+
+func _on_dice_anim_finished(results: Array[String], _crest_pool: Dictionary) -> void:
+	roll_label.text = "上次掷骰：" + ", ".join(results)
 
 func _on_unit_selected(unit_id: String) -> void:
 	selected_label.text = "选中：" + unit_id

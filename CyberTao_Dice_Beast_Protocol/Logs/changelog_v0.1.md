@@ -1173,3 +1173,32 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - gl_compatibility 安全：全部使用 draw_rect/draw_line/draw_arc/draw_colored_polygon/draw_string
 - BoardView 所有公共信号和方法签名不变，消费方（Main.gd/DiceDebugPanel）零修改
 - Phase 1 完成标准：棋盘截图看起来像"游戏"而非"调试工具"；单位可区分类型；格子类型一目了然
+
+## v0.1.46 - 2026-03-30
+
+### 新增
+- 美化 Phase 2 完整实现：掷骰演出 + 攻击演出增强
+- DiceRollAnimation.gd（~158行）：掷骰演出动画控件
+  - 3枚骰子翻滚（55ms随机切换crest符号）→ 逐个定格（scale弹跳+霓虹发光）
+  - 6种crest独特符号程序化绘制（★箭头✖盾◎⬡）+ 6种独特颜色
+  - 总演出时长约 1.1s，动画期间不阻塞操作
+- BattleEffects.gd（~103行）：战斗特效静态类
+  - 屏幕微震：6步衰减随机偏移，meta存储静止位置防漂移
+  - 命中粒子：CPUParticles2D 一次性爆发（普通6粒/击杀12粒）+ 自动释放
+  - 增强伤害飘字：scale弹跳（1.0→1.4→1.0）+ 上浮渐隐
+  - 击杀文字：金色 "KILL!" 弹出
+
+### 修改
+- BoardView.play_attack_feedback() 增强：集成 BattleEffects（微震+粒子+弹跳飘字），新增 is_kill 参数（默认 false 向后兼容）
+- BoardView 移除旧 _damage_label 实例变量，被 BattleEffects.enhanced_damage_popup 替代
+- DiceDebugPanel 集成 DiceRollAnimation：掷骰后播放动画，crest池立即更新
+- Main.gd 新增 _last_attack_killed 变量，传递击杀状态到 play_attack_feedback
+- DiceDebugPanel 版本号更新为 v0.1.46
+
+### 备注
+- 掷骰动画不阻塞操作：crest池在动画开始时即更新，玩家可立即行动
+- CPUParticles2D（gl_compatibility 兼容），one_shot + 自动释放，无节点泄漏
+- 击杀时效果全面增强：闪光更亮、震动更强、粒子更多、金色飘字 + KILL!文字
+- BattleFlowController / DiceManager 零修改
+- Phase 2 完成标准：掷骰有期待感（>1秒演出）；攻击命中有冲击感（屏幕微震+粒子）
+

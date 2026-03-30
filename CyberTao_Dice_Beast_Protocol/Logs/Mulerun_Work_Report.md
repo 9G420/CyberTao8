@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.45
+**版本**: v0.1.46
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 美化 Phase 1.1 + 1.2 + 1.3：棋盘格视觉升级 + 单位视觉升级 + 高亮系统升级
+- 美化 Phase 2.1 + 2.2：掷骰演出动画 + 攻击演出增强（屏幕微震+粒子+增强飘字）
 
 ---
 
 ## 根因目标
 
-项目功能层已完成 v0.1.44（双层玩法+多层地图闭环稳定），视觉处于纯代码绘制原型级状态。根据 Art_Beautification_Strategy_zh.md Phase 1（P0 最高优先级），将棋盘从"调试原型"升级为"有风格辨识度的游戏画面"。
+Phase 1 已完成棋盘格/单位/高亮视觉升级。Phase 2 目标是让关键操作有"感觉"——掷骰有期待感、攻击有冲击感。根据 Art_Beautification_Strategy_zh.md Phase 2（P1 优先级）执行。
 
 ---
 
@@ -22,66 +22,61 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/CyberStyle.gd` | 新增 10 个棋盘美化专用颜色常量（BOARD_CELL_DARK/LIGHT、BOARD_GRID_LINE/INNER_GLOW、NEON_GOLD/RED/TEAL/PURPLE/BLUE/GREEN） |
-| `Scripts/UI/BoardCellRenderer.gd` | **新建**，~210行，格子渲染静态类（class_name 注册）：基础格渐变+发光边缘、9种格子类型独特图标符号+霓虹发光、移动/攻击/召唤高亮升级 |
-| `Scripts/UI/UnitRenderer.gd` | **新建**，~159行，单位渲染静态类（class_name 注册）：玩家单位独特形状（盾形/菱形/倒三角）、敌方锯齿边框、HP条（绿→金→红渐变）、选中脉冲金框、地形适性星标 |
-| `Scripts/UI/BoardView.gd` | **完全重写**，从648行瘦身至423行：5层分层绘制委托 BoardCellRenderer/UnitRenderer、Timer 驱动 20fps 动画刷新、所有点击逻辑和反馈动画完整保留 |
-| `Scripts/UI/DiceDebugPanel.gd` | 版本号更新为 v0.1.45 |
+| `Scripts/UI/DiceRollAnimation.gd` | **新建**，~158行，掷骰演出动画控件：3枚骰子翻滚→逐个定格→crest图标弹出发光 |
+| `Scripts/UI/BattleEffects.gd` | **新建**，~103行，战斗特效静态类：屏幕微震+CPUParticles2D粒子爆发+增强伤害飘字+击杀文字 |
+| `Scripts/UI/BoardView.gd` | play_attack_feedback 增强：集成 BattleEffects（微震+粒子+弹跳飘字），新增 is_kill 参数，移除旧 _damage_label |
+| `Scripts/UI/DiceDebugPanel.gd` | 集成 DiceRollAnimation：掷骰后播放动画，动画完成后更新结果文字；版本号 v0.1.46 |
+| `Scripts/Main.gd` | 新增 _last_attack_killed 变量，play_attack_feedback 调用传递 is_kill 参数 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.45 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.45，§2.2/§3.1/§5/§6 同步 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.46 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.46，§3.1/§6 同步 |
 
 ---
 
 ## 实现内容
 
-### 1. BoardCellRenderer.gd（全新文件，~210行）
+### 1. DiceRollAnimation.gd（全新文件，~158行）
 
-- `_glow()` 静态辅助：3层 draw_rect 模拟霓虹外发光（alpha 0.06→0.15→0.35）
-- `draw_base_cell()`：深色交替渐变底色 + 发光网格线
-- `draw_overlay()` 分发器：根据格子类型调用对应绘制方法
-- 9种格子类型独特视觉：
-  - 高台 → ▲ 三角 + 金色发光 + 高度阴影
-  - 陷阱 → ✖ 十字 + 红色脉冲
-  - 遭遇 → ⚡ 闪电 + 橙色呼吸
-  - Boss → BOSS 文字 + 深红粗发光框
-  - 回复 → ✚ 十字 + 蓝白发光 + 数值
-  - 事件 → ? + 紫色发光
-  - 商店 → ◆ 菱形 + 青绿发光
-  - 宝箱 → 六边形 + 金色发光
-  - 道具 → 小菱形 + 绿色发光
-- 路径格：玩家路径青色、其他路径橙色
-- 高亮升级：
-  - 移动 → 四角 L 形线条（替代半透明矩形）
-  - 攻击 → 十字准星 + 脉冲边框
-  - 召唤 → 圆弧标记
+- `play(results, crest_pool)` 主方法：启动掷骰演出
+- 3枚骰子翻滚效果：55ms 间隔随机切换 crest 符号
+- 逐个定格（每枚间隔 150ms）：定格时 scale 1.25→1.0 弹跳 + 霓虹发光闪烁
+- 6种 crest 独特符号程序化绘制：
+  - 显化 → ★ 五角星
+  - 步进 → → 箭头
+  - 杀伐 → ✖ 交叉剑
+  - 护持 → 盾形
+  - 术式 → ◎ 同心圆
+  - 机巧 → ⬡ 六边形
+- 6种 crest 独特颜色：青/青绿/橙/金/品红/紫
+- 总演出时长约 1.1s（tumble 0.55s + settle 3×0.15s + post 0.25s）
+- 半透明暗色背景遮罩 + 霓虹边框
+- `animation_finished` 信号通知完成
+- 使用 `set_process(false/true)` 精确控制，非动画期间零开销
 
-### 2. UnitRenderer.gd（全新文件，~159行）
+### 2. BattleEffects.gd（全新文件，~103行）
 
-- `draw_full_unit()` 主入口：分发玩家/敌方绘制 + HP条 + 选中环
-- 玩家单位独特形状：
-  - 刀盾犬 → 盾形矩形 + V形底部装饰
-  - 黑客狐 → 菱形
-  - 鸦术士 → 倒三角
-  - 默认 → 圆角矩形
-- 敌方单位：暗红发光 + 四角尖角装饰（锯齿威胁感）
-- HP条：底色+填充双层，ratio>0.6=绿/蓝、>0.3=金黄警告、≤0.3=低血量色
-- 选中脉冲：双层金色框（辉光层+主框层），alpha 随 pulse 变化
-- 地形适性星标：匹配地形时显示金色 * 标记
+- `shake_screen(target, intensity, duration)` — 6步衰减随机偏移，使用 meta 存储静止位置防止抖动累积
+- `spawn_hit_particles(parent, pos, color, is_kill)` — CPUParticles2D 一次性爆发（普通6粒/击杀12粒），全方位扩散+重力下落+透明渐隐，自动释放
+- `enhanced_damage_popup(parent, pos, damage, is_kill)` — 双 Tween 驱动：scale 弹跳（1.0→1.4→1.0）+ 上浮渐隐
+- `kill_text_popup(parent, pos)` — 击杀时额外弹出金色 "KILL!" 文字
 
-### 3. BoardView.gd 重写（648行→423行）
+### 3. BoardView 增强
 
-- 5层分层绘制架构：Grid → Overlays → Highlights → Units → AttackFlash
-- Timer 驱动 20fps 动画刷新（50ms 间隔，避免每帧 _process 开销）
-- pulse 统一用 `sin(Time.get_ticks_msec() * 0.003) * 0.5 + 0.5`
-- 所有点击交互逻辑（_gui_input/_handle_cell_click/_select_unit/_deselect）完整保留，零修改
-- 所有反馈动画（play_attack_feedback/play_pickup_feedback 等 8 个方法）完整保留，颜色改用 CyberStyle 常量
-- `_cell_rect(cell, margin)` 辅助方法统一格子矩形计算
-- `_item_names` 道具显示名称映射
+- `play_attack_feedback` 新增 `is_kill: bool = false` 参数（默认值保持向后兼容）
+- 集成 BattleEffects：每次攻击命中触发微震+粒子+增强飘字
+- 击杀时效果增强：闪光更亮、震动更强、粒子更多、金色飘字+KILL!文字
+- 移除旧 `_damage_label` 实例变量（被 BattleEffects.enhanced_damage_popup 替代，支持多个同时存在）
 
-### 4. CyberStyle.gd 扩展
+### 4. DiceDebugPanel 集成
 
-- 新增 10 个颜色常量：BOARD_CELL_DARK、BOARD_CELL_LIGHT、BOARD_GRID_LINE、BOARD_INNER_GLOW、NEON_GOLD、NEON_RED、NEON_TEAL、NEON_PURPLE、NEON_BLUE、NEON_GREEN
+- 掷骰后先更新 crest 池显示（玩家可立即行动），同时播放骰子演出
+- 动画完成后更新 roll_label 文字（"上次掷骰：move, attack, defend"）
+- DiceRollAnimation 定位在掷骰结果区域（y=290），覆盖该区域约 1.1s
+
+### 5. Main.gd 信号传递
+
+- 新增 `_last_attack_killed` 变量，从 `attack_completed` 信号捕获
+- 玩家攻击和敌方攻击均传递 is_kill 到 play_attack_feedback
 
 ---
 
@@ -89,31 +84,34 @@
 
 ### 新增
 
-- `BoardCellRenderer`（class_name 全局注册）：`draw_base_cell()`、`draw_overlay()`、`draw_move_highlight()`、`draw_attack_highlight()`、`draw_summon_highlight()` 静态方法
-- `UnitRenderer`（class_name 全局注册）：`draw_full_unit()`、`draw_affinity_star()` 静态方法
-- `CyberStyle` 新增 10 个颜色常量
+- `DiceRollAnimation`（class_name 全局注册）：`play(results, crest_pool)` 方法 + `animation_finished` 信号
+- `BattleEffects`（class_name 全局注册）：`shake_screen()`、`spawn_hit_particles()`、`enhanced_damage_popup()`、`kill_text_popup()` 静态方法
+
+### 修改
+
+- `BoardView.play_attack_feedback()` 新增可选参数 `is_kill: bool = false`（向后兼容）
 
 ### 删除
 
-- BoardView 旧版 15+ 个 `_draw_*` 私有方法（被 Renderer 替代）
+- `BoardView._damage_label` 实例变量（被 BattleEffects 替代）
 
 ### 无变化
 
-- BoardView 的所有公共信号（unit_selected/unit_deselected/move_requested/attack_requested/summon_requested）
-- BoardView 的所有公共方法（bind_managers/bind_battle_flow/play_*_feedback 系列）
-- 消费方（Main.gd/DiceDebugPanel）零修改
+- 所有 BoardView 信号签名不变
+- BattleFlowController 零修改
+- DiceManager 零修改
 
 ---
 
 ## 测试确认
 
 代码审查确认：
-- 所有 BoardView 信号签名不变，Main.gd 零修改
-- 所有 play_*_feedback 方法签名不变
-- 点击交互逻辑（_handle_cell_click）完整保留，包括 ENCOUNTER 阶段屏蔽
-- CyberStyle 颜色常量兼容性：新增常量不影响现有引用
-- gl_compatibility 兼容：全部使用 draw_rect/draw_line/draw_arc/draw_colored_polygon/draw_string，无 Shader 依赖
-- Timer 动画：50ms 间隔 queue_redraw()，不影响逻辑帧率
+- play_attack_feedback 默认参数 is_kill=false 保证所有现有调用（terrain_damage 等）不受影响
+- DiceRollAnimation 使用 set_process(false) 默认不运行，仅在演出期间激活
+- BattleEffects.shake_screen 使用 meta 存储静止位置，防止多次抖动位置漂移
+- CPUParticles2D 使用 one_shot + 自动 queue_free，不会泄漏节点
+- gl_compatibility 安全：CPUParticles2D（非 GPUParticles2D）+ draw_* 绘制
+- 性能：掷骰动画仅在 1.1s 内激活 _process，非动画期间零开销；粒子 one_shot 最多 12 个
 
 ---
 
@@ -121,24 +119,23 @@
 
 - 层间难度暂不递增（已排后）
 - 阵亡单位跨层不复活
-- BoardView 423行，后续 Phase 2 添加新动画时需注意行数
 
 ---
 
 ## 建议下一步
 
-1. **美化 Phase 2.1**：掷骰演出（DiceRollAnimation.gd）
-2. **美化 Phase 2.2**：攻击演出增强（BattleEffects.gd，屏幕微震+粒子）
-3. **美化 Phase 3**：卡牌战斗面板重设计
+1. **美化 Phase 3**：卡牌战斗面板重设计（CardRenderer.gd）
+2. **美化 Phase 4.1**：背景氛围升级（动态网格+粒子+渐变）
+3. **美化 Phase 4.2**：UI 过渡动画（面板弹出/关闭）
 
 ---
 
 ## Codex 复审标注
 
-1. **BoardView 瘦身成功**：从 648 行降至 423 行（降幅 35%），超过策略文档目标（<500行）。核心手段是将 15+ 个 _draw_* 方法委托给 BoardCellRenderer/UnitRenderer 静态调用。
+1. **掷骰动画不阻塞操作**：动画播放期间，crest 池已更新，玩家可以立即移动/攻击。这是有意设计——动画是视觉反馈而非流程门槛，避免了修改 BattleFlowController 的需要。
 
-2. **新 Renderer 架构选择**：BoardCellRenderer 和 UnitRenderer 均使用 `extends RefCounted` + `class_name` + 纯静态方法，与 CyberStyle 模式一致。选择静态方法而非实例化，原因是渲染器无状态，不需要持有任何实例变量。
+2. **BattleEffects 纯静态设计**：与 CyberStyle/BoardCellRenderer/UnitRenderer 保持一致的无状态静态方法模式。唯一的"状态"是 shake_screen 通过 node.set_meta 存储的静止位置，用于防止多次抖动的位置漂移。
 
-3. **Timer vs _process 选择**：使用 50ms Timer（20fps）驱动 queue_redraw() 而非 _process()。理由：动画不需要 60fps 精度，20fps 足够产生平滑的呼吸/脉冲效果，且减少不必要的重绘次数。
+3. **CPUParticles2D 使用约束**：策略文档要求"不超过 3 个同时活跃实例"。当前实现中，每次攻击命中创建 1 个粒子节点（one_shot，0.4-0.6s 后自动释放）。在正常游戏节奏下不会超过 3 个同时存在。
 
-4. **颜色全走 CyberStyle**：新增 10 个颜色常量而非在 Renderer 内硬编码，确保未来风格调整只需修改 CyberStyle 一处。反馈动画中的颜色引用也已从硬编码改为 CyberStyle 常量。
+4. **_damage_label 替换为独立 Label**：旧实现使用实例变量跟踪单个 damage label（后续攻击会先释放前一个）。新实现每次创建独立 Label 并自动释放，支持多个同时显示（如连续攻击），视觉效果更丰富。

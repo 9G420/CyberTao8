@@ -24,7 +24,6 @@ var summon_highlight_cells: Array[Vector2i] = []
 # Attack feedback state
 var _flash_cell: Vector2i = Vector2i(-1, -1)
 var _flash_alpha: float = 0.0
-var _damage_label: Label = null
 
 # Animation pulse (20fps refresh via Timer)
 var _anim_timer: Timer = null
@@ -261,32 +260,27 @@ func _draw_attack_flash() -> void:
 	draw_rect(Rect2(pos, sz), Color(1.0, 1.0, 1.0, _flash_alpha), true)
 
 # ===========================================================
-#  反馈动画（完全保留，零修改）
+#  反馈动画（Phase 2.2 增强：屏幕微震+粒子+弹跳飘字）
 # ===========================================================
 
-func play_attack_feedback(cell: Vector2i, damage: int) -> void:
+func play_attack_feedback(cell: Vector2i, damage: int, is_kill: bool = false) -> void:
+	# 白色闪光
 	_flash_cell = cell
-	_flash_alpha = 0.85
+	_flash_alpha = 1.0 if is_kill else 0.85
 	var tw: Tween = create_tween()
-	tw.tween_method(_set_flash_alpha, 0.85, 0.0, 0.35)
+	tw.tween_method(_set_flash_alpha, _flash_alpha, 0.0, 0.45 if is_kill else 0.35)
 	tw.tween_callback(_clear_flash)
-	if _damage_label != null and is_instance_valid(_damage_label):
-		_damage_label.queue_free()
-	_damage_label = Label.new()
-	_damage_label.text = "-" + str(damage)
-	_damage_label.add_theme_font_size_override("font_size", 22)
-	_damage_label.add_theme_color_override("font_color", CyberStyle.NEON_RED)
-	var start_x: float = cell.x * CELL_SIZE + 16
-	var start_y: float = cell.y * CELL_SIZE + 10
-	_damage_label.position = Vector2(start_x, start_y)
-	_damage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_damage_label)
-	var tw2: Tween = _damage_label.create_tween()
-	tw2.set_parallel(true)
-	tw2.tween_property(_damage_label, "position:y", start_y - 40.0, 0.6)
-	tw2.tween_property(_damage_label, "modulate:a", 0.0, 0.6)
-	tw2.set_parallel(false)
-	tw2.tween_callback(_damage_label.queue_free)
+	# 屏幕微震
+	BattleEffects.shake_screen(self, 4.0 if is_kill else 2.5, 0.3 if is_kill else 0.2)
+	# 命中粒子
+	var center: Vector2 = Vector2(cell.x * CELL_SIZE + CELL_SIZE * 0.5, cell.y * CELL_SIZE + CELL_SIZE * 0.5)
+	BattleEffects.spawn_hit_particles(self, center, CyberStyle.NEON_GOLD if is_kill else CyberStyle.NEON_RED, is_kill)
+	# 增强伤害飘字
+	var popup_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 16, cell.y * CELL_SIZE + 10)
+	BattleEffects.enhanced_damage_popup(self, popup_pos, damage, is_kill)
+	# 击杀额外文字
+	if is_kill:
+		BattleEffects.kill_text_popup(self, Vector2(cell.x * CELL_SIZE + 12, cell.y * CELL_SIZE + 30))
 
 func play_pickup_feedback(cell: Vector2i, effect_text: String) -> void:
 	var lbl: Label = Label.new()

@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.45
+**当前版本**: v0.1.46
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -109,6 +109,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | BuffManager 接入（tick_turn+伤害修正+道具buff） | v0.1.39 | 稳定 |
 | 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 | 稳定 |
 | 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级） | v0.1.45 | 稳定 |
+| 美化 Phase 2（DiceRollAnimation+BattleEffects） | v0.1.46 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -195,7 +196,9 @@ UI层
 ├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~423行（Phase 1 瘦身）
 ├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行 ✅ Phase 1 新增
 ├── UnitRenderer         — 单位渲染静态类（class_name）   ~159行 ✅ Phase 1 新增
-├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~520行
+├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~158行 ✅ Phase 2 新增
+├── BattleEffects        — 战斗特效静态类（class_name）   ~103行 ✅ Phase 2 新增
+├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~540行
 ├── CardBattlePanel      — 卡牌战斗UI                   ~309行
 ├── CardRewardPanel      — 奖励选牌/升级面板             ~230行
 ├── DeckViewPanel        — 牌组查看面板                 ~160行
@@ -242,6 +245,8 @@ CellEffectHandler：   Scripts/BattleV2/CellEffectHandler.gd
 BoardView：           Scripts/UI/BoardView.gd
 BoardCellRenderer：   Scripts/UI/BoardCellRenderer.gd
 UnitRenderer：        Scripts/UI/UnitRenderer.gd
+DiceRollAnimation：   Scripts/UI/DiceRollAnimation.gd
+BattleEffects：       Scripts/UI/BattleEffects.gd
 DiceDebugPanel：      Scripts/UI/DiceDebugPanel.gd
 CardBattlePanel：     Scripts/UI/CardBattlePanel.gd
 CardRewardPanel：     Scripts/UI/CardRewardPanel.gd
@@ -296,20 +301,18 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.45 Work Report，按优先级排列：
+以下任务来自 v0.1.46 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心 — 美术美化）
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 2.1：掷骰演出** | 新建 DiceRollAnimation.gd，骰子旋转+crest图标弹出 |
-| **美化 Phase 2.2：攻击演出增强** | 新建 BattleEffects.gd，屏幕微震+粒子+伤害数字增强 |
+| **美化 Phase 3：卡牌面板重设计** | 新建 CardRenderer.gd，卡牌样式+HP条+能量条可视化 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 3：卡牌面板重设计** | 卡牌样式+HP条+能量条可视化 |
 | **美化 Phase 4：氛围与细节** | 背景氛围+UI过渡动画+召唤展开演出 |
 
 ### 🟢 中低优先级
@@ -326,6 +329,7 @@ Main：                Scripts/Main.gd
 | 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 |
 | BUG-001 修复（分辨率/全屏/无边框/窗口模式切换） | v0.1.43 |
 | 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级+BoardView瘦身） | v0.1.45 |
+| 美化 Phase 2（DiceRollAnimation+BattleEffects+掷骰演出+攻击增强） | v0.1.46 |
 | 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |
