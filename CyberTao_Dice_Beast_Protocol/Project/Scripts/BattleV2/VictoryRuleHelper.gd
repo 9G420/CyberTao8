@@ -24,12 +24,29 @@ static func count_units_for_owner(unit_manager: Node, owner_id: String) -> int:
 static func has_units_for_owner(unit_manager: Node, owner_id: String) -> bool:
 	return count_units_for_owner(unit_manager, owner_id) > 0
 
+## 检查是否有存活的主角单位（非 summoned 的玩家单位）
+static func has_hero_unit(unit_manager: Node) -> bool:
+	if unit_manager == null:
+		return false
+	for unit_id in unit_manager.units_by_id.keys():
+		var state: Dictionary = unit_manager.get_unit(String(unit_id))
+		if state.is_empty():
+			continue
+		if String(state.get("owner", "")) != "player":
+			continue
+		if not is_unit_alive(state):
+			continue
+		var tags: Array = state.get("tags", [])
+		if not tags.has("summoned"):
+			return true
+	return false
+
 static func get_battle_outcome(unit_manager: Node) -> String:
-	var player_alive: bool = has_units_for_owner(unit_manager, "player")
+	var hero_alive: bool = has_hero_unit(unit_manager)
 	var enemy_alive: bool = has_units_for_owner(unit_manager, "enemy")
-	if player_alive and enemy_alive:
+	if hero_alive and enemy_alive:
 		return ""
-	if player_alive:
+	if hero_alive:
 		return "VICTORY"
 	if enemy_alive:
 		return "DEFEAT"

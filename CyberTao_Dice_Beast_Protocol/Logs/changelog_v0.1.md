@@ -1,5 +1,26 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.52 - 2026-03-30
+
+### 改进
+- **单位精简**：玩家出场单位从 3 个减为 1 个主角（blade_shield_dog）
+- **伙伴槽系统**：召唤改为伙伴部署，每层上限 2 次部署、场上上限 1 只伙伴
+  - `BattleFlowController` 新增 `SUMMON_FLOOR_LIMIT=2`、`SUMMON_FIELD_LIMIT=1`、`_summon_this_floor` 计数
+  - `get_summon_cells_for()` / `try_summon()` 增加层/场限制检查
+  - `restart_battle()` / `advance_to_next_floor()` 重置 `_summon_this_floor`
+- **英雄存活制胜负判定**：`VictoryRuleHelper.get_battle_outcome()` 改用 `has_hero_unit()`，仅非 summoned 的玩家单位视为英雄
+  - 新增 `VictoryRuleHelper.has_hero_unit()` 静态方法
+- **HUD 部署提示**：DiceDebugPanel 在 Crest 池下方显示本层部署剩余次数
+
+### 精简
+- `_spawn_player_units()` 仅生成 blade_shield_dog（移除 fire_fox、aqua_turtle）
+- `_spawn_player_units_with_hp()` spawn_data 仅保留 blade_shield_dog 一条
+
+### 备注
+- v0.1.51 三分支 resolve_encounter 不受影响
+- v0.1.50 传送门/Boss 锁定机制不受影响
+- CardBattleController / CardBattlePanel / BoardManager 零修改
+
 ## v0.1.51 - 2026-03-30
 
 ### 修复

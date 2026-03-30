@@ -58,6 +58,9 @@ var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
 var current_floor: int = 1
 var _summon_counter: int = 0
+var _summon_this_floor: int = 0      # 本层已部署次数
+const SUMMON_FLOOR_LIMIT: int = 2   # 每层部署上限
+const SUMMON_FIELD_LIMIT: int = 1   # 场上伙伴上限
 var _encounter_unit_id: String = ""
 var _encounter_id: String = ""
 var _encounter_cell: Vector2i = Vector2i(-1, -1)
@@ -165,9 +168,8 @@ func _spawn_unit_from_data(res_path: String, cell: Vector2i) -> void:
 		}, cell)
 
 func _spawn_player_units() -> void:
+	# 玩家主角：刀盾狗（前排坦克，路径适性）— 唯一出场单位
 	_spawn_unit_from_data("res://Data/Units/blade_shield_dog.tres", Vector2i(0, 6))
-	_spawn_unit_from_data("res://Data/Units/hacker_fox.tres", Vector2i(1, 7))
-	_spawn_unit_from_data("res://Data/Units/crow_caster.tres", Vector2i(0, 5))
 
 # ─── 格子效果薄代理（委托 CellEffectHandler，BFC 负责信号和结算） ───
 
@@ -613,6 +615,19 @@ func get_summon_cells_for(unit_id: String) -> Array[Vector2i]:
 	if summon_available <= 0:
 		var empty: Array[Vector2i] = []
 		return empty
+	# 已达本层次数上限时返回空（禁止高亮）
+	if _summon_this_floor >= SUMMON_FLOOR_LIMIT:
+		return []
+	# 已达场上伙伴上限时返回空
+	var summoned_count: int = 0
+	for uid in unit_manager.units_by_id.keys():
+		var u: Dictionary = unit_manager.get_unit(String(uid))
+		if String(u.get("owner", "")) == "player" and int(u.get("hp", 0)) > 0:
+			var tags: Array = u.get("tags", [])
+			if tags.has("summoned"):
+				summoned_count += 1
+	if summoned_count >= SUMMON_FIELD_LIMIT:
+		return []
 	var cell: Vector2i = unit["cell"]
 	return board_manager.get_free_neighbors(cell)
 
@@ -637,6 +652,19 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 	var cost: Dictionary = {"summon": 1}
 	if not dice_manager.can_pay(cost):
 		return false
+	# 检查本层部署次数上限
+	if _summon_this_floor >= SUMMON_FLOOR_LIMIT:
+		return false
+	# 检查场上伙伴上限（统计带 "summoned" tag 的存活玩家单位数）
+	var summoned_count: int = 0
+	for uid in unit_manager.units_by_id.keys():
+		var u: Dictionary = unit_manager.get_unit(String(uid))
+		if String(u.get("owner", "")) == "player" and int(u.get("hp", 0)) > 0:
+			var tags: Array = u.get("tags", [])
+			if tags.has("summoned"):
+				summoned_count += 1
+	if summoned_count >= SUMMON_FIELD_LIMIT:
+		return false
 	dice_manager.pay(cost)
 	board_manager.add_path_cell(target_cell, "player")
 	var extended_paths: Array[Vector2i] = [target_cell]
@@ -653,6 +681,7 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 		board_manager.add_path_cell(best_ext, "player")
 		extended_paths.append(best_ext)
 	_summon_counter += 1
+	_summon_this_floor += 1
 	var summon_id: String = "summoned_fox_" + str(_summon_counter)
 	var summon_data: Dictionary = {
 		"max_hp": 4, "atk": 2, "def": 0,
@@ -688,6 +717,7 @@ func advance_to_next_floor() -> void:
 	board_manager.clear_board()
 	board_manager.build_test_board(Vector2i(8, 8))
 	_summon_counter = 0
+	_summon_this_floor = 0
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)
@@ -707,8 +737,6 @@ func advance_to_next_floor() -> void:
 func _spawn_player_units_with_hp(hp_snapshot: Dictionary) -> void:
 	var spawn_data: Array[Dictionary] = [
 		{"path": "res://Data/Units/blade_shield_dog.tres", "cell": Vector2i(0, 6)},
-		{"path": "res://Data/Units/hacker_fox.tres", "cell": Vector2i(1, 7)},
-		{"path": "res://Data/Units/crow_caster.tres", "cell": Vector2i(0, 5)},
 	]
 	for entry in spawn_data:
 		var data := load(String(entry["path"])) as UnitData
@@ -770,6 +798,7 @@ func restart_battle() -> void:
 	board_manager.clear_board()
 	board_manager.build_test_board(Vector2i(8, 8))
 	_summon_counter = 0
+	_summon_this_floor = 0
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)

@@ -522,6 +522,10 @@ func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 			crest_label.append_text("Buff：")
 			crest_label.pop()
 			crest_label.append_text(buff_text + "\n")
+	# 伙伴部署剩余次数
+	if battle_flow:
+		var remaining: int = battle_flow.SUMMON_FLOOR_LIMIT - battle_flow._summon_this_floor
+		crest_label.append_text("\n[color=#aaaaaa]本层部署剩余：" + str(remaining) + " 次[/color]")
 
 func _phase_label_text(phase_name: String) -> String:
 	match phase_name:
