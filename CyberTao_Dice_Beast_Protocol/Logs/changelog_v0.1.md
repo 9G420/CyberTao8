@@ -1124,3 +1124,21 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 ### 备注
 - 根因：canvas_items 拉伸模式的正确用法是 content_scale_size 固定为设计分辨率，窗口大小随用户选择变化，引擎自动处理缩放
 - 窗口模式切换（v0.1.43 修复）不受影响
+
+## v0.1.44-docs - 2026-03-30
+
+### 新增
+- 美术美化推进策略文档（Art_Beautification_Strategy_zh.md）：6 阶段分步美化计划
+  - Phase 1：棋盘格+单位视觉升级（BoardCellRenderer + UnitRenderer）
+  - Phase 2：掷骰演出+攻击演出增强（DiceRollAnimation + BattleEffects）
+  - Phase 3：卡牌战斗面板重设计（CardRenderer）
+  - Phase 4：背景氛围+UI过渡动画+召唤演出
+  - Phase 5：音效系统（AudioManager）
+  - Phase 6：2.5D 棋盘（长期目标）
+
+### 修改
+- 任务优先级调整：层间难度递增排后，美术美化 Phase 1 提前为当前最高优先
+
+### 备注
+- 本条目为纯文档变更，无代码修改
+- 全部 UI/渲染代码已完成审计，策略文档基于实际代码状态制定

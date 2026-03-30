@@ -291,18 +291,28 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.42 Work Report，按优先级排列：
+以下任务来自 v0.1.44 Work Report，按优先级排列：
 
-### 🔴 高优先级（当前阶段核心）
+### 🔴 高优先级（当前阶段核心 — 美术美化）
 
 | 任务 | 说明 |
 |------|------|
-| **层间难度递增** | 根据 current_floor 调整敌方 HP/ATK 或数量 |
+| **美化 Phase 1.1：棋盘格视觉升级** | 新建 BoardCellRenderer.gd，发光边缘+渐变+图标符号替代纯文字 |
+| **美化 Phase 1.2：单位视觉升级** | 新建 UnitRenderer.gd，独特形状+发光轮廓+HP条+idle微动画 |
+| **美化 Phase 1.3：高亮系统升级** | 角标线条+准星+脉冲替代半透明矩形 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
+| **美化 Phase 2：动态演出** | 掷骰演出+攻击演出增强（粒子+震屏） |
+| **美化 Phase 3：卡牌面板重设计** | 卡牌样式+HP条+能量条可视化 |
+
+### 🟢 中低优先级
+
+| 任务 | 说明 |
+|------|------|
+| **层间难度递增** | 根据 current_floor 调整敌方 HP/ATK 或数量 |
 | **商店格扩展** | 多选商品 + 独立 UI 面板 |
 
 ### ✅ 已完成
@@ -325,9 +335,11 @@ Main：                Scripts/Main.gd
 
 | 任务 | 说明 |
 |------|------|
-| 2.5D 棋盘 | 从纯2D升级为等距视角 |
-| 单位/卡牌动画 | 移动/攻击/抽牌动效 |
-| 音效系统 | 基础音效接入 |
+| 美化 Phase 4：氛围与细节 | 背景氛围+UI过渡动画+召唤展开演出 |
+| 美化 Phase 5：音效系统 | AudioManager + 基础音效接入 |
+| 美化 Phase 6：2.5D 棋盘 | 从纯2D升级为等距视角（需 Codex 复审） |
+
+> 完整美化策略详见 `Logs/Art_Beautification_Strategy_zh.md`
 
 ---
 
@@ -693,3 +705,4 @@ Logs/Handoff_Package_latest.md 即可启动。
 | `changelog_v0.1.md` | 完整版本历史 | 每轮追加 |
 | `Board_Card_Battle_Concept_zh.md` | 双层玩法设计文档 | 设计变更时 |
 | `Demo_Roadmap_2p5D_zh.md` | 中长期路线图 | 阶段性更新 |
+| `Art_Beautification_Strategy_zh.md` | 美术美化推进策略（6阶段） | 美化阶段参考 |

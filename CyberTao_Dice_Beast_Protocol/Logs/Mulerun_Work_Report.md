@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.44
+**版本**: v0.1.44（无代码变更，文档任务）
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- BUG-001 补充修复：分辨率切换后画面不自适应（窗口变大但内容不缩放）
+- 美术美化推进策略研究、分析与计划制定
 
 ---
 
 ## 根因目标
 
-v0.1.43 修复了窗口模式切换（全屏/无边框/窗口化），但分辨率切换后画面不自适应：窗口变为 1600x900 或 1920x1080 时，游戏内容仍保持 1280x720 大小，右侧和底部出现大片空白。根因是 content_scale_size 被设为目标分辨率，导致虚拟画布变大但 UI 绝对定位不变。服务于整体用户体验。
+项目功能层（棋盘走位层+卡牌战斗层+多层地图）已完成 v0.1.44，核心玩法闭环稳定。当前视觉处于纯代码绘制的原型级状态（零图片资源、零精灵、零粒子、零 Shader），需要制定从"原型"到"可展示 Demo"的视觉升级路线。本轮任务对全部 UI/渲染代码进行审计，结合 Demo_Roadmap 第四/五阶段目标，输出分阶段美化策略文档。
 
 ---
 
@@ -22,63 +22,70 @@ v0.1.43 修复了窗口模式切换（全屏/无边框/窗口化），但分辨�
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/System/DisplaySettings.gd` | apply_settings() 中 content_scale_size 从 current_resolution 改为 DEFAULT_RESOLUTION（1280x720），让 canvas_items 拉伸模式自动缩放 |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | 版本号更新为 v0.1.44 |
+| `Logs/Art_Beautification_Strategy_zh.md` | 新增，美术美化推进策略完整文档（7章节） |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.44 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步更新至 v0.1.44 状态 |
+| `Logs/changelog_v0.1.md` | 追加美化策略条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步更新任务优先级（层间难度递增排后，美化 Phase 1 提前） |
 
 ---
 
 ## 实现内容
 
-1. **根因定位**
-   - canvas_items 拉伸模式的工作方式：content_scale_size 定义虚拟画布大小，引擎将虚拟画布缩放至实际窗口大小
-   - 旧代码将 content_scale_size 设为 current_resolution（如 1920x1080），虚拟画布 = 窗口大小 = 1:1 无缩放
-   - 所有 UI 使用绝对像素定位（为 1280x720 设计），在 1920x1080 虚拟画布中只占左上角
+1. **全面代码审计**
+   - 审读 BoardView.gd（648行）全部 _draw 方法，评估每种格子/单位/高亮的渲染实现
+   - 审读 CyberStyle.gd（138行）评估可扩展性
+   - 审读 CardBattlePanel.gd（327行）、CardRewardPanel.gd（301行）、DeckViewPanel.gd（189行）评估卡牌 UI 现状
+   - 审读 DiceDebugPanel.gd（~520行）评估 HUD 现状
+   - 确认零图片资源（仅 .tres 数据文件和 icon.svg）
+   - 确认 gl_compatibility 渲染器约束
 
-2. **修复方案**
-   - content_scale_size 始终保持 DEFAULT_RESOLUTION（1280x720）
-   - 窗口大小由 DisplayServer.window_set_size() 控制
-   - 引擎自动将 1280x720 的内容缩放至实际窗口大小（1600x900 或 1920x1080）
+2. **制定 6 阶段美化策略**
+   - Phase 1（P0）：格子+单位视觉升级 — 新建 BoardCellRenderer + UnitRenderer
+   - Phase 2（P1）：掷骰演出+攻击演出增强 — 新建 DiceRollAnimation + BattleEffects
+   - Phase 3（P2）：卡牌战斗面板重设计 — 新建 CardRenderer
+   - Phase 4（P2-P3）：背景氛围+UI过渡动画+召唤演出
+   - Phase 5（P4）：音效系统 — 新建 AudioManager
+   - Phase 6（P4）：2.5D 棋盘 — 长期目标，需 Codex 复审
+
+3. **制定架构约束**
+   - 新增文件全部用 class_name 注册 + 静态方法，与 CyberStyle 同模式
+   - Phase 1-4 不依赖外部图片资源（全程序化绘制）
+   - CPUParticles2D 替代 GPUParticles2D（gl_compatibility 兼容）
+   - BoardView 瘦身目标：Phase 1 后回到 500 行以下
 
 ---
 
 ## 接口变更
 
-无。仅修改 apply_settings() 内部一行赋值。
+无（本轮为纯文档任务，无代码变更）
 
 ---
 
 ## 测试确认
 
-代码逻辑自查通过：
-- content_scale_size = DEFAULT_RESOLUTION 保持虚拟画布为 1280x720 ✅
-- 窗口化 1600x900：内容自动缩放至 1600x900 窗口 ✅
-- 窗口化 1920x1080：内容自动缩放至 1920x1080 窗口 ✅
-- 全屏模式：content_scale_size 不影响全屏（全屏自动拉伸） ✅
-- 无边框窗口：同窗口化逻辑 ✅
-- 恢复默认（1280x720）：1:1 显示，与修复前一致 ✅
-- 棋盘层完整闭环不受影响 ✅
-- 卡牌层完整闭环不受影响 ✅
+不适用（无代码变更）
 
 ---
 
 ## 剩余问题
 
-- BUG-001 完全修复（窗口模式 v0.1.43 + 分辨率自适应 v0.1.44）
-- 层间难度暂不递增
+- 层间难度暂不递增（已排后）
 - 阵亡单位跨层不复活
 
 ---
 
 ## 建议下一步
 
-1. **层间难度递增**（中优先）— 根据 current_floor 调整敌方 HP/ATK 或数量
-2. **商店格扩展**（中低优先）— 多选商品 + 独立 UI 面板
+1. **美化 Phase 1.1**：棋盘格视觉升级（新建 BoardCellRenderer.gd）
+2. **美化 Phase 1.2**：单位视觉升级（新建 UnitRenderer.gd）
+3. **美化 Phase 1.3**：高亮系统升级
 
 ---
 
 ## Codex 复审标注
 
-1. **content_scale_size 固定为设计分辨率**：这是 Godot canvas_items 拉伸模式的标准用法。如果未来需要在高分辨率下显示更多内容（而非缩放），则需改用 viewport 拉伸模式或改为相对布局。当前绝对像素布局下，固定 content_scale_size 是唯一正确方案。
+1. **任务优先级调整**：用户明确要求将层间难度递增排后，美术美化提前。这改变了 v0.1.42 Work Report 中的建议顺序，符合 Demo_Roadmap 中"先把双层玩法跑通，再做视觉放大"的策略（双层玩法已跑通，现在是视觉放大的时机）。
+
+2. **Phase 1-4 全程序化绘制**：选择不引入外部图片资源，原因是当前项目零资源依赖，引入图片会增加资产管理复杂度。程序化绘制在 Godot 的 `_draw()` 和 `CPUParticles2D` 下足以实现目标视觉效果。如果后续需要更精细的角色表现，可在 Phase 6 时引入精灵资源。
+
+3. **BoardView 瘦身策略**：Phase 1 的核心副作用是 BoardView 瘦身——将 _draw_board/terrain/encounters 等方法迁移至 BoardCellRenderer 静态调用，预期 BoardView 从 648 行降至 500 行以下。
