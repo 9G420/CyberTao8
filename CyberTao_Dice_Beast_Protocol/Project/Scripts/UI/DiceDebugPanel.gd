@@ -59,6 +59,12 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
 	if battle_flow.event_cell_triggered and not battle_flow.event_cell_triggered.is_connected(_on_event_cell_triggered):
 		battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
+	# BuffManager 信号
+	if battle_flow.buff_manager:
+		if battle_flow.buff_manager.buff_applied and not battle_flow.buff_manager.buff_applied.is_connected(_on_buff_applied):
+			battle_flow.buff_manager.buff_applied.connect(_on_buff_applied)
+		if battle_flow.buff_manager.buff_expired and not battle_flow.buff_manager.buff_expired.is_connected(_on_buff_expired):
+			battle_flow.buff_manager.buff_expired.connect(_on_buff_expired)
 	round_label.text = "回合：" + str(battle_flow.round_index)
 	_refresh_crest_pool()
 
@@ -239,7 +245,7 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.38"
+	ver_label.text = "v0.1.39"
 	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -395,6 +401,38 @@ func _on_heal_cell_triggered(_unit_id: String, _cell: Vector2i, _heal_amount: in
 func _on_event_cell_triggered(_unit_id: String, _cell: Vector2i, _event_id: String, _effect_text: String) -> void:
 	_refresh_crest_pool()
 
+func _on_buff_applied(_unit_id: String, buff_type: String, _value: int, duration: int) -> void:
+	var label: String = ""
+	match buff_type:
+		"atk_up":
+			label = "ATK增强"
+		"def_up":
+			label = "DEF增强"
+		"atk_down":
+			label = "ATK削弱"
+		"def_down":
+			label = "DEF削弱"
+		_:
+			label = buff_type
+	enemy_intent_label.add_theme_color_override("font_color", CyberStyle.ACCENT_CYAN)
+	enemy_intent_label.text = "Buff获得：" + label + "（" + str(duration) + "回合）"
+
+func _on_buff_expired(_unit_id: String, buff_type: String) -> void:
+	var label: String = ""
+	match buff_type:
+		"atk_up":
+			label = "ATK增强"
+		"def_up":
+			label = "DEF增强"
+		"atk_down":
+			label = "ATK削弱"
+		"def_down":
+			label = "DEF削弱"
+		_:
+			label = buff_type
+	enemy_intent_label.add_theme_color_override("font_color", CyberStyle.TEXT_WARN)
+	enemy_intent_label.text = "Buff消失：" + label
+
 func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	var pool: Dictionary = next_crest_pool
 	if pool.is_empty() and dice_manager:
@@ -425,6 +463,14 @@ func _refresh_crest_pool(next_crest_pool: Dictionary = {}) -> void:
 	crest_label.append_text("机巧")
 	crest_label.pop()
 	crest_label.append_text("：" + str(pool.get("trick", 0)) + "\n")
+	# Buff 摘要（选中单位）
+	if _selected_unit_id_cache != "" and battle_flow and battle_flow.buff_manager:
+		var buff_text: String = battle_flow.buff_manager.get_buff_summary(_selected_unit_id_cache)
+		if buff_text != "":
+			crest_label.push_color(CyberStyle.ACCENT_CYAN)
+			crest_label.append_text("Buff：")
+			crest_label.pop()
+			crest_label.append_text(buff_text + "\n")
 
 func _phase_label_text(phase_name: String) -> String:
 	match phase_name:

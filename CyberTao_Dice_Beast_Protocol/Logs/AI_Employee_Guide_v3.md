@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.38
+**当前版本**: v0.1.39
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -106,6 +106,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 统一赛博朋克视觉风格（CyberStyle） | v0.1.29 | 稳定 |
 | DEFEND/SKILL/TRICK crest 消耗入口 | v0.1.33 | 稳定 |
 | 棋盘随机生成（BoardGenerator） | v0.1.35 | 稳定 |
+| BuffManager 接入（tick_turn+伤害修正+道具buff） | v0.1.39 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -172,13 +173,13 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 ### 3.1 模块结构
 
 ```
-BattleFlowController（棋盘层核心控制器）         ~785行 ⚠️ 已接近上限
+BattleFlowController（棋盘层核心控制器）         ~795行 ⚠️ 已接近上限
 ├── DiceManager          — 掷骰 + crest 资源池
 ├── BoardManager         — 棋盘状态（7个格子字典 + BFS）
 ├── BoardGenerator       — 棋盘程序化生成（静态工具类）
 ├── UnitManager          — 单位状态（生成/移动/伤害/击杀）
 ├── ActionResolver       — 攻击范围计算
-├── BuffManager          — buff管理（tick_turn 未接入）⚠️
+├── BuffManager          — buff管理（已接入：tick_turn+伤害修正） ✅
 ├── BattleAI             — 敌方决策
 ├── AttackRuleHelper     — 伤害公式
 ├── VictoryRuleHelper    — 胜负判定
@@ -189,7 +190,7 @@ CardBattleController（卡牌层独立状态机）         ~515行
 
 UI层
 ├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~563行 ⚠️
-├── DiceDebugPanel       — 棋盘层HUD                    ~270行
+├── DiceDebugPanel       — 棋盘层HUD                    ~491行
 ├── CardBattlePanel      — 卡牌战斗UI                   ~309行
 ├── CardRewardPanel      — 奖励选牌/升级面板             ~230行
 ├── DeckViewPanel        — 牌组查看面板                 ~160行
@@ -262,8 +263,8 @@ Main：                Scripts/Main.gd
 | 问题 | 严重程度 | 是否阻塞 | 建议处理时机 |
 |------|----------|----------|--------------|
 | BUG-001：分辨率/窗口模式切换无效 | 低 | 否 | Demo前必须修 |
-| BuffManager.tick_turn() 未接入 | 中 | 否 | 下阶段D方向 |
-| BattleFlowController 785行，需瘦身 | 中 | 否 | 下一阶段 |
+| ~~BuffManager.tick_turn() 未接入~~ | ~~中~~ | ~~否~~ | ✅ v0.1.39 已解决 |
+| BattleFlowController 795行，需瘦身 | 中 | 否 | 下一阶段 |
 | BoardView 563行，职责混杂 | 中 | 否 | 视觉升级前 |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 | 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
@@ -278,26 +279,26 @@ Main：                Scripts/Main.gd
 
 | 任务 | 说明 |
 |------|------|
-| **BuffManager 接入** | tick_turn 在回合流程中正式调用 |
+| **BattleFlowController 瘦身** | 剥离逻辑到独立模块，目标降至 600 行以下 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **BattleFlowController 瘦身** | 剥离逻辑到独立模块，目标降至 600 行以下 |
+| **更多格子类型** | 商店格、宝箱格 |
+| **多层地图** | 通关当前棋盘后进入下一层 |
 
 ### 🟢 中低优先级
 
 | 任务 | 说明 |
 |------|------|
-| **更多格子类型** | 商店格、宝箱格 |
-| **多层地图** | 通关当前棋盘后进入下一层 |
 | **BUG-001 修复** | 分辨率切换无效（Demo前必须解决） |
 
 ### ✅ 已完成
 
 | 任务 | 版本 |
 |------|------|
+| BuffManager 接入 | v0.1.39 |
 | 能量成长机制 | v0.1.38 |
 | Boss 遭遇（零号协议） | v0.1.37 |
 | 卡牌升级机制 | v0.1.36 |

@@ -922,6 +922,29 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 面板位置 (160,120)，覆盖棋盘中心区域，使用时需手动关闭
 - 支持 RichTextLabel 滚动，牌组变大后可滚动浏览
 
+## v0.1.39 - 2026-03-30
+
+### 新增
+- BuffManager 正式接入回合流程：tick_turn() 每回合自动衰减 buff 持续时间
+- BuffManager 新增 apply_buff()、get_stat_modifier()、get_buff_summary() 等完整 API
+- 新信号：buff_applied(unit_id, type, value, duration) / buff_expired(unit_id, type)
+- 棋盘伤害计算集成 buff 修正：ATK/DEF 受 buff 系统影响
+- overclock_bone 道具拾取新增 ATK+1 buff 持续 3 回合
+- DiceDebugPanel 显示 buff 获得/消失提示 + 选中单位 buff 摘要
+
+### 修改
+- _calc_damage_with_terrain() 注释和逻辑更新，增加 buff 修正计算
+- overclock_bone 效果文本从 "MOVE+1" 改为 "MOVE+1 ATK+1(3回合)"
+- BattleFlowController 从 786 行增长到 795 行（+9行接入代码）
+
+### 修复
+- BuffManager tick_turn() 从未被调用的历史遗留问题（技术债 BuffManager.tick_turn() 未接入已解决）
+
+### 备注
+- buff 系统仅影响棋盘层伤害计算，不影响卡牌战斗层（设计如此）
+- 目前只有 overclock_bone 一个 buff 来源，后续可扩展
+- BFC 795 行接近上限，下一阶段应考虑瘦身
+
 ## v0.1.38 - 2026-03-30
 
 ### 新增

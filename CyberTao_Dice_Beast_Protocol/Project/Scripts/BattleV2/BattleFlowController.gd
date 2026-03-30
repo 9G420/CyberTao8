@@ -373,6 +373,7 @@ func _execute_enemy_actions() -> void:
 ## 推进到下一个玩家回合
 func _advance_to_next_player_round() -> void:
 	dice_manager.reset_for_turn()
+	buff_manager.tick_turn()
 	round_index += 1
 	current_phase = BattlePhase.PLAYER_ROLL
 	emit_signal("round_changed", round_index)
@@ -489,9 +490,10 @@ func _check_battle_outcome() -> void:
 	elif outcome == "DEFEAT" or outcome == "DRAW":
 		mark_defeat()
 
-## 计算含地形适性加成和临时防御的伤害值
+## 计算含地形适性加成、临时防御和 Buff 修正的伤害值
 ## 路径适性：防御方站在路径格上时 DEF +1
 ## 护持 crest：temp_def 累加到防御
+## Buff：通过 BuffManager 查询 atk/def 修正
 func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> int:
 	var def_bonus: int = 0
 	var defender_cell: Vector2i = defender.get("cell", Vector2i(-1, -1))
@@ -499,8 +501,13 @@ func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> in
 		if board_manager.path_cells.has(defender_cell):
 			def_bonus = 1
 	var temp_def: int = int(defender.get("temp_def", 0))
-	var raw_attack: int = int(attacker.get("atk", 0))
-	var raw_defense: int = int(defender.get("def", 0)) + def_bonus + temp_def
+	# Buff 修正
+	var attacker_id: String = String(attacker.get("id", ""))
+	var defender_id: String = String(defender.get("id", ""))
+	var atk_mod: int = buff_manager.get_stat_modifier(attacker_id, "atk") if attacker_id != "" else 0
+	var def_mod: int = buff_manager.get_stat_modifier(defender_id, "def") if defender_id != "" else 0
+	var raw_attack: int = int(attacker.get("atk", 0)) + atk_mod
+	var raw_defense: int = int(defender.get("def", 0)) + def_bonus + temp_def + def_mod
 	return max(1, raw_attack - raw_defense)
 
 ## 检查并执行道具拾取
@@ -662,7 +669,9 @@ func _apply_item_effect(item_id: String, unit_id: String) -> String:
 				var amount: int = int(crest_bonus[crest_type])
 				var current: int = int(dice_manager.crest_pool.get(crest_type, 0))
 				dice_manager.crest_pool[crest_type] = current + amount
-			return "MOVE+1"
+			# 施加 ATK+1 buff 持续 3 回合
+			buff_manager.apply_buff(unit_id, "atk_up", 1, 3)
+			return "MOVE+1 ATK+1(3回合)"
 		"random_crest_gain":
 			var crest_bonus: Dictionary = result.get("crest_bonus", {})
 			var gained_type: String = ""
@@ -770,6 +779,7 @@ func _phase_name(phase: BattlePhase) -> String:
 ## Restart the battle: clear all state and re-spawn units at initial positions.
 func restart_battle() -> void:
 	dice_manager.reset_for_battle()
+	buff_manager.clear_all()
 	unit_manager.clear_all_units()
 	board_manager.clear_board()
 	board_manager.build_test_board(Vector2i(8, 8))
