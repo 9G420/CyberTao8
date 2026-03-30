@@ -1,5 +1,30 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.48 - 2026-03-30
+
+### 新增
+- 美化 Phase 4.1 完整实现：背景氛围升级
+- CyberBackground.gd（~155行）：背景氛围渲染系统
+  - 三段渐变背景（12级色阶，深暗蓝→暗蓝灰→微亮蓝灰）
+  - 透视网格线（棋盘下方，水平线带漂移动画+垂直线中心渐强）
+  - 浮动粒子（CPUParticles2D，35个蓝光微粒，Gradient 淡入淡出）
+  - 棋盘发光边框（4层外辉光+内层亮线+sin脉冲呼吸）
+  - 四角 L 形装饰标记（青色短线）
+  - 全屏缓慢扫描线（6px 半透明青色条循环）
+
+### 修改
+- Main.gd：纯色 ColorRect 背景 → CyberBackground 动态背景
+  - 新增 CyberBackground preload
+  - set_board_rect() 传入棋盘位置(40,94)和尺寸(576,576)
+
+### 备注
+- CyberBackground 纯视觉层，mouse_filter = IGNORE，不影响任何交互
+- CPUParticles2D gl_compatibility 安全，不依赖 GPU 粒子
+- 颜色常量定义在文件内部（背景专用，不污染 CyberStyle）
+- 所有动画用 Time.get_ticks_msec() + sin() 驱动，不创建 Tween
+- BattleFlowController/CardBattleController/BoardView 零修改
+- Phase 4.1 完成标准：画面有赛博朋克氛围感，背景有动态层次而非纯色
+
 ## v0.1.47 - 2026-03-30
 
 ### 新增

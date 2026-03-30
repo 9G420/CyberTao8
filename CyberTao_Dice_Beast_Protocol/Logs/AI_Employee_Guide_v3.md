@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.47
+**当前版本**: v0.1.48
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.42）
+### 2.2 当前完成状态总览（v0.1.48）
 
 **棋盘走位层（全部稳定）**
 
@@ -111,6 +111,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级） | v0.1.45 | 稳定 |
 | 美化 Phase 2（DiceRollAnimation+BattleEffects） | v0.1.46 | 稳定 |
 | 美化 Phase 3（CardRenderer+CardBattlePanel 重设计） | v0.1.47 | 稳定 |
+| 美化 Phase 4.1（CyberBackground 背景氛围升级） | v0.1.48 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -205,9 +206,10 @@ UI层
 ├── CardRewardPanel      — 奖励选牌/升级面板             ~230行
 ├── DeckViewPanel        — 牌组查看面板                 ~160行
 ├── CyberStyle           — 全局视觉风格（class_name注册）~149行
+├── CyberBackground      — 背景氛围系统（class_name注册）  ~155行 ✅ Phase 4.1 新增
 └── SettingsPanel        — 显示设置
 
-Main.gd（场景组合+信号中转）                          ~354行
+Main.gd（场景组合+信号中转）                          ~356行
 ```
 
 ### 3.2 双层通信信号链
@@ -255,6 +257,7 @@ CardBattlePanel：     Scripts/UI/CardBattlePanel.gd
 CardRewardPanel：     Scripts/UI/CardRewardPanel.gd
 DeckViewPanel：       Scripts/UI/DeckViewPanel.gd
 CyberStyle：          Scripts/UI/CyberStyle.gd
+CyberBackground：     Scripts/UI/CyberBackground.gd
 Main：                Scripts/Main.gd
 旧项目参考（只读）：   [仓库根目录] Scripts/ （不要修改）
 ```
@@ -304,19 +307,19 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.47 Work Report，按优先级排列：
+以下任务来自 v0.1.48 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心 — 美术美化）
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 4.1：背景氛围升级** | 动态网格背景+粒子+渐变氛围 |
+| **美化 Phase 4.2：UI 过渡动画** | 面板弹出/关闭动画+召唤展开演出 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 4.2：UI 过渡动画** | 面板弹出/关闭动画+召唤展开演出 |
+| **美化 Phase 5：音效系统** | AudioManager + 基础音效接入 |
 
 ### 🟢 中低优先级
 
@@ -334,6 +337,7 @@ Main：                Scripts/Main.gd
 | 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级+BoardView瘦身） | v0.1.45 |
 | 美化 Phase 2（DiceRollAnimation+BattleEffects+掷骰演出+攻击增强） | v0.1.46 |
 | 美化 Phase 3（CardRenderer+CardBattlePanel 重设计+HP条+能量点） | v0.1.47 |
+| 美化 Phase 4.1（CyberBackground 背景氛围升级） | v0.1.48 |
 | 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |

@@ -9,6 +9,7 @@ const SettingsPanel = preload("res://Scripts/UI/SettingsPanel.gd")
 const CardBattlePanel = preload("res://Scripts/UI/CardBattlePanel.gd")
 const CardRewardPanel = preload("res://Scripts/UI/CardRewardPanel.gd")
 const DeckViewPanel = preload("res://Scripts/UI/DeckViewPanel.gd")
+const CyberBackground = preload("res://Scripts/UI/CyberBackground.gd")
 
 var _battle_flow: BattleFlowController
 var _card_battle_ctrl: CardBattleController
@@ -36,11 +37,9 @@ func _ready() -> void:
 	_wire_debug_views()
 
 func _build_debug_view() -> void:
-	var bg := ColorRect.new()
-	bg.set_anchors_preset(PRESET_FULL_RECT)
-	bg.color = Color(0.03, 0.03, 0.07)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	var cyber_bg := CyberBackground.new()
+	cyber_bg.set_board_rect(Vector2(40, 94), Vector2(576, 576))
+	add_child(cyber_bg)
 
 	var title := Label.new()
 	title.text = "CyberTao：骰兽协议"

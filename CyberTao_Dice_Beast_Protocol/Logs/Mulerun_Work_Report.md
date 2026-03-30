@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.47
+**版本**: v0.1.48
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 美化 Phase 3：卡牌战斗面板重设计（CardRenderer.gd + CardBattlePanel.gd 重写）
+- 美化 Phase 4.1：背景氛围升级（动态网格背景+粒子+渐变+棋盘发光边框）
 
 ---
 
 ## 根因目标
 
-Phase 2 完成了掷骰演出和攻击特效，关键操作已有"感觉"。Phase 3 目标是将卡牌战斗面板从"文字按钮列表"升级为"卡牌式界面"——卡牌有类型图标、边框配色、费用标注；HP 用可视化血条替代纯文字；能量用发光圆点替代文字。根据 Art_Beautification_Strategy_zh.md Phase 3（P2 优先级）执行。
+Phase 3 完成了卡牌战斗面板重设计，卡牌层界面已有"卡牌游戏"感。Phase 4.1 目标是提升整体画面氛围——将纯色 ColorRect 背景替换为有层次感的赛博朋克环境：深色三段渐变、棋盘下方透视网格线（模拟赛博空间纵深感）、全屏浮动微粒子（CPUParticles2D 光点漂浮）、棋盘边缘脉冲发光框+四角装饰标记+缓慢扫描线。根据 Art_Beautification_Strategy_zh.md Phase 4.1（P2 优先级）执行。
 
 ---
 
@@ -22,53 +22,44 @@ Phase 2 完成了掷骰演出和攻击特效，关键操作已有"感觉"。Phas
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/CardRenderer.gd` | **新建**，~233行，卡牌渲染工具类：卡牌控件创建+HP条+能量点 |
-| `Scripts/UI/CardBattlePanel.gd` | **重写**，~329行，Phase 3 美化版：CardRenderer 卡牌+HP条+能量点+意图图标 |
-| `Scripts/Main.gd` | 调整 CardBattlePanel 位置居中（280,140 → 390,125） |
+| `Scripts/UI/CyberBackground.gd` | **新建**，~155行，背景氛围渲染系统：渐变+网格+粒子+发光框+扫描线+角标 |
+| `Scripts/Main.gd` | 替换 ColorRect 为 CyberBackground，新增 preload，传入棋盘位置/尺寸 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.47 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.47，§2.2/§3.1/§3.3/§6 同步 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.48 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.48，§2.2/§3.1/§3.3/§6 同步 |
 
 ---
 
 ## 实现内容
 
-### 1. CardRenderer.gd（全新文件，~233行）
+### 1. CyberBackground.gd（全新文件，~155行）
 
-- `create_card(card, can_play, index, callback) -> Panel` — 创建 90x108 卡牌控件
-  - 顶部：卡牌名称（升级牌青色边框+发光阴影）
-  - 中央：类型图标（⚔攻击/◇穿透/♦吸血/⚡电击/■防御/✚治疗）
-  - 中下：数值描述（"3 伤害" / "减伤 2" / "回复 4"）
-  - 底部分隔线 + 费用标注（左） + 类型标签（右）
-  - 6种卡牌类型独立配色（攻击橙/穿透金/吸血品红/电击紫/防御蓝/治疗绿）
-  - 升级卡牌：青色边框 + 发光阴影 5px
-  - 不可用卡牌：暗灰背景 + 灰色边框 + 文字变灰
-  - 悬浮效果：鼠标进入时 modulate 变亮 1.15x
-  - 点击手势光标 + gui_input 点击回调
-- `create_hp_bar(current, max_val, fill_color, low_color, w, h) -> Control` — HP 可视化血条
-  - 圆角背景 + 填充条（<30% HP 变色） + 高光层 + 居中数值文字
-- `create_energy_dots(current, max_val) -> Control` — 能量圆点显示
-  - 圆角 Panel 圆点（12px），已用/可用明暗区分
-  - 活跃点：蓝色发光 + 阴影；已消耗点：暗色 + 边框
-- 设计模式：与 CyberStyle/BoardCellRenderer/UnitRenderer 一致的 class_name 静态方法
+- `class_name CyberBackground`，extends Control，作为 Main 的第一个子节点（背景层）
+- **三段渐变背景**：12 级色阶从深暗蓝（顶）→ 暗蓝灰（中）→ 微亮蓝灰（底），取代原来的纯色 ColorRect
+- **透视网格线**：
+  - 棋盘下方区域绘制水平+垂直半透明网格线
+  - 水平线带缓慢向下漂移动画（drift = t * 3.0），模拟数据流纵深感
+  - 垂直线从中心向两侧淡出，中心线加粗强调
+  - 远离棋盘的线条 alpha 递减，营造透视消失感
+- **浮动粒子（CPUParticles2D）**：
+  - 35个粒子，lifetime 6秒，全屏矩形发射区域
+  - 方向随机（spread 180°），无重力缓慢漂浮
+  - Gradient 色彩渐变：淡入→蓝光→渐弱→淡出
+  - gl_compatibility 安全（CPUParticles2D 不依赖 GPU 粒子）
+- **棋盘发光边框**：
+  - 4层外辉光（半透明递减），内层亮线 3px
+  - sin 脉冲呼吸效果（频率 2.0，幅度 ±15%）
+  - 发光颜色使用青蓝色系，与 CyberStyle 一致
+- **角标装饰**：棋盘四角各画两条 14px 短线（L 形），青色半透明
+- **扫描线**：6px 高半透明青色条，缓慢从上至下循环扫过全屏
+- **动画刷新**：50ms Timer（20fps），仅驱动 queue_redraw
 
-### 2. CardBattlePanel.gd（重写，~329行）
+### 2. Main.gd 修改
 
-- 面板尺寸调整：480x460 → 500x470
-- 敌方区域：标签 + HP 可视化血条（190px） + 意图图标
-- 玩家区域：标签 + HP 可视化血条（190px） + 能量圆点 + 牌堆计数
-- 手牌区域：CardRenderer.create_card 替代旧 105x48 文字按钮
-  - 4列布局，最多2行（6张手牌）
-  - 90x108 卡牌样式，类型配色+图标+数值
-- 敌方意图增强：根据意图类型添加图标前缀
-  - ⚔ 攻击 / ⚔⚔ 重击 / ■⚔ 防御+攻击 / ✚ 修复 / ⚠ 超载
-  - 各意图类型独立配色
-- 移除旧 _card_cost_labels 跟踪，费用已集成到卡牌控件
-- _refresh_status 重建 HP 条和能量点（container 清空+重建模式）
-
-### 3. Main.gd 微调
-
-- CardBattlePanel 位置调整为 (390, 125) 居中显示
+- 新增 `CyberBackground` preload
+- `_build_debug_view()` 中用 `CyberBackground.new()` 替代旧 `ColorRect.new()`
+- 通过 `set_board_rect(Vector2(40, 94), Vector2(576, 576))` 告知背景棋盘位置
+- CyberBackground 的 mouse_filter = MOUSE_FILTER_IGNORE，不影响交互
 
 ---
 
@@ -76,32 +67,33 @@ Phase 2 完成了掷骰演出和攻击特效，关键操作已有"感觉"。Phas
 
 ### 新增
 
-- `CardRenderer`（class_name 全局注册）：`create_card()`、`create_hp_bar()`、`create_energy_dots()` 静态方法
+- `CyberBackground`（class_name 全局注册）：`set_board_rect(origin, size)` 方法
 
 ### 修改
 
-- `CardBattlePanel` 面板尺寸 480x460 → 500x470
-- `CardBattlePanel` 内部变量重构：移除 `_card_buttons: Array[Button]`、`_card_cost_labels: Array[Label]`，新增 `_card_widgets: Array`、`_enemy_hp_container`、`_player_hp_container`、`_energy_container`
+- `Main._build_debug_view()` 背景从 ColorRect 改为 CyberBackground
 
 ### 无变化
 
-- CardBattleController 零修改（所有信号签名不变）
 - BattleFlowController 零修改
-- CardRewardPanel 零修改
+- CardBattleController 零修改
 - BoardView 零修改
+- CardBattlePanel 零修改
+- CyberStyle 零修改（CyberBackground 使用内部常量，不污染全局）
 
 ---
 
 ## 测试确认
 
 代码审查确认：
-- CardRenderer.create_card 的 gui_input 回调仅在 can_play=true 时连接，不可用卡牌不响应点击
-- HP 条使用 container 清空+重建模式（remove_child + queue_free），避免旧节点残留
-- 能量圆点使用 Panel + StyleBoxFlat 圆角，gl_compatibility 安全
-- 悬浮效果直接设置 modulate（非 Tween），避免快速进出时的动画堆积
-- CardBattlePanel 所有信号回调保持原有行为，bind_controller 接口不变
-- CardRewardPanel 不受影响（独立面板，不使用 CardRenderer）
-- Main.gd 仅位置微调，所有信号连接不变
+- CyberBackground mouse_filter = MOUSE_FILTER_IGNORE，不拦截任何输入事件
+- CPUParticles2D 数量 35 个，远低于性能警戒线（<3 个发射器同时活跃）
+- _draw() 中无每帧创建对象（纯 draw_rect/draw_line 调用）
+- 渐变 12 级色阶用循环 draw_rect 实现，无 Shader 依赖，gl_compatibility 安全
+- 网格线使用 draw_line，线宽 1px，性能无压力
+- 浮动粒子 Gradient 色彩渐变：两端 alpha=0 确保粒子自然淡入淡出
+- 棋盘发光脉冲使用 Time.get_ticks_msec() + sin()，与 BoardCellRenderer 模式一致，不创建 Tween
+- Main.gd 仅替换一个子节点，所有信号连接不变
 
 ---
 
@@ -115,18 +107,18 @@ Phase 2 完成了掷骰演出和攻击特效，关键操作已有"感觉"。Phas
 
 ## 建议下一步
 
-1. **美化 Phase 4.1**：背景氛围升级（动态网格背景+粒子+渐变）
-2. **美化 Phase 4.2**：UI 过渡动画（面板弹出/关闭+召唤展开演出）
-3. **美化 Phase 5**：音效系统（AudioManager + 基础音效接入）
+1. **美化 Phase 4.2**：UI 过渡动画（面板弹出/关闭动画+召唤展开演出）
+2. **美化 Phase 5**：音效系统（AudioManager + 基础音效接入）
+3. **层间难度递增**：根据 current_floor 调整敌方数值
 
 ---
 
 ## Codex 复审标注
 
-1. **CardRenderer 纯静态设计**：与 CyberStyle/BoardCellRenderer/UnitRenderer/BattleEffects 保持一致的无状态静态方法模式。create_card 返回独立的 Panel 控件，内部 gui_input 通过 Callable 回调，不引入新的信号依赖。
+1. **CyberBackground 独立模块设计**：背景氛围作为独立 Control，不依赖任何游戏逻辑模块。仅通过 `set_board_rect()` 接收棋盘位置参数。这保持了渲染层与逻辑层的完全分离。
 
-2. **HP 条/能量点重建模式**：每次 _refresh_status 清空容器并重建子节点。这比更新已有节点的属性更简单可靠（避免 StyleBoxFlat 共享引用问题），代价是每回合几十个节点的创建/释放。在当前游戏规模下性能完全可接受。
+2. **颜色常量未加入 CyberStyle**：CyberBackground 的渐变/网格/辉光颜色定义为文件内部常量，未加入 CyberStyle。原因：这些颜色是背景专用的微调值，不会被其他模块复用。如果未来有其他模块需要引用背景配色，可以迁移到 CyberStyle。
 
-3. **CardRewardPanel 未同步升级**：Phase 3 策略文档的范围是 CardBattlePanel 重设计。CardRewardPanel 仍使用旧的文字按钮风格。建议在美化收尾阶段统一处理，或在 Phase 4 中一并升级。
+3. **粒子数量选择**：35个粒子是在"有氛围感"和"不分散注意力"之间的平衡。粒子 alpha 控制在 0.18-0.22 的低区间，作为背景纹理而非前景元素。实际感受可能需要在 Godot 运行时微调 amount 和 color_ramp。
 
-4. **面板位置居中**：CardBattlePanel 从 (280,140) 调整到 (390,125)，在 1280x720 视口中更居中。这是视觉微调，不影响功能。
+4. **网格漂移速度**：drift = t * 3.0，每秒漂移 3 个像素单位。偏慢是有意为之——背景动态应该是"呼吸感"而非"运动感"。如果觉得太静可以调大到 5-8。
