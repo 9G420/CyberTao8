@@ -1,5 +1,33 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.47 - 2026-03-30
+
+### 新增
+- 美化 Phase 3 完整实现：卡牌战斗面板重设计
+- CardRenderer.gd（~233行）：卡牌渲染工具类
+  - create_card()：90x108 卡牌控件，类型图标+配色+费用+数值+悬浮效果
+  - 6种卡牌类型独立配色：攻击橙/穿透金/吸血品红/电击紫/防御蓝/治疗绿
+  - 升级卡牌：青色边框+发光阴影，不可用卡牌：暗灰+灰色文字
+  - create_hp_bar()：圆角可视化血条（填充+高光+数值文字，<30%变色）
+  - create_energy_dots()：圆角发光能量圆点（活跃蓝光/消耗暗灰）
+
+### 修改
+- CardBattlePanel.gd 重写（~329行）：
+  - 手牌：105x48 文字按钮 → 90x108 CardRenderer 卡牌控件
+  - HP 显示：纯文字 → 可视化血条（敌方红/我方绿）
+  - 能量显示：文字 → 发光圆点（最多5个）
+  - 敌方意图：增加图标前缀（⚔/⚔⚔/■⚔/✚/⚠）+ 独立配色
+  - 面板尺寸：480x460 → 500x470
+- Main.gd CardBattlePanel 位置居中：(280,140) → (390,125)
+
+### 备注
+- CardRenderer 纯静态设计，与 CyberStyle/BoardCellRenderer/UnitRenderer/BattleEffects 一致
+- HP 条/能量点采用 container 清空+重建模式，简单可靠
+- CardBattleController 零修改，所有信号签名不变
+- CardRewardPanel 暂未同步升级（独立面板，后续统一处理）
+- gl_compatibility 安全：Panel + StyleBoxFlat 圆角，无 GPU 依赖
+- Phase 3 完成标准：卡牌战斗面板看起来像"卡牌游戏"而非"调试按钮列表"
+
 ## v0.1.0 - 2026-03-29
 
 ### Added

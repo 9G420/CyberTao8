@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.46
+**版本**: v0.1.47
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 美化 Phase 2.1 + 2.2：掷骰演出动画 + 攻击演出增强（屏幕微震+粒子+增强飘字）
+- 美化 Phase 3：卡牌战斗面板重设计（CardRenderer.gd + CardBattlePanel.gd 重写）
 
 ---
 
 ## 根因目标
 
-Phase 1 已完成棋盘格/单位/高亮视觉升级。Phase 2 目标是让关键操作有"感觉"——掷骰有期待感、攻击有冲击感。根据 Art_Beautification_Strategy_zh.md Phase 2（P1 优先级）执行。
+Phase 2 完成了掷骰演出和攻击特效，关键操作已有"感觉"。Phase 3 目标是将卡牌战斗面板从"文字按钮列表"升级为"卡牌式界面"——卡牌有类型图标、边框配色、费用标注；HP 用可视化血条替代纯文字；能量用发光圆点替代文字。根据 Art_Beautification_Strategy_zh.md Phase 3（P2 优先级）执行。
 
 ---
 
@@ -22,61 +22,53 @@ Phase 1 已完成棋盘格/单位/高亮视觉升级。Phase 2 目标是让关�
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/DiceRollAnimation.gd` | **新建**，~158行，掷骰演出动画控件：3枚骰子翻滚→逐个定格→crest图标弹出发光 |
-| `Scripts/UI/BattleEffects.gd` | **新建**，~103行，战斗特效静态类：屏幕微震+CPUParticles2D粒子爆发+增强伤害飘字+击杀文字 |
-| `Scripts/UI/BoardView.gd` | play_attack_feedback 增强：集成 BattleEffects（微震+粒子+弹跳飘字），新增 is_kill 参数，移除旧 _damage_label |
-| `Scripts/UI/DiceDebugPanel.gd` | 集成 DiceRollAnimation：掷骰后播放动画，动画完成后更新结果文字；版本号 v0.1.46 |
-| `Scripts/Main.gd` | 新增 _last_attack_killed 变量，play_attack_feedback 调用传递 is_kill 参数 |
+| `Scripts/UI/CardRenderer.gd` | **新建**，~233行，卡牌渲染工具类：卡牌控件创建+HP条+能量点 |
+| `Scripts/UI/CardBattlePanel.gd` | **重写**，~329行，Phase 3 美化版：CardRenderer 卡牌+HP条+能量点+意图图标 |
+| `Scripts/Main.gd` | 调整 CardBattlePanel 位置居中（280,140 → 390,125） |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.46 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.46，§3.1/§6 同步 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.47 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.47，§2.2/§3.1/§3.3/§6 同步 |
 
 ---
 
 ## 实现内容
 
-### 1. DiceRollAnimation.gd（全新文件，~158行）
+### 1. CardRenderer.gd（全新文件，~233行）
 
-- `play(results, crest_pool)` 主方法：启动掷骰演出
-- 3枚骰子翻滚效果：55ms 间隔随机切换 crest 符号
-- 逐个定格（每枚间隔 150ms）：定格时 scale 1.25→1.0 弹跳 + 霓虹发光闪烁
-- 6种 crest 独特符号程序化绘制：
-  - 显化 → ★ 五角星
-  - 步进 → → 箭头
-  - 杀伐 → ✖ 交叉剑
-  - 护持 → 盾形
-  - 术式 → ◎ 同心圆
-  - 机巧 → ⬡ 六边形
-- 6种 crest 独特颜色：青/青绿/橙/金/品红/紫
-- 总演出时长约 1.1s（tumble 0.55s + settle 3×0.15s + post 0.25s）
-- 半透明暗色背景遮罩 + 霓虹边框
-- `animation_finished` 信号通知完成
-- 使用 `set_process(false/true)` 精确控制，非动画期间零开销
+- `create_card(card, can_play, index, callback) -> Panel` — 创建 90x108 卡牌控件
+  - 顶部：卡牌名称（升级牌青色边框+发光阴影）
+  - 中央：类型图标（⚔攻击/◇穿透/♦吸血/⚡电击/■防御/✚治疗）
+  - 中下：数值描述（"3 伤害" / "减伤 2" / "回复 4"）
+  - 底部分隔线 + 费用标注（左） + 类型标签（右）
+  - 6种卡牌类型独立配色（攻击橙/穿透金/吸血品红/电击紫/防御蓝/治疗绿）
+  - 升级卡牌：青色边框 + 发光阴影 5px
+  - 不可用卡牌：暗灰背景 + 灰色边框 + 文字变灰
+  - 悬浮效果：鼠标进入时 modulate 变亮 1.15x
+  - 点击手势光标 + gui_input 点击回调
+- `create_hp_bar(current, max_val, fill_color, low_color, w, h) -> Control` — HP 可视化血条
+  - 圆角背景 + 填充条（<30% HP 变色） + 高光层 + 居中数值文字
+- `create_energy_dots(current, max_val) -> Control` — 能量圆点显示
+  - 圆角 Panel 圆点（12px），已用/可用明暗区分
+  - 活跃点：蓝色发光 + 阴影；已消耗点：暗色 + 边框
+- 设计模式：与 CyberStyle/BoardCellRenderer/UnitRenderer 一致的 class_name 静态方法
 
-### 2. BattleEffects.gd（全新文件，~103行）
+### 2. CardBattlePanel.gd（重写，~329行）
 
-- `shake_screen(target, intensity, duration)` — 6步衰减随机偏移，使用 meta 存储静止位置防止抖动累积
-- `spawn_hit_particles(parent, pos, color, is_kill)` — CPUParticles2D 一次性爆发（普通6粒/击杀12粒），全方位扩散+重力下落+透明渐隐，自动释放
-- `enhanced_damage_popup(parent, pos, damage, is_kill)` — 双 Tween 驱动：scale 弹跳（1.0→1.4→1.0）+ 上浮渐隐
-- `kill_text_popup(parent, pos)` — 击杀时额外弹出金色 "KILL!" 文字
+- 面板尺寸调整：480x460 → 500x470
+- 敌方区域：标签 + HP 可视化血条（190px） + 意图图标
+- 玩家区域：标签 + HP 可视化血条（190px） + 能量圆点 + 牌堆计数
+- 手牌区域：CardRenderer.create_card 替代旧 105x48 文字按钮
+  - 4列布局，最多2行（6张手牌）
+  - 90x108 卡牌样式，类型配色+图标+数值
+- 敌方意图增强：根据意图类型添加图标前缀
+  - ⚔ 攻击 / ⚔⚔ 重击 / ■⚔ 防御+攻击 / ✚ 修复 / ⚠ 超载
+  - 各意图类型独立配色
+- 移除旧 _card_cost_labels 跟踪，费用已集成到卡牌控件
+- _refresh_status 重建 HP 条和能量点（container 清空+重建模式）
 
-### 3. BoardView 增强
+### 3. Main.gd 微调
 
-- `play_attack_feedback` 新增 `is_kill: bool = false` 参数（默认值保持向后兼容）
-- 集成 BattleEffects：每次攻击命中触发微震+粒子+增强飘字
-- 击杀时效果增强：闪光更亮、震动更强、粒子更多、金色飘字+KILL!文字
-- 移除旧 `_damage_label` 实例变量（被 BattleEffects.enhanced_damage_popup 替代，支持多个同时存在）
-
-### 4. DiceDebugPanel 集成
-
-- 掷骰后先更新 crest 池显示（玩家可立即行动），同时播放骰子演出
-- 动画完成后更新 roll_label 文字（"上次掷骰：move, attack, defend"）
-- DiceRollAnimation 定位在掷骰结果区域（y=290），覆盖该区域约 1.1s
-
-### 5. Main.gd 信号传递
-
-- 新增 `_last_attack_killed` 变量，从 `attack_completed` 信号捕获
-- 玩家攻击和敌方攻击均传递 is_kill 到 play_attack_feedback
+- CardBattlePanel 位置调整为 (390, 125) 居中显示
 
 ---
 
@@ -84,34 +76,32 @@ Phase 1 已完成棋盘格/单位/高亮视觉升级。Phase 2 目标是让关�
 
 ### 新增
 
-- `DiceRollAnimation`（class_name 全局注册）：`play(results, crest_pool)` 方法 + `animation_finished` 信号
-- `BattleEffects`（class_name 全局注册）：`shake_screen()`、`spawn_hit_particles()`、`enhanced_damage_popup()`、`kill_text_popup()` 静态方法
+- `CardRenderer`（class_name 全局注册）：`create_card()`、`create_hp_bar()`、`create_energy_dots()` 静态方法
 
 ### 修改
 
-- `BoardView.play_attack_feedback()` 新增可选参数 `is_kill: bool = false`（向后兼容）
-
-### 删除
-
-- `BoardView._damage_label` 实例变量（被 BattleEffects 替代）
+- `CardBattlePanel` 面板尺寸 480x460 → 500x470
+- `CardBattlePanel` 内部变量重构：移除 `_card_buttons: Array[Button]`、`_card_cost_labels: Array[Label]`，新增 `_card_widgets: Array`、`_enemy_hp_container`、`_player_hp_container`、`_energy_container`
 
 ### 无变化
 
-- 所有 BoardView 信号签名不变
+- CardBattleController 零修改（所有信号签名不变）
 - BattleFlowController 零修改
-- DiceManager 零修改
+- CardRewardPanel 零修改
+- BoardView 零修改
 
 ---
 
 ## 测试确认
 
 代码审查确认：
-- play_attack_feedback 默认参数 is_kill=false 保证所有现有调用（terrain_damage 等）不受影响
-- DiceRollAnimation 使用 set_process(false) 默认不运行，仅在演出期间激活
-- BattleEffects.shake_screen 使用 meta 存储静止位置，防止多次抖动位置漂移
-- CPUParticles2D 使用 one_shot + 自动 queue_free，不会泄漏节点
-- gl_compatibility 安全：CPUParticles2D（非 GPUParticles2D）+ draw_* 绘制
-- 性能：掷骰动画仅在 1.1s 内激活 _process，非动画期间零开销；粒子 one_shot 最多 12 个
+- CardRenderer.create_card 的 gui_input 回调仅在 can_play=true 时连接，不可用卡牌不响应点击
+- HP 条使用 container 清空+重建模式（remove_child + queue_free），避免旧节点残留
+- 能量圆点使用 Panel + StyleBoxFlat 圆角，gl_compatibility 安全
+- 悬浮效果直接设置 modulate（非 Tween），避免快速进出时的动画堆积
+- CardBattlePanel 所有信号回调保持原有行为，bind_controller 接口不变
+- CardRewardPanel 不受影响（独立面板，不使用 CardRenderer）
+- Main.gd 仅位置微调，所有信号连接不变
 
 ---
 
@@ -119,23 +109,24 @@ Phase 1 已完成棋盘格/单位/高亮视觉升级。Phase 2 目标是让关�
 
 - 层间难度暂不递增（已排后）
 - 阵亡单位跨层不复活
+- CardRewardPanel 暂未使用 CardRenderer 风格（可在后续统一）
 
 ---
 
 ## 建议下一步
 
-1. **美化 Phase 3**：卡牌战斗面板重设计（CardRenderer.gd）
-2. **美化 Phase 4.1**：背景氛围升级（动态网格+粒子+渐变）
-3. **美化 Phase 4.2**：UI 过渡动画（面板弹出/关闭）
+1. **美化 Phase 4.1**：背景氛围升级（动态网格背景+粒子+渐变）
+2. **美化 Phase 4.2**：UI 过渡动画（面板弹出/关闭+召唤展开演出）
+3. **美化 Phase 5**：音效系统（AudioManager + 基础音效接入）
 
 ---
 
 ## Codex 复审标注
 
-1. **掷骰动画不阻塞操作**：动画播放期间，crest 池已更新，玩家可以立即移动/攻击。这是有意设计——动画是视觉反馈而非流程门槛，避免了修改 BattleFlowController 的需要。
+1. **CardRenderer 纯静态设计**：与 CyberStyle/BoardCellRenderer/UnitRenderer/BattleEffects 保持一致的无状态静态方法模式。create_card 返回独立的 Panel 控件，内部 gui_input 通过 Callable 回调，不引入新的信号依赖。
 
-2. **BattleEffects 纯静态设计**：与 CyberStyle/BoardCellRenderer/UnitRenderer 保持一致的无状态静态方法模式。唯一的"状态"是 shake_screen 通过 node.set_meta 存储的静止位置，用于防止多次抖动的位置漂移。
+2. **HP 条/能量点重建模式**：每次 _refresh_status 清空容器并重建子节点。这比更新已有节点的属性更简单可靠（避免 StyleBoxFlat 共享引用问题），代价是每回合几十个节点的创建/释放。在当前游戏规模下性能完全可接受。
 
-3. **CPUParticles2D 使用约束**：策略文档要求"不超过 3 个同时活跃实例"。当前实现中，每次攻击命中创建 1 个粒子节点（one_shot，0.4-0.6s 后自动释放）。在正常游戏节奏下不会超过 3 个同时存在。
+3. **CardRewardPanel 未同步升级**：Phase 3 策略文档的范围是 CardBattlePanel 重设计。CardRewardPanel 仍使用旧的文字按钮风格。建议在美化收尾阶段统一处理，或在 Phase 4 中一并升级。
 
-4. **_damage_label 替换为独立 Label**：旧实现使用实例变量跟踪单个 damage label（后续攻击会先释放前一个）。新实现每次创建独立 Label 并自动释放，支持多个同时显示（如连续攻击），视觉效果更丰富。
+4. **面板位置居中**：CardBattlePanel 从 (280,140) 调整到 (390,125)，在 1280x720 视口中更居中。这是视觉微调，不影响功能。

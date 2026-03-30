@@ -95,7 +95,7 @@ func _build_debug_view() -> void:
 	_settings_panel.bind_display_settings(_display_settings)
 
 	_card_battle_panel = CardBattlePanel.new()
-	_card_battle_panel.position = Vector2(280, 140)
+	_card_battle_panel.position = Vector2(390, 125)
 	add_child(_card_battle_panel)
 
 	_card_reward_panel = CardRewardPanel.new()
