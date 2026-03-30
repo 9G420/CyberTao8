@@ -25,7 +25,6 @@ var _result_label: Label
 var _restart_btn: Button
 var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
-var _battle_dark_bg: ColorRect
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
@@ -97,20 +96,9 @@ func _build_debug_view() -> void:
 	add_child(_settings_panel)
 	_settings_panel.bind_display_settings(_display_settings)
 
+	# 卡牌战斗面板（v0.1.54 全屏独立界面，自带战斗背景）
 	_card_battle_panel = CardBattlePanel.new()
-	_card_battle_panel.position = Vector2(390, 125)
-	add_child(_card_battle_panel)
-
-	# 卡牌战斗全屏暗幕（宝可梦式遮罩，置于 CardBattlePanel 之下）
-	_battle_dark_bg = ColorRect.new()
-	_battle_dark_bg.position = Vector2(0, 0)
-	_battle_dark_bg.size = Vector2(1280, 720)
-	_battle_dark_bg.color = Color(0.0, 0.0, 0.0, 0.85)
-	_battle_dark_bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	_battle_dark_bg.visible = false
-	add_child(_battle_dark_bg)
-	# 把 CardBattlePanel 移到暗幕上层
-	remove_child(_card_battle_panel)
+	_card_battle_panel.position = Vector2(0, 0)
 	add_child(_card_battle_panel)
 
 	_card_reward_panel = CardRewardPanel.new()
@@ -277,8 +265,7 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 	var p_max_hp: int = int(unit.get("max_hp", 1))
 	# 宝可梦式过渡：百叶窗合拢 + 闪烁敌方名称
 	await _transition.transition_to_battle(enemy_display, is_boss)
-	# 百叶窗合拢后：显示暗幕 + 卡牌战斗面板 + 启动战斗
-	_battle_dark_bg.visible = true
+	# 百叶窗合拢后：显示全屏卡牌战斗面板 + 启动战斗
 	_card_battle_panel.visible = true
 	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp)
 	# 百叶窗展开，露出卡牌战斗界面
@@ -339,9 +326,8 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 	await get_tree().create_timer(0.8).timeout
 	# 百叶窗合拢
 	await _transition.transition_to_board()
-	# 百叶窗合拢后：隐藏卡牌战斗面板和暗幕
+	# 百叶窗合拢后：隐藏卡牌战斗面板
 	_card_battle_panel.visible = false
-	_battle_dark_bg.visible = false
 	# 结算遭遇
 	_battle_flow.resolve_encounter(victory, player_hp_remaining)
 	# 反馈飘字
@@ -407,7 +393,6 @@ func _on_test_card_battle_requested() -> void:
 	var p_max_hp: int = int(unit.get("max_hp", 1))
 	# 调试也走宝可梦式过渡
 	await _transition.transition_to_battle("异常哨兵", false)
-	_battle_dark_bg.visible = true
 	_card_battle_panel.visible = true
 	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp)
 	await _transition.reveal()

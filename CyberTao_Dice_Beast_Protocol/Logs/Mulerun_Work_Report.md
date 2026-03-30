@@ -1,78 +1,108 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.53
+**版本**: v0.1.54
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.53：Boss 解锁自动传送 + 宝可梦式卡牌战斗过渡
+- v0.1.54：全屏独立卡牌战斗界面 + 角色立绘系统 + 扇形手牌 + 棋盘单位美化
 
 ---
 
-## v0.1.53 实现内容
+## 根因目标
 
-### 问题背景
+用户测试 v0.1.53 后反馈两个核心问题：
+1. 卡牌战斗界面仍非独立界面——暗幕+小面板叠在棋盘上，依然能看到棋盘背景
+2. 角色形象为方框/三角形几何图形，不美观
 
-1. 哨兵全灭后 Boss 在棋盘远处，玩家需要多回合掷骰走路才能到达，期间零游戏性
-2. 卡牌战斗仍以浮窗形式叠在棋盘上，缺乏场景切换感
+本轮目标：将 CardBattlePanel 从浮窗升级为全屏独立战斗界面（类似宝可梦战斗画面），加入角色立绘和扇形手牌。同时美化棋盘上的单位渲染。
 
-### 功能一：Boss 解锁后英雄自动传送
+---
 
-- `_try_unlock_boss()` 末尾新增 `_warp_hero_to_boss(boss_cell)` 调用
-- `_warp_hero_to_boss()` 查找英雄单位（非 summoned 的玩家单位），传送到 Boss 格旁边的空格（优先下方）
-- 新增信号 `hero_warped(unit_id, target_cell)`
-- Main.gd 连接 `hero_warped` 信号，飘字提示"传送至 Boss！"
-
-### 功能二：宝可梦式卡牌战斗过渡
-
-- **新增 `TransitionOverlay.gd`**（~110行）：CanvasLayer（layer 10）百叶窗过渡动画
-  - 8 条水平百叶窗，合拢 0.35s / 展开 0.3s
-  - `transition_to_battle(enemy_name, is_boss)` — 百叶窗合拢 + 闪烁敌方名称
-  - `reveal()` — 百叶窗展开
-  - `transition_to_board()` — 百叶窗合拢（退出战斗）
-  - Boss 遭遇使用暗红色百叶窗区分
-- **Main.gd 遭遇触发流程重写**：
-  - `_on_encounter_triggered()` → 百叶窗合拢 + 闪字 → 显示暗幕+战斗面板 → 百叶窗展开
-  - `_on_card_battle_ended()` → 等待 0.8s 结果展示 → 百叶窗合拢 → 隐藏面板 → 结算 → 百叶窗展开
-- **全屏暗幕**：`_battle_dark_bg`（ColorRect 1280x720，85% 不透明黑色）遮挡棋盘
-- **CardBattlePanel 可见性管理**：移除 `_on_battle_started` 和 `_on_battle_ended` 的自动 visible 控制，改由 Main.gd 通过过渡统一管理
-- **遭遇名称映射**：`_get_encounter_display_name()` 返回中文敌方名称用于闪字
-
-### 修改文件
+## 修改文件
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/TransitionOverlay.gd` | 新增文件，百叶窗过渡动画 |
-| `Scripts/BattleV2/BattleFlowController.gd` | 新增 `hero_warped` 信号、`_warp_hero_to_boss()` 函数；`_try_unlock_boss()` 末尾调用自动传送 |
-| `Scripts/Main.gd` | 新增 TransitionOverlay + 暗幕；重写 `_on_encounter_triggered` / `_on_card_battle_ended` / `_on_test_card_battle_requested`；新增 `_on_hero_warped` / `_get_encounter_display_name` |
-| `Scripts/UI/CardBattlePanel.gd` | `_on_battle_started` / `_on_battle_ended` 移除自动 visible 控制 |
+| `Scripts/UI/BattleCharRenderer.gd` | **新增文件**，程序化绘制战斗角色立绘（玩家英雄 + 6种敌方） |
+| `Scripts/UI/CardBattlePanel.gd` | **完全重写**，从 500x470 浮窗改为 1280x720 全屏独立战斗界面 |
+| `Scripts/UI/UnitRenderer.gd` | **完全重写**，从几何形状改为迷你角色剪影 |
+| `Scripts/Main.gd` | CardBattlePanel 位置 (0,0)；移除 `_battle_dark_bg` 暗幕 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.53 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.54 条目 |
 | `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+任务优先级 |
 
-### 接口变更
+---
 
-- `BattleFlowController.hero_warped(unit_id, target_cell)` — 新增信号
-- `BattleFlowController._warp_hero_to_boss(boss_cell)` — 新增内部方法
-- `CardBattlePanel._on_battle_started()` — 不再设 `visible = true`
-- `CardBattlePanel._on_battle_ended()` — 不再自动隐藏面板
-- `TransitionOverlay` — 新增 class_name
+## 实现内容
 
-### 自查确认
+### 全屏卡牌战斗界面
 
-- `_warp_hero_to_boss()` 正确查找非 summoned 玩家单位，传送到 Boss 旁空格
-- `_warp_hero_to_boss()` 使用 `unit_manager.move_unit()` 正确更新 occupied_cells
-- TransitionOverlay 使用 CanvasLayer layer 10，不影响任何现有 UI 层级
-- 暗幕 `_battle_dark_bg` 置于 CardBattlePanel 之下，CardBattlePanel 通过 remove/add_child 确保在暗幕上层
-- `_on_encounter_triggered` 正确 await 过渡完成后才启动战斗
-- `_on_card_battle_ended` 先等 0.8s 展示结果，再过渡回棋盘
-- 层间奖励 `_floor_clear_pending` 分支不走过渡动画（保持原流程）
-- 调试按钮"测试战斗"也走过渡流程
-- v0.1.51 三分支 resolve_encounter 不受影响
+- CardBattlePanel 尺寸从 500x470 → 1280x720，覆盖全屏
+- 自带深色赛博朋克战斗背景（透视网格地面 + VS标记 + 光弧装饰）
+- 不再需要 `_battle_dark_bg` 暗幕遮罩，面板本身就是完整的战斗场景
+- 布局：
+  - 玩家角色立绘在左侧 (x:200, y:320)
+  - 敌方角色立绘在右侧 (x:1080, y:300)
+  - 敌方信息（名称+HP+意图）在右上
+  - 玩家信息（名称+HP+能量+牌堆）在左下
+  - 战斗日志在中央偏下
+  - 扇形手牌在底部
+  - 操作按钮在右下
+
+### 角色立绘系统（BattleCharRenderer）
+
+- 玩家英雄：赛博战士剪影（装甲躯干+V型护目镜+六边形盾牌+光刃+四肢+脚底光环）
+- 6种敌方立绘：
+  - 异常哨兵：方形装甲+肩甲+扫描眼（脉冲变宽）
+  - 赛博游魂：多层光环+双红眼+飘散尾焰
+  - 暗网爬虫：圆形体+6条节肢+4眼簇
+  - 脉冲猎手：纤细三角体+单眼+持枪
+  - 数据幽灵：菱形核心+数据辐射线+双白眼
+  - 零号协议(Boss)：巨型躯干+巨肩甲+冠冕+三眼（金色+红色第三眼）
+- 所有角色带脉冲呼吸动画（发光强度随 sin 变化）
+
+### 扇形手牌
+
+- 参考旧项目 Hand.gd 的弧形布局算法
+- FAN_RADIUS=700, FAN_CARD_ANGLE=6°, FAN_MAX_ANGLE=22°
+- 卡牌尺寸放大至 105x130（适配全屏）
+- 悬停效果：1.12x 放大 + 上浮 20px + z-index=10
+- 保持点击出牌机制（未引入拖拽）
+
+### 棋盘单位美化
+
+- 玩家单位：迷你赛博战士（躯干+盾+刃+V型护目镜+脚底光环）
+- 敌方单位：根据名称匹配 6 种独特造型
+- 保留 HP 条、选中脉冲环、地形适性星标
+
+---
+
+## 接口变更
+
+- `BattleCharRenderer` — 新增 class_name（全局注册）
+- `BattleCharRenderer.draw_player_hero(c, center, scale, pulse)` — 绘制玩家英雄
+- `BattleCharRenderer.draw_enemy(c, center, scale, pulse, encounter_id)` — 绘制指定敌方
+- `CardBattlePanel._current_encounter_id` — 新增内部变量，追踪当前遭遇ID用于立绘选择
+- `CardBattlePanel._rebuild_fan_cards()` — 替换旧的 `_rebuild_card_widgets()`
+- `Main._battle_dark_bg` — **已移除**
+
+---
+
+## 测试确认
+
+- CardBattlePanel 全屏布局正确覆盖 1280x720
+- 百叶窗过渡 → 全屏战斗界面 → 过渡回棋盘 流程完整
+- BattleCharRenderer 6 种敌方 + 1 种玩家英雄正确匹配 encounter_id
+- 扇形手牌布局正确计算弧线位置和旋转角度
+- UnitRenderer 新迷你角色剪影正确匹配敌方名称
+- HP 条、能量点、战斗日志、按钮功能不受影响
+- CardRewardPanel、DeckViewPanel 不受影响
+- v0.1.51 resolve_encounter 三分支不受影响
 - v0.1.52 单位精简+伙伴槽不受影响
+- v0.1.53 TransitionOverlay 百叶窗过渡不受影响
 
 ---
 
@@ -81,12 +111,14 @@
 - 层间难度暂不递增
 - 阵亡单位跨层不复活
 - CardRewardPanel 暂未使用 CardRenderer 风格
-- CardBattlePanel 内部布局未扩展为真正全屏（保持 500x470 居中+暗幕）
+- 扇形手牌暂无拖拽机制（仅点击出牌）
+- 角色立绘为程序化绘制，非位图素材（后续可升级为精灵图）
 
 ---
 
 ## 建议下一步
 
-1. CardBattlePanel 全屏布局重设计（利用 1280x720 全屏空间）
-2. 层间难度递增
-3. Crest 蓄力池 + 骰子操控机制
+1. 美化 Phase 4.2：UI 过渡动画（面板弹出/关闭缓动 + 召唤展开演出）
+2. 美化 Phase 5：音效系统（AudioManager + 基础音效）
+3. 层间难度递增
+4. Crest 蓄力池 + 骰子操控机制
