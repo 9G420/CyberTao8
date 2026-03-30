@@ -230,21 +230,29 @@ func _draw_terrain() -> void:
 			draw_string(font, text_pos, "TRAP", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(1.0, 0.35, 0.25, 0.8))
 
 ## 绘制遭遇格：橙红警告色填充 + 边框 + "遭遇" 文字标记
+## Boss 遭遇格使用深红色 + 更粗边框 + "BOSS" 文字
 func _draw_encounters() -> void:
 	if board_manager == null:
 		return
 	var font: Font = ThemeDB.fallback_font
 	var font_size: int = 10
 	for cell in board_manager.encounter_cells.keys():
+		var enc_id: String = String(board_manager.encounter_cells[cell])
+		var is_boss: bool = enc_id.begins_with("encounter_boss_")
 		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
 		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
-		# 橙红警告色填充
-		draw_rect(Rect2(pos, sz), Color(1.0, 0.35, 0.1, 0.35), true)
-		# 橙红边框（脉冲感）
-		draw_rect(Rect2(pos, sz), Color(1.0, 0.4, 0.15, 0.85), false, 2.5)
-		# "遭遇" 文字标记
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
-		draw_string(font, text_pos, "遭遇", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 0.5, 0.2, 0.9))
+		if is_boss:
+			# Boss 遭遇：深红填充 + 粗边框
+			draw_rect(Rect2(pos, sz), Color(0.85, 0.1, 0.15, 0.45), true)
+			draw_rect(Rect2(pos, sz), Color(1.0, 0.15, 0.2, 0.95), false, 3.0)
+			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
+			draw_string(font, text_pos, "BOSS", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, 12, Color(1.0, 0.2, 0.25, 1.0))
+		else:
+			# 普通遭遇：橙红警告色填充
+			draw_rect(Rect2(pos, sz), Color(1.0, 0.35, 0.1, 0.35), true)
+			draw_rect(Rect2(pos, sz), Color(1.0, 0.4, 0.15, 0.85), false, 2.5)
+			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
+			draw_string(font, text_pos, "遭遇", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 0.5, 0.2, 0.9))
 
 ## 绘制恢复格：蓝白色填充 + 边框 + "回复" 文字标记 + 回复量
 func _draw_heal_cells() -> void:

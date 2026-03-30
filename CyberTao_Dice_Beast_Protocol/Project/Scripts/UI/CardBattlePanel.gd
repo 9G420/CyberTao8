@@ -54,6 +54,12 @@ func _on_battle_started(player_hp: int, enemy_hp: int, enemy_name: String) -> vo
 	_log_label.text = "遭遇 " + enemy_name + "！抽牌并选择出牌。"
 	_end_turn_button.disabled = false
 	_flee_button.disabled = false
+	# Boss 遭遇不允许逃跑
+	if _controller and _controller.is_boss_encounter():
+		_flee_button.disabled = true
+		_flee_button.text = "无法逃跑"
+	else:
+		_flee_button.text = "逃跑（-1 HP）"
 	_refresh_status()
 	visible = true
 
@@ -167,7 +173,10 @@ func _clear_card_buttons() -> void:
 func _refresh_status() -> void:
 	if _controller == null:
 		return
-	_title_label.text = "卡牌战斗 — " + _controller.enemy_name
+	var boss_tag: String = ""
+	if _controller.is_boss_encounter():
+		boss_tag = " [BOSS]"
+	_title_label.text = "卡牌战斗 — " + _controller.enemy_name + boss_tag
 	_enemy_hp_label.text = "敌方 HP：" + str(_controller.enemy_hp) + " / " + str(_controller.enemy_max_hp)
 	_player_hp_label.text = "我方 HP：" + str(_controller.player_hp) + " / " + str(_controller.player_max_hp)
 	_energy_label.text = "能量：" + str(_controller.energy) + " / " + str(_controller.max_energy)

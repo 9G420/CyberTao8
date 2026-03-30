@@ -922,6 +922,30 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 面板位置 (160,120)，覆盖棋盘中心区域，使用时需手动关闭
 - 支持 RichTextLabel 滚动，牌组变大后可滚动浏览
 
+## v0.1.37 - 2026-03-30
+
+### 新增
+- Boss 遭遇系统：特殊高难度遭遇格，深红色视觉标识 + "BOSS" 文字
+- Boss 敌方"零号协议"：HP 20 / ATK 3 / 6 阶段行为循环（攻→防攻→重击→回复→攻→超载重击）
+- 两种新敌方行为：heal（回复 3 HP）、mega_attack（ATK×3 伤害）
+- Boss 遭遇意图预告：heal 显示"修复（回复 HP）"，mega_attack 显示"超载重击（X 伤害）⚠"
+- Boss 战胜利提供 4 张奖励牌（普通遭遇 3 张）
+- Boss 战不可逃跑，逃跑按钮禁用显示"无法逃跑"
+- 棋盘每局放置 1 个 Boss 遭遇格（优先右上象限，远离玩家出生区）
+- CardBattlePanel 标题 Boss 战显示 [BOSS] 标记
+- 新方法：CardBattleController.is_boss_encounter()
+- 新常量：BoardGenerator.BOSS_ENCOUNTER_IDS
+
+### 修改
+- _draw_encounters() 重构为区分 Boss（深红/粗边框）和普通遭遇（橙红）
+- _generate_reward_options() 根据 is_boss 动态调整奖励牌数量
+- Main.gd 棋盘图例提示新增"深红=BOSS"
+
+### 备注
+- Boss 行为 heal 和 mega_attack 是通用敌方行为类型，未来普通敌方也可使用
+- Boss 数值未经平衡测试，零号协议 6 回合累计输出约 26 点伤害（不含减免和 heal 回复）
+- 扩展更多 Boss 只需在 BOSS_ENCOUNTER_IDS 和 get_encounter_enemy_data() 中添加条目
+
 ## v0.1.36 - 2026-03-30
 
 ### 新增

@@ -24,6 +24,11 @@ const ENCOUNTER_IDS: Array[String] = [
 	"encounter_04", "encounter_05",
 ]
 
+# Boss 遭遇 ID 池（每局放置 1 个）
+const BOSS_ENCOUNTER_IDS: Array[String] = [
+	"encounter_boss_01",
+]
+
 # 可用道具 ID 池
 const ITEM_IDS: Array[String] = [
 	"patch_tea_cache", "overclock_bone",
@@ -65,6 +70,12 @@ static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i
 		var enc_id: String = shuffled_enc_ids[i % shuffled_enc_ids.size()]
 		board_mgr.add_encounter_cell(enc_cells[i], enc_id)
 		used_cells[enc_cells[i]] = true
+	# 4b. Boss 遭遇格（1 个，放置在远离玩家出生区的上半区域）
+	var boss_cells: Array[Vector2i] = _pick_boss_cell(board_size, used_cells)
+	if boss_cells.size() > 0:
+		var boss_id: String = BOSS_ENCOUNTER_IDS[randi() % BOSS_ENCOUNTER_IDS.size()]
+		board_mgr.add_encounter_cell(boss_cells[0], boss_id)
+		used_cells[boss_cells[0]] = true
 	# 5. 恢复格
 	var heal_cells: Array[Vector2i] = _pick_random_cells(board_size, HEAL_COUNT, used_cells, false)
 	for cell in heal_cells:
@@ -102,6 +113,27 @@ static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dic
 		}
 		unit_mgr.spawn_unit(String(tmpl["id"]), data, cell)
 		used_cells[cell] = true
+
+## 为 Boss 遭遇选择一个格子（远离玩家出生区，优先上半右侧）
+static func _pick_boss_cell(board_size: Vector2i, used_cells: Dictionary) -> Array[Vector2i]:
+	var candidates: Array[Vector2i] = []
+	# 优先选择右上象限（col >= 4, row <= 3）
+	for y in range(0, board_size.y / 2):
+		for x in range(board_size.x / 2, board_size.x):
+			var c: Vector2i = Vector2i(x, y)
+			if not used_cells.has(c):
+				candidates.append(c)
+	# 如果右上象限无空位，扩大到整个上半区
+	if candidates.is_empty():
+		for y in range(0, board_size.y / 2):
+			for x in range(0, board_size.x):
+				var c: Vector2i = Vector2i(x, y)
+				if not used_cells.has(c):
+					candidates.append(c)
+	if candidates.is_empty():
+		return []
+	var picked: Vector2i = candidates[randi() % candidates.size()]
+	return [picked]
 
 ## 在上半区域（row 0 ~ board_size.y/2）随机选一个空闲格
 static func _pick_enemy_cell(board_size: Vector2i, used_cells: Dictionary) -> Vector2i:

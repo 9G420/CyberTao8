@@ -61,7 +61,7 @@ func _build_debug_view() -> void:
 	add_child(subtitle)
 
 	var hint := Label.new()
-	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 蓝白=回复 黄紫=事件 | *=适性激活"
+	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 深红=BOSS 蓝白=回复 黄紫=事件 | *=适性激活"
 	hint.position = Vector2(0, 66)
 	hint.size = Vector2(1280, 20)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -136,6 +136,11 @@ static func get_encounter_enemy_data(enc_id: String) -> Dictionary:
 				"name": "数据幽灵", "hp": 9, "atk": 2,
 				"pattern": ["attack", "defend_attack", "heavy_attack", "heavy_attack", "attack"],
 			}
+		"encounter_boss_01":
+			return {
+				"name": "零号协议", "hp": 20, "atk": 3, "is_boss": true,
+				"pattern": ["attack", "defend_attack", "heavy_attack", "heal", "attack", "mega_attack"],
+			}
 	return {
 		"name": "未知敌人", "hp": 5, "atk": 2,
 		"pattern": ["attack", "attack"],
@@ -328,6 +333,18 @@ func _enemy_act() -> void:
 			text = enemy_name + " 防御+攻击 → " + str(actual_dmg) + " 伤害，敌方防御+2"
 			if def_bonus > 0:
 				text += "（已减免）"
+		"heal":
+			var heal_val: int = 3
+			var actual_heal: int = min(heal_val, enemy_max_hp - enemy_hp)
+			enemy_hp = min(enemy_max_hp, enemy_hp + heal_val)
+			text = enemy_name + " 修复 → 回复 " + str(actual_heal) + " HP"
+		"mega_attack":
+			var mega_dmg: int = enemy_atk * 3
+			var actual_dmg: int = max(1, mega_dmg - def_bonus)
+			player_hp = max(0, player_hp - actual_dmg)
+			text = enemy_name + " 超载重击 → " + str(actual_dmg) + " 伤害！！"
+			if def_bonus > 0:
+				text += "（已减免）"
 	emit_signal("enemy_acted", text)
 
 func _advance_enemy_pattern() -> void:
@@ -342,6 +359,10 @@ func _update_enemy_intent() -> void:
 			_next_enemy_intent = "意图：重击（" + str(enemy_atk * 2) + " 伤害）"
 		"defend_attack":
 			_next_enemy_intent = "意图：防御+攻击"
+		"heal":
+			_next_enemy_intent = "意图：修复（回复 HP）"
+		"mega_attack":
+			_next_enemy_intent = "意图：超载重击（" + str(enemy_atk * 3) + " 伤害）⚠"
 		_:
 			_next_enemy_intent = "意图：未知"
 	emit_signal("enemy_intent_changed", _next_enemy_intent)
@@ -363,7 +384,11 @@ func _win() -> void:
 func _generate_reward_options() -> void:
 	var pool: Array[Dictionary] = _build_reward_pool()
 	_reward_options = []
-	# 随机选取 REWARD_CHOICES 张不重复的卡牌
+	# Boss 战胜利提供更多选择（4 张而非 3 张）
+	var choice_count: int = REWARD_CHOICES
+	if is_boss_encounter():
+		choice_count = 4
+	# 随机选取 choice_count 张不重复的卡牌
 	var indices: Array[int] = []
 	for i in range(pool.size()):
 		indices.append(i)
@@ -373,7 +398,7 @@ func _generate_reward_options() -> void:
 		var tmp: int = indices[i]
 		indices[i] = indices[j]
 		indices[j] = tmp
-	var count: int = min(REWARD_CHOICES, pool.size())
+	var count: int = min(choice_count, pool.size())
 	for i in range(count):
 		_reward_options.append(pool[indices[i]])
 
@@ -488,3 +513,8 @@ func get_draw_count() -> int:
 
 func get_discard_count() -> int:
 	return discard_pile.size()
+
+## 判断当前战斗是否为 Boss 遭遇
+func is_boss_encounter() -> bool:
+	var data: Dictionary = get_encounter_enemy_data(encounter_id)
+	return data.get("is_boss", false)
