@@ -19,8 +19,8 @@ var encounter_title_label: Label
 var encounter_resolve_button: Button
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(280, 540)
-	size = Vector2(280, 540)
+	custom_minimum_size = Vector2(280, 574)
+	size = Vector2(280, 574)
 	_build_ui()
 
 func bind_battle_flow(next_battle_flow: Node) -> void:
@@ -163,9 +163,37 @@ func _build_ui() -> void:
 	CyberStyle.style_button(card_test_button, "orange")
 	add_child(card_test_button)
 
+	# --- Crest 使用按钮（护持/术式/机巧） ---
+	var defend_btn := Button.new()
+	defend_btn.text = "护持(DEF+1)"
+	defend_btn.position = Vector2(16, 256)
+	defend_btn.size = Vector2(78, 28)
+	defend_btn.add_theme_font_size_override("font_size", 10)
+	defend_btn.pressed.connect(_on_defend_crest_pressed)
+	CyberStyle.style_button(defend_btn, "orange")
+	add_child(defend_btn)
+
+	var skill_btn := Button.new()
+	skill_btn.text = "术式(HP+2)"
+	skill_btn.position = Vector2(100, 256)
+	skill_btn.size = Vector2(78, 28)
+	skill_btn.add_theme_font_size_override("font_size", 10)
+	skill_btn.pressed.connect(_on_skill_crest_pressed)
+	CyberStyle.style_button(skill_btn, "cyan")
+	add_child(skill_btn)
+
+	var trick_btn := Button.new()
+	trick_btn.text = "机巧(转化)"
+	trick_btn.position = Vector2(184, 256)
+	trick_btn.size = Vector2(80, 28)
+	trick_btn.add_theme_font_size_override("font_size", 10)
+	trick_btn.pressed.connect(_on_trick_crest_pressed)
+	CyberStyle.style_button(trick_btn, "cyan")
+	add_child(trick_btn)
+
 	# --- 分隔线 ---
 	var sep3 := ColorRect.new()
-	sep3.position = Vector2(16, 256)
+	sep3.position = Vector2(16, 290)
 	sep3.size = Vector2(248, 1)
 	sep3.color = Color(0.0, 0.7, 0.9, 0.15)
 	sep3.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -174,7 +202,7 @@ func _build_ui() -> void:
 	# --- 掷骰结果 ---
 	roll_label = Label.new()
 	roll_label.text = "上次掷骰：-"
-	roll_label.position = Vector2(16, 262)
+	roll_label.position = Vector2(16, 296)
 	roll_label.size = Vector2(248, 40)
 	roll_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	roll_label.add_theme_font_size_override("font_size", 13)
@@ -183,7 +211,7 @@ func _build_ui() -> void:
 
 	# --- Crest 资源池 ---
 	crest_label = RichTextLabel.new()
-	crest_label.position = Vector2(16, 306)
+	crest_label.position = Vector2(16, 340)
 	crest_label.size = Vector2(248, 140)
 	crest_label.scroll_active = false
 	crest_label.add_theme_font_size_override("normal_font_size", 13)
@@ -192,7 +220,7 @@ func _build_ui() -> void:
 	# --- 敌方意图 ---
 	enemy_intent_label = Label.new()
 	enemy_intent_label.text = ""
-	enemy_intent_label.position = Vector2(16, 452)
+	enemy_intent_label.position = Vector2(16, 486)
 	enemy_intent_label.size = Vector2(248, 40)
 	enemy_intent_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	enemy_intent_label.add_theme_font_size_override("font_size", 13)
@@ -201,8 +229,8 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.29"
-	ver_label.position = Vector2(210, 520)
+	ver_label.text = "v0.1.33"
+	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	ver_label.add_theme_font_size_override("font_size", 10)
@@ -258,6 +286,18 @@ func _on_spawn_path_pressed() -> void:
 
 func _on_test_card_battle_pressed() -> void:
 	test_card_battle_requested.emit()
+
+func _on_defend_crest_pressed() -> void:
+	if battle_flow and _selected_unit_id_cache != "":
+		battle_flow.try_use_defend_crest(_selected_unit_id_cache)
+
+func _on_skill_crest_pressed() -> void:
+	if battle_flow and _selected_unit_id_cache != "":
+		battle_flow.try_use_skill_crest(_selected_unit_id_cache)
+
+func _on_trick_crest_pressed() -> void:
+	if battle_flow:
+		battle_flow.try_use_trick_crest()
 
 # --- 信号回调 ---
 

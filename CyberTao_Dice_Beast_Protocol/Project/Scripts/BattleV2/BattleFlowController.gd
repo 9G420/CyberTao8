@@ -16,6 +16,9 @@ signal encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i
 signal encounter_resolved(encounter_id: String, cell: Vector2i)
 signal heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int)
 signal event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String)
+signal defend_crest_used(unit_id: String, new_temp_def: int)
+signal skill_crest_used(unit_id: String, heal_amount: int)
+signal trick_crest_used(gained_crest: String)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -257,14 +260,85 @@ func _check_terrain_trap(unit_id: String, cell: Vector2i) -> void:
 	if killed:
 		_check_battle_outcome()
 
-## 结束玩家回合：清空资源池，进入敌方回合。
+## 结束玩家回合：清空资源池，清除临时防御，进入敌方回合。
 func end_player_turn() -> void:
 	if current_phase != BattlePhase.PLAYER_ACTION:
 		return
 	if is_battle_over():
 		return
+	_clear_temp_def()
 	dice_manager.reset_for_turn()
 	_start_enemy_turn()
+
+## 清除所有玩家单位的临时防御（护持 crest 效果）
+func _clear_temp_def() -> void:
+	for uid in unit_manager.units_by_id.keys():
+		var u: Dictionary = unit_manager.units_by_id[uid]
+		if String(u.get("owner", "")) == "player":
+			u["temp_def"] = 0
+
+## 使用护持(DEFEND) crest：选中单位本回合 DEF +1（累加），回合结束清零
+func try_use_defend_crest(unit_id: String) -> bool:
+	if is_battle_over():
+		return false
+	if current_phase != BattlePhase.PLAYER_ACTION:
+		return false
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return false
+	if String(unit.get("owner", "")) != "player":
+		return false
+	var cost: Dictionary = {"defend": 1}
+	if not dice_manager.can_pay(cost):
+		return false
+	dice_manager.pay(cost)
+	var cur_temp: int = int(unit.get("temp_def", 0)) + 1
+	unit["temp_def"] = cur_temp
+	unit_manager.units_by_id[unit_id] = unit
+	emit_signal("defend_crest_used", unit_id, cur_temp)
+	return true
+
+## 使用术式(SKILL) crest：选中单位回复 2 HP
+func try_use_skill_crest(unit_id: String) -> bool:
+	if is_battle_over():
+		return false
+	if current_phase != BattlePhase.PLAYER_ACTION:
+		return false
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return false
+	if String(unit.get("owner", "")) != "player":
+		return false
+	var cost: Dictionary = {"skill": 1}
+	if not dice_manager.can_pay(cost):
+		return false
+	var cur_hp: int = int(unit.get("hp", 0))
+	var max_hp: int = int(unit.get("max_hp", 1))
+	if cur_hp >= max_hp:
+		return false
+	dice_manager.pay(cost)
+	var heal: int = min(2, max_hp - cur_hp)
+	unit["hp"] = cur_hp + heal
+	unit_manager.units_by_id[unit_id] = unit
+	unit_manager.emit_signal("units_changed")
+	emit_signal("skill_crest_used", unit_id, heal)
+	return true
+
+## 使用机巧(TRICK) crest：转化为 +1 随机实用 crest（步进/杀伐/显化）
+func try_use_trick_crest() -> bool:
+	if is_battle_over():
+		return false
+	if current_phase != BattlePhase.PLAYER_ACTION:
+		return false
+	var cost: Dictionary = {"trick": 1}
+	if not dice_manager.can_pay(cost):
+		return false
+	dice_manager.pay(cost)
+	var options: Array[String] = ["move", "attack", "summon"]
+	var picked: String = options[randi() % options.size()]
+	dice_manager.crest_pool[picked] = int(dice_manager.crest_pool.get(picked, 0)) + 1
+	emit_signal("trick_crest_used", picked)
+	return true
 
 ## 启动敌方回合：掷骰 -> 延迟 -> 执行敌方行动
 func _start_enemy_turn() -> void:
@@ -487,16 +561,18 @@ func _check_battle_outcome() -> void:
 	elif outcome == "DEFEAT" or outcome == "DRAW":
 		mark_defeat()
 
-## 计算含地形适性加成的伤害值
+## 计算含地形适性加成和临时防御的伤害值
 ## 路径适性：防御方站在路径格上时 DEF +1
+## 护持 crest：temp_def 累加到防御
 func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> int:
 	var def_bonus: int = 0
 	var defender_cell: Vector2i = defender.get("cell", Vector2i(-1, -1))
 	if String(defender.get("terrain_affinity", "")) == "path":
 		if board_manager.path_cells.has(defender_cell):
 			def_bonus = 1
+	var temp_def: int = int(defender.get("temp_def", 0))
 	var raw_attack: int = int(attacker.get("atk", 0))
-	var raw_defense: int = int(defender.get("def", 0)) + def_bonus
+	var raw_defense: int = int(defender.get("def", 0)) + def_bonus + temp_def
 	return max(1, raw_attack - raw_defense)
 
 ## 检查并执行道具拾取

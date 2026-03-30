@@ -135,6 +135,9 @@ func _wire_debug_views() -> void:
 	_battle_flow.encounter_resolved.connect(_on_encounter_resolved)
 	_battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
 	_battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
+	_battle_flow.defend_crest_used.connect(_on_defend_crest_used)
+	_battle_flow.skill_crest_used.connect(_on_skill_crest_used)
+	_battle_flow.trick_crest_used.connect(_on_trick_crest_used)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
@@ -234,6 +237,23 @@ func _on_heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, 
 func _on_event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String) -> void:
 	var is_positive: bool = not effect_text.begins_with("HP-")
 	_board_view.play_event_feedback(cell, effect_text, is_positive)
+	_board_view.queue_redraw()
+
+func _on_defend_crest_used(unit_id: String, new_temp_def: int) -> void:
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+	if not unit.is_empty():
+		var cell: Vector2i = unit["cell"]
+		_board_view.play_heal_feedback(cell, "DEF+" + str(new_temp_def))
+	_board_view.queue_redraw()
+
+func _on_skill_crest_used(unit_id: String, heal_amount: int) -> void:
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+	if not unit.is_empty():
+		var cell: Vector2i = unit["cell"]
+		_board_view.play_heal_feedback(cell, "HP+" + str(heal_amount))
+	_board_view.queue_redraw()
+
+func _on_trick_crest_used(gained_crest: String) -> void:
 	_board_view.queue_redraw()
 
 func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:

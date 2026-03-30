@@ -883,3 +883,24 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 脉冲猎手首回合重击 8 伤害（ATK4×2），逼迫优先防御或速杀
 - 数据幽灵 5 回合长周期含连续重击段，考验资源分配
 - 新遭遇格位置已排查不与现有格子冲突
+
+## v0.1.33 - 2026-03-30
+
+### 新增
+- 护持(DEFEND) crest 消耗入口：选中单位本回合 DEF+1（可累加，回合结束清零）
+- 术式(SKILL) crest 消耗入口：选中单位即时回复 2 HP（满血不可用）
+- 机巧(TRICK) crest 消耗入口：消耗 1 机巧转化为 +1 随机实用 crest（步进/杀伐/显化）
+- DiceDebugPanel 新增 3 个 crest 操作按钮（护持/术式/机巧）
+- 新信号：defend_crest_used / skill_crest_used / trick_crest_used
+- 新方法：try_use_defend_crest() / try_use_skill_crest() / try_use_trick_crest()
+- 单位临时防御字段 temp_def（参与伤害计算，回合结束清零）
+
+### 修改
+- 伤害公式升级：max(1, ATK - DEF - 地形加成 - 临时防御)
+- end_player_turn() 新增 _clear_temp_def() 清除所有玩家单位临时防御
+- DiceDebugPanel 面板高度从 540 调整为 574，版本号更新
+
+### 备注
+- 所有 6 种骰面现在都有实际消耗入口，消除了"废骰"问题
+- 护持/术式需要先选中玩家单位，机巧不需要
+- 敌方 AI 暂不使用 defend/skill/trick crest
