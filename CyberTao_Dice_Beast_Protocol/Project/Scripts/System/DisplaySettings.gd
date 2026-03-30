@@ -34,8 +34,9 @@ func apply_settings() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
 
-	# 2) 更新视口虚拟分辨率（canvas_items 拉伸模式下控制渲染精度）
-	root.content_scale_size = current_resolution
+	# 2) 保持虚拟分辨率为设计分辨率（1280x720），
+	#    canvas_items 拉伸模式会自动将内容缩放至实际窗口大小
+	root.content_scale_size = DEFAULT_RESOLUTION
 
 	# 3) 按目标模式应用
 	match current_mode:
