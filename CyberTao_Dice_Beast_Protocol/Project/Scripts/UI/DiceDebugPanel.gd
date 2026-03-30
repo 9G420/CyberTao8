@@ -261,7 +261,7 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.44"
+	ver_label.text = "v0.1.45"
 	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

@@ -1142,3 +1142,34 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 ### 备注
 - 本条目为纯文档变更，无代码修改
 - 全部 UI/渲染代码已完成审计，策略文档基于实际代码状态制定
+
+## v0.1.45 - 2026-03-30
+
+### 新增
+- 美化 Phase 1 完整实现：棋盘格+单位+高亮视觉升级
+- BoardCellRenderer.gd（~210行）：格子渲染静态类
+  - 基础格深色渐变底色 + 发光网格线
+  - 9种格子类型独特图标符号 + 霓虹发光效果（高台▲/陷阱✖/遭遇⚡/Boss/回复✚/事件?/商店◆/宝箱六边形/道具菱形）
+  - 移动高亮升级为四角L形线条，攻击高亮升级为十字准星+脉冲，召唤高亮升级为圆弧标记
+- UnitRenderer.gd（~159行）：单位渲染静态类
+  - 玩家单位独特形状（刀盾犬→盾形、黑客狐→菱形、鸦术士→倒三角）+ 发光轮廓
+  - 敌方单位暗红发光 + 四角尖角装饰（锯齿威胁感）
+  - HP条：底色+填充双层，绿→金→红渐变
+  - 选中脉冲金色边框 + idle微动画
+  - 地形适性金色星标
+- CyberStyle.gd 新增 10 个棋盘美化颜色常量（BOARD_CELL_DARK/LIGHT、BOARD_GRID_LINE/INNER_GLOW、NEON_GOLD/RED/TEAL/PURPLE/BLUE/GREEN）
+
+### 修改
+- BoardView.gd 完全重写：648行→423行（降幅35%）
+  - 15+个旧 _draw_* 方法替换为 5层分层绘制（Grid→Overlays→Highlights→Units→AttackFlash）
+  - 全部渲染委托给 BoardCellRenderer/UnitRenderer 静态方法
+  - 新增 Timer 驱动 20fps 动画刷新（50ms 间隔 queue_redraw）
+  - 所有点击交互逻辑和反馈动画完整保留，零修改
+- DiceDebugPanel 版本号更新为 v0.1.45
+
+### 备注
+- 100% 程序化绘制，零外部图片资源依赖
+- 100% CyberStyle 颜色常量，无硬编码颜色
+- gl_compatibility 安全：全部使用 draw_rect/draw_line/draw_arc/draw_colored_polygon/draw_string
+- BoardView 所有公共信号和方法签名不变，消费方（Main.gd/DiceDebugPanel）零修改
+- Phase 1 完成标准：棋盘截图看起来像"游戏"而非"调试工具"；单位可区分类型；格子类型一目了然

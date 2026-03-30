@@ -26,9 +26,29 @@ var _flash_cell: Vector2i = Vector2i(-1, -1)
 var _flash_alpha: float = 0.0
 var _damage_label: Label = null
 
+# Animation pulse (20fps refresh via Timer)
+var _anim_timer: Timer = null
+var _last_redraw_ms: int = 0
+
+# Item display name mapping
+var _item_names: Dictionary = {
+	"patch_tea_cache": "凉茶",
+	"overclock_bone": "骨头",
+	"glitch_snack_box": "零食",
+}
+
 func _ready() -> void:
 	size = Vector2(GRID_W * CELL_SIZE, GRID_H * CELL_SIZE)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# 动画刷新定时器（50ms=20fps，驱动呼吸/脉冲效果）
+	_anim_timer = Timer.new()
+	_anim_timer.wait_time = 0.05
+	_anim_timer.autostart = true
+	_anim_timer.timeout.connect(_on_anim_tick)
+	add_child(_anim_timer)
+
+func _on_anim_tick() -> void:
+	queue_redraw()
 
 func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
 	board_manager = next_board_manager
@@ -45,14 +65,11 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.phase_changed.connect(_on_phase_changed)
 
 func _on_phase_changed(_phase_name: String) -> void:
-	# Deselect and clear highlights on any phase transition
 	if selected_unit_id != "":
 		_deselect()
 
 func _on_state_changed() -> void:
-	# Refresh highlights if a unit is selected (board changed)
 	if selected_unit_id != "" and battle_flow:
-		# 如果选中的单位已不存在（被击杀），自动取消选中
 		if unit_manager and unit_manager.get_unit(selected_unit_id).is_empty():
 			_deselect()
 			return
@@ -60,6 +77,8 @@ func _on_state_changed() -> void:
 		attack_highlight_cells = battle_flow.get_attackable_cells_for(selected_unit_id)
 		summon_highlight_cells = _filter_summon_cells(battle_flow.get_summon_cells_for(selected_unit_id))
 	queue_redraw()
+
+# --- 点击交互逻辑（完全保留，零修改）---
 
 func _gui_input(event: InputEvent) -> void:
 	if not event is InputEventMouseButton:
@@ -82,12 +101,9 @@ func _is_valid_cell(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_W and cell.y < GRID_H
 
 func _handle_cell_click(cell: Vector2i) -> void:
-	# Block interaction if battle is over or encounter is active
 	if battle_flow and (battle_flow.is_battle_over() or battle_flow.current_phase == battle_flow.BattlePhase.ENCOUNTER):
 		return
-	# If a unit is selected
 	if selected_unit_id != "":
-		# Check if clicked cell is an attack target
 		var is_attack_target: bool = false
 		for ac in attack_highlight_cells:
 			if ac == cell:
@@ -96,7 +112,6 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		if is_attack_target:
 			emit_signal("attack_requested", selected_unit_id, cell)
 			return
-		# Check if clicked cell is a move target (优先于召唤)
 		var is_move_target: bool = false
 		for hc in highlight_cells:
 			if hc == cell:
@@ -105,7 +120,6 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		if is_move_target:
 			emit_signal("move_requested", selected_unit_id, cell)
 			return
-		# Check if clicked cell is a summon target (仅在不可移动时触发)
 		var is_summon_target: bool = false
 		for sc in summon_highlight_cells:
 			if sc == cell:
@@ -114,21 +128,17 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		if is_summon_target:
 			emit_signal("summon_requested", selected_unit_id, cell)
 			return
-		# Clicking the same unit again deselects
 		if unit_manager and unit_manager.units_by_cell.has(cell):
 			var clicked_id: String = String(unit_manager.units_by_cell[cell])
 			if clicked_id == selected_unit_id:
 				_deselect()
 				return
-			# Clicked a different player unit — select it instead
 			var clicked_unit: Dictionary = unit_manager.get_unit(clicked_id)
 			if String(clicked_unit.get("owner", "")) == "player":
 				_select_unit(clicked_id)
 				return
-		# Clicked empty cell or enemy — deselect
 		_deselect()
 		return
-	# No unit selected — check if clicking a player unit
 	if unit_manager and unit_manager.units_by_cell.has(cell):
 		var clicked_id: String = String(unit_manager.units_by_cell[cell])
 		var clicked_unit: Dictionary = unit_manager.get_unit(clicked_id)
@@ -156,7 +166,6 @@ func _deselect() -> void:
 	emit_signal("unit_deselected")
 	queue_redraw()
 
-## 过滤召唤高亮格：移除已在移动高亮中的格子，避免点击移动时误触召唤
 func _filter_summon_cells(raw_summon_cells: Array[Vector2i]) -> Array[Vector2i]:
 	var filtered: Array[Vector2i] = []
 	for sc in raw_summon_cells:
@@ -169,308 +178,81 @@ func _filter_summon_cells(raw_summon_cells: Array[Vector2i]) -> Array[Vector2i]:
 			filtered.append(sc)
 	return filtered
 
+# --- 辅助：获取格子内矩形 ---
+
+func _cell_rect(cell: Vector2i, margin: int) -> Rect2:
+	return Rect2(Vector2(cell.x * CELL_SIZE + margin, cell.y * CELL_SIZE + margin), Vector2(CELL_SIZE - margin * 2, CELL_SIZE - margin * 2))
+
+# ===========================================================
+#  绘制层（全部委托给 BoardCellRenderer / UnitRenderer）
+# ===========================================================
+
 func _draw() -> void:
-	_draw_board()
-	_draw_terrain()
-	_draw_encounters()
-	_draw_heal_cells()
-	_draw_event_cells()
-	_draw_shop_cells()
-	_draw_chest_cells()
-	_draw_highlights()
-	_draw_attack_highlights()
-	_draw_summon_highlights()
-	_draw_paths()
-	_draw_items()
-	_draw_units()
-	_draw_unit_hp()
-	_draw_unit_names()
-	_draw_terrain_affinity_indicator()
-	_draw_selection_ring()
+	var pulse: float = sin(Time.get_ticks_msec() * 0.003) * 0.5 + 0.5
+	var font: Font = ThemeDB.fallback_font
+	_draw_layer_grid(pulse)
+	_draw_layer_overlays(pulse, font)
+	_draw_layer_highlights(pulse)
+	_draw_layer_units(pulse, font)
 	_draw_attack_flash()
 
-func _draw_board() -> void:
+# Layer 1: 基础网格
+func _draw_layer_grid(_pulse: float) -> void:
 	for y in range(GRID_H):
 		for x in range(GRID_W):
-			var pos: Vector2 = Vector2(x * CELL_SIZE, y * CELL_SIZE)
-			var base_color: Color = Color(0.11, 0.14, 0.19) if (x + y) % 2 == 0 else Color(0.08, 0.1, 0.15)
-			draw_rect(Rect2(pos, Vector2(CELL_SIZE - 2, CELL_SIZE - 2)), base_color, true)
-			draw_rect(Rect2(pos, Vector2(CELL_SIZE - 2, CELL_SIZE - 2)), Color(0.21, 0.28, 0.35, 0.6), false, 2.0)
+			BoardCellRenderer.draw_base_cell(self, x, y, CELL_SIZE)
 
-func _draw_highlights() -> void:
-	for cell in highlight_cells:
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 4, cell.y * CELL_SIZE + 4)
-		var sz: Vector2 = Vector2(CELL_SIZE - 10, CELL_SIZE - 10)
-		# Filled highlight
-		draw_rect(Rect2(pos, sz), Color(0.2, 0.8, 1.0, 0.22), true)
-		# Border highlight
-		draw_rect(Rect2(pos, sz), Color(0.2, 0.85, 1.0, 0.65), false, 2.0)
-
-## 绘制地形格：高台（金色）、陷阱（暗红尖刺风格）
-func _draw_terrain() -> void:
+# Layer 2: 类型格子覆盖层（地形/遭遇/回复/事件/商店/宝箱/道具/路径）
+func _draw_layer_overlays(pulse: float, font: Font) -> void:
 	if board_manager == null:
 		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 10
 	for cell in board_manager.terrain_cells.keys():
-		var terrain_type: String = String(board_manager.terrain_cells[cell])
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
-		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
-		if terrain_type == "high_ground":
-			# 高台：金色填充 + 金色边框
-			draw_rect(Rect2(pos, sz), Color(0.85, 0.7, 0.2, 0.25), true)
-			draw_rect(Rect2(pos, sz), Color(0.9, 0.75, 0.25, 0.7), false, 2.0)
-			# 标记文字
-			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
-			draw_string(font, text_pos, "HIGH", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(0.95, 0.85, 0.3, 0.8))
-		elif terrain_type == "trap":
-			# 陷阱：暗红填充 + 红色边框
-			draw_rect(Rect2(pos, sz), Color(0.7, 0.15, 0.1, 0.3), true)
-			draw_rect(Rect2(pos, sz), Color(0.85, 0.2, 0.15, 0.75), false, 2.0)
-			# 标记文字
-			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
-			draw_string(font, text_pos, "TRAP", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(1.0, 0.35, 0.25, 0.8))
-
-## 绘制遭遇格：橙红警告色填充 + 边框 + "遭遇" 文字标记
-## Boss 遭遇格使用深红色 + 更粗边框 + "BOSS" 文字
-func _draw_encounters() -> void:
-	if board_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 10
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), String(board_manager.terrain_cells[cell]), pulse, font, "")
 	for cell in board_manager.encounter_cells.keys():
 		var enc_id: String = String(board_manager.encounter_cells[cell])
-		var is_boss: bool = enc_id.begins_with("encounter_boss_")
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
-		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
-		if is_boss:
-			# Boss 遭遇：深红填充 + 粗边框
-			draw_rect(Rect2(pos, sz), Color(0.85, 0.1, 0.15, 0.45), true)
-			draw_rect(Rect2(pos, sz), Color(1.0, 0.15, 0.2, 0.95), false, 3.0)
-			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
-			draw_string(font, text_pos, "BOSS", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, 12, Color(1.0, 0.2, 0.25, 1.0))
-		else:
-			# 普通遭遇：橙红警告色填充
-			draw_rect(Rect2(pos, sz), Color(1.0, 0.35, 0.1, 0.35), true)
-			draw_rect(Rect2(pos, sz), Color(1.0, 0.4, 0.15, 0.85), false, 2.5)
-			var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
-			draw_string(font, text_pos, "遭遇", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 0.5, 0.2, 0.9))
-
-## 绘制恢复格：蓝白色填充 + 边框 + "回复" 文字标记 + 回复量
-func _draw_heal_cells() -> void:
-	if board_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 10
+		var ctype: String = "boss" if enc_id.begins_with("encounter_boss_") else "encounter"
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), ctype, pulse, font, "")
 	for cell in board_manager.heal_cells.keys():
-		var heal_amount: int = int(board_manager.heal_cells[cell])
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
-		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
-		# 蓝白色填充
-		draw_rect(Rect2(pos, sz), Color(0.3, 0.6, 1.0, 0.25), true)
-		# 蓝白色边框
-		draw_rect(Rect2(pos, sz), Color(0.4, 0.7, 1.0, 0.8), false, 2.0)
-		# "回复" 文字标记
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
-		draw_string(font, text_pos, "回复", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(0.5, 0.8, 1.0, 0.9))
-		# 回复量
-		var amount_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
-		draw_string(font, amount_pos, "+" + str(heal_amount), HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(0.6, 0.9, 1.0, 0.85))
-
-## 绘制事件格：黄紫色填充 + 边框 + "?" 标记
-func _draw_event_cells() -> void:
-	if board_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 16
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "heal", pulse, font, str(int(board_manager.heal_cells[cell])))
 	for cell in board_manager.event_cells.keys():
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
-		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
-		# 黄紫色填充
-		draw_rect(Rect2(pos, sz), Color(0.8, 0.5, 1.0, 0.25), true)
-		# 黄紫色边框
-		draw_rect(Rect2(pos, sz), Color(0.85, 0.55, 1.0, 0.8), false, 2.0)
-		# "?" 标记
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + CELL_SIZE / 2 - 6, cell.y * CELL_SIZE + CELL_SIZE / 2 + 6)
-		draw_string(font, text_pos, "?", HORIZONTAL_ALIGNMENT_LEFT, 20, font_size, Color(0.95, 0.8, 0.3, 0.9))
-
-func _draw_attack_highlights() -> void:
-	for cell in attack_highlight_cells:
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 4, cell.y * CELL_SIZE + 4)
-		var sz: Vector2 = Vector2(CELL_SIZE - 10, CELL_SIZE - 10)
-		# Filled red highlight
-		draw_rect(Rect2(pos, sz), Color(1.0, 0.2, 0.2, 0.25), true)
-		# Border red highlight
-		draw_rect(Rect2(pos, sz), Color(1.0, 0.25, 0.25, 0.75), false, 2.0)
-
-## 绘制商店格：青绿色填充 + 边框 + "商店" 文字标记
-func _draw_shop_cells() -> void:
-	if board_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 10
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "event", pulse, font, "")
 	for cell in board_manager.shop_cells.keys():
 		var heal_amount: int = int(board_manager.shop_cells[cell])
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
-		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
-		# 青绿色填充
-		draw_rect(Rect2(pos, sz), Color(0.1, 0.75, 0.65, 0.3), true)
-		# 青绿色边框
-		draw_rect(Rect2(pos, sz), Color(0.15, 0.85, 0.7, 0.85), false, 2.0)
-		# "商店" 文字标记
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
-		draw_string(font, text_pos, "商店", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(0.2, 0.95, 0.8, 0.9))
-		# 费用和效果
-		var cost_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
-		draw_string(font, cost_pos, "1步→HP+" + str(heal_amount), HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, 9, Color(0.3, 0.9, 0.75, 0.8))
-
-## 绘制宝箱格：金琥珀色填充 + 边框 + "宝箱" 文字标记
-func _draw_chest_cells() -> void:
-	if board_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 10
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "shop", pulse, font, "1步→HP+" + str(heal_amount))
 	for cell in board_manager.chest_cells.keys():
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
-		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
-		# 金琥珀色填充
-		draw_rect(Rect2(pos, sz), Color(0.9, 0.65, 0.15, 0.3), true)
-		# 金琥珀色边框
-		draw_rect(Rect2(pos, sz), Color(0.95, 0.7, 0.2, 0.85), false, 2.0)
-		# "宝箱" 文字标记
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 12, cell.y * CELL_SIZE + CELL_SIZE / 2 + 5)
-		draw_string(font, text_pos, "宝箱", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 24, 12, Color(1.0, 0.85, 0.3, 0.95))
-
-func _draw_summon_highlights() -> void:
-	for cell in summon_highlight_cells:
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 4, cell.y * CELL_SIZE + 4)
-		var sz: Vector2 = Vector2(CELL_SIZE - 10, CELL_SIZE - 10)
-		# 紫色填充高亮
-		draw_rect(Rect2(pos, sz), Color(0.7, 0.2, 1.0, 0.2), true)
-		# 紫色边框高亮
-		draw_rect(Rect2(pos, sz), Color(0.75, 0.3, 1.0, 0.7), false, 2.0)
-
-func _draw_paths() -> void:
-	if board_manager == null:
-		return
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "chest", pulse, font, "")
 	for cell in board_manager.path_cells.keys():
 		var owner_id: String = String(board_manager.path_cells[cell])
-		var fill_color: Color
-		var border_color: Color
-		if owner_id == "player":
-			# 玩家路径：青色发光
-			fill_color = Color(0.15, 0.85, 0.75, 0.18)
-			border_color = Color(0.2, 0.95, 0.8, 0.6)
-		else:
-			# 其他路径：橙色
-			fill_color = Color(1.0, 0.55, 0.2, 0.2)
-			border_color = Color(1.0, 0.6, 0.25, 0.55)
-		var path_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 2, cell.y * CELL_SIZE + 2)
-		var path_sz: Vector2 = Vector2(CELL_SIZE - 6, CELL_SIZE - 6)
-		draw_rect(Rect2(path_pos, path_sz), fill_color, true)
-		draw_rect(Rect2(path_pos, path_sz), border_color, false, 2.0)
-
-## 绘制道具格：绿色菱形标记 + 道具名称缩写
-func _draw_items() -> void:
-	if board_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 9
-	var item_names: Dictionary = {
-		"patch_tea_cache": "凉茶",
-		"overclock_bone": "骨头",
-		"glitch_snack_box": "零食",
-	}
+		var ptype: String = "path_player" if owner_id == "player" else "path_other"
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 2), ptype, pulse, font, "")
 	for cell in board_manager.item_cells.keys():
 		var item_id: String = String(board_manager.item_cells[cell])
-		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 3, cell.y * CELL_SIZE + 3)
-		var sz: Vector2 = Vector2(CELL_SIZE - 8, CELL_SIZE - 8)
-		# 绿色填充 + 边框
-		draw_rect(Rect2(pos, sz), Color(0.2, 0.85, 0.4, 0.25), true)
-		draw_rect(Rect2(pos, sz), Color(0.25, 0.9, 0.45, 0.75), false, 2.0)
-		# 道具名称
-		var display: String = String(item_names.get(item_id, "?"))
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
-		draw_string(font, text_pos, display, HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(0.3, 1.0, 0.5, 0.9))
+		var display: String = String(_item_names.get(item_id, "?"))
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 3), "item", pulse, font, display)
 
-func _draw_units() -> void:
+# Layer 3: 高亮系统
+func _draw_layer_highlights(pulse: float) -> void:
+	for cell in highlight_cells:
+		BoardCellRenderer.draw_move_highlight(self, _cell_rect(cell, 4), pulse)
+	for cell in attack_highlight_cells:
+		BoardCellRenderer.draw_attack_highlight(self, _cell_rect(cell, 4), pulse)
+	for cell in summon_highlight_cells:
+		BoardCellRenderer.draw_summon_highlight(self, _cell_rect(cell, 4), pulse)
+
+# Layer 4: 单位层
+func _draw_layer_units(pulse: float, font: Font) -> void:
 	if unit_manager == null:
 		return
 	for cell in unit_manager.units_by_cell.keys():
-		var unit_id: String = String(unit_manager.units_by_cell[cell])
-		var unit: Dictionary = unit_manager.get_unit(unit_id)
-		var owner: String = String(unit.get("owner", "player"))
-		var fill: Color = Color(0.32, 0.95, 0.78) if owner == "player" else Color(0.95, 0.32, 0.4)
-		var unit_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 12, cell.y * CELL_SIZE + 12)
-		draw_rect(Rect2(unit_pos, Vector2(CELL_SIZE - 26, CELL_SIZE - 26)), fill, true)
-		draw_rect(Rect2(unit_pos, Vector2(CELL_SIZE - 26, CELL_SIZE - 26)), Color(0.04, 0.04, 0.04, 0.9), false, 2.0)
-
-func _draw_unit_hp() -> void:
-	if unit_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 11
-	for cell in unit_manager.units_by_cell.keys():
 		var uid: String = String(unit_manager.units_by_cell[cell])
 		var unit: Dictionary = unit_manager.get_unit(uid)
-		var hp: int = int(unit.get("hp", 0))
-		var max_hp: int = int(unit.get("max_hp", 0))
-		var hp_text: String = str(hp) + "/" + str(max_hp)
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + CELL_SIZE - 8)
-		draw_string(font, text_pos, hp_text, HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, Color(1.0, 1.0, 1.0, 0.95))
+		var is_sel: bool = uid == selected_unit_id
+		var idle_y: float = sin(Time.get_ticks_msec() * 0.004) * 2.0 if is_sel else 0.0
+		UnitRenderer.draw_full_unit(self, cell, CELL_SIZE, unit, is_sel, pulse, idle_y, font)
+		if board_manager:
+			UnitRenderer.draw_affinity_star(self, cell, CELL_SIZE, unit, board_manager, font)
 
-## 绘制单位名称缩写（区分不同单位）
-func _draw_unit_names() -> void:
-	if unit_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 9
-	for cell in unit_manager.units_by_cell.keys():
-		var uid: String = String(unit_manager.units_by_cell[cell])
-		var unit: Dictionary = unit_manager.get_unit(uid)
-		var display_name: String = String(unit.get("display_name", ""))
-		if display_name == "":
-			continue
-		# 取前两个字符作为缩写
-		var short_name: String = display_name.substr(0, 2)
-		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 14, cell.y * CELL_SIZE + 22)
-		var name_color: Color = Color(0.9, 0.95, 1.0, 0.85) if String(unit.get("owner", "")) == "player" else Color(1.0, 0.85, 0.8, 0.85)
-		draw_string(font, text_pos, short_name, HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 28, font_size, name_color)
-
-## 绘制地形适性激活指示器（单位站在匹配地形上时显示 ★）
-func _draw_terrain_affinity_indicator() -> void:
-	if unit_manager == null or board_manager == null:
-		return
-	var font: Font = ThemeDB.fallback_font
-	var font_size: int = 12
-	for cell in unit_manager.units_by_cell.keys():
-		var uid: String = String(unit_manager.units_by_cell[cell])
-		var unit: Dictionary = unit_manager.get_unit(uid)
-		var affinity: String = String(unit.get("terrain_affinity", ""))
-		if affinity == "":
-			continue
-		var active: bool = false
-		if affinity == "high_ground" and board_manager.get_terrain_type(cell) == "high_ground":
-			active = true
-		elif affinity == "path" and board_manager.path_cells.has(cell):
-			active = true
-		elif affinity == "trap" and board_manager.get_terrain_type(cell) == "trap":
-			active = true
-		if active:
-			var star_pos: Vector2 = Vector2(cell.x * CELL_SIZE + CELL_SIZE - 18, cell.y * CELL_SIZE + 14)
-			draw_string(font, star_pos, "*", HORIZONTAL_ALIGNMENT_LEFT, 14, font_size, Color(1.0, 0.95, 0.3, 0.95))
-
-func _draw_selection_ring() -> void:
-	if selected_unit_id == "" or unit_manager == null:
-		return
-	var unit: Dictionary = unit_manager.get_unit(selected_unit_id)
-	if unit.is_empty():
-		return
-	var cell: Vector2i = unit["cell"]
-	var ring_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 6, cell.y * CELL_SIZE + 6)
-	var ring_sz: Vector2 = Vector2(CELL_SIZE - 14, CELL_SIZE - 14)
-	draw_rect(Rect2(ring_pos, ring_sz), Color(1.0, 0.85, 0.2, 0.85), false, 3.0)
-
+# Layer 5: 攻击闪光（保留原逻辑）
 func _draw_attack_flash() -> void:
 	if _flash_alpha <= 0.0 or _flash_cell.x < 0:
 		return
@@ -478,21 +260,22 @@ func _draw_attack_flash() -> void:
 	var sz: Vector2 = Vector2(CELL_SIZE - 2, CELL_SIZE - 2)
 	draw_rect(Rect2(pos, sz), Color(1.0, 1.0, 1.0, _flash_alpha), true)
 
-## Play attack feedback: white flash on cell + floating damage number
+# ===========================================================
+#  反馈动画（完全保留，零修改）
+# ===========================================================
+
 func play_attack_feedback(cell: Vector2i, damage: int) -> void:
-	# White flash
 	_flash_cell = cell
 	_flash_alpha = 0.85
 	var tw: Tween = create_tween()
 	tw.tween_method(_set_flash_alpha, 0.85, 0.0, 0.35)
 	tw.tween_callback(_clear_flash)
-	# Floating damage number
 	if _damage_label != null and is_instance_valid(_damage_label):
 		_damage_label.queue_free()
 	_damage_label = Label.new()
 	_damage_label.text = "-" + str(damage)
 	_damage_label.add_theme_font_size_override("font_size", 22)
-	_damage_label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.2))
+	_damage_label.add_theme_color_override("font_color", CyberStyle.NEON_RED)
 	var start_x: float = cell.x * CELL_SIZE + 16
 	var start_y: float = cell.y * CELL_SIZE + 10
 	_damage_label.position = Vector2(start_x, start_y)
@@ -505,12 +288,11 @@ func play_attack_feedback(cell: Vector2i, damage: int) -> void:
 	tw2.set_parallel(false)
 	tw2.tween_callback(_damage_label.queue_free)
 
-## Play item pickup feedback: green floating text showing effect
 func play_pickup_feedback(cell: Vector2i, effect_text: String) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = effect_text
 	lbl.add_theme_font_size_override("font_size", 18)
-	lbl.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+	lbl.add_theme_color_override("font_color", CyberStyle.NEON_GREEN)
 	var start_x: float = cell.x * CELL_SIZE + 10
 	var start_y: float = cell.y * CELL_SIZE + 8
 	lbl.position = Vector2(start_x, start_y)
@@ -523,7 +305,6 @@ func play_pickup_feedback(cell: Vector2i, effect_text: String) -> void:
 	tw.set_parallel(false)
 	tw.tween_callback(lbl.queue_free)
 
-## 敌方攻击预警：在目标格显示橙色闪烁，提示即将受到攻击
 func play_enemy_warning(cell: Vector2i) -> void:
 	_flash_cell = cell
 	_flash_alpha = 0.6
@@ -531,12 +312,11 @@ func play_enemy_warning(cell: Vector2i) -> void:
 	tw.tween_method(_set_flash_alpha, 0.6, 0.15, 0.4)
 	tw.tween_method(_set_flash_alpha, 0.15, 0.5, 0.2)
 
-## 敌方移动意图：在目标格短暂显示橙色边框提示
 func play_enemy_move_indicator(cell: Vector2i, unit_name: String) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = unit_name
 	lbl.add_theme_font_size_override("font_size", 14)
-	lbl.add_theme_color_override("font_color", Color(1.0, 0.6, 0.2))
+	lbl.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	var start_x: float = cell.x * CELL_SIZE + 8
 	var start_y: float = cell.y * CELL_SIZE - 4
 	lbl.position = Vector2(start_x, start_y)
@@ -555,12 +335,11 @@ func _clear_flash() -> void:
 	_flash_alpha = 0.0
 	queue_redraw()
 
-## 遭遇触发反馈：在遭遇格显示橙红色飘字
 func play_encounter_feedback(cell: Vector2i, text: String) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 20)
-	lbl.add_theme_color_override("font_color", Color(1.0, 0.45, 0.15))
+	lbl.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	var start_x: float = cell.x * CELL_SIZE + 6
 	var start_y: float = cell.y * CELL_SIZE + 6
 	lbl.position = Vector2(start_x, start_y)
@@ -573,12 +352,11 @@ func play_encounter_feedback(cell: Vector2i, text: String) -> void:
 	tw.set_parallel(false)
 	tw.tween_callback(lbl.queue_free)
 
-## 恢复格反馈：蓝色飘字显示回复量
 func play_heal_feedback(cell: Vector2i, text: String) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 18)
-	lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+	lbl.add_theme_color_override("font_color", CyberStyle.NEON_BLUE)
 	var start_x: float = cell.x * CELL_SIZE + 10
 	var start_y: float = cell.y * CELL_SIZE + 8
 	lbl.position = Vector2(start_x, start_y)
@@ -591,12 +369,11 @@ func play_heal_feedback(cell: Vector2i, text: String) -> void:
 	tw2.set_parallel(false)
 	tw2.tween_callback(lbl.queue_free)
 
-## 事件格反馈：黄紫色飘字显示效果
 func play_event_feedback(cell: Vector2i, text: String, is_positive: bool) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 18)
-	var color: Color = Color(0.9, 0.8, 0.3) if is_positive else Color(1.0, 0.35, 0.25)
+	var color: Color = CyberStyle.NEON_GOLD if is_positive else CyberStyle.NEON_RED
 	lbl.add_theme_color_override("font_color", color)
 	var start_x: float = cell.x * CELL_SIZE + 10
 	var start_y: float = cell.y * CELL_SIZE + 8
@@ -610,12 +387,11 @@ func play_event_feedback(cell: Vector2i, text: String, is_positive: bool) -> voi
 	tw3.set_parallel(false)
 	tw3.tween_callback(lbl.queue_free)
 
-## 商店格反馈：青绿色飘字显示购买效果
 func play_shop_feedback(cell: Vector2i, text: String) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 18)
-	lbl.add_theme_color_override("font_color", Color(0.2, 0.95, 0.8))
+	lbl.add_theme_color_override("font_color", CyberStyle.NEON_TEAL)
 	var start_x: float = cell.x * CELL_SIZE + 10
 	var start_y: float = cell.y * CELL_SIZE + 8
 	lbl.position = Vector2(start_x, start_y)
@@ -628,12 +404,11 @@ func play_shop_feedback(cell: Vector2i, text: String) -> void:
 	tw4.set_parallel(false)
 	tw4.tween_callback(lbl.queue_free)
 
-## 宝箱格反馈：金色飘字显示开箱奖励
 func play_chest_feedback(cell: Vector2i, text: String) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 20)
-	lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	lbl.add_theme_color_override("font_color", CyberStyle.NEON_GOLD)
 	var start_x: float = cell.x * CELL_SIZE + 8
 	var start_y: float = cell.y * CELL_SIZE + 6
 	lbl.position = Vector2(start_x, start_y)

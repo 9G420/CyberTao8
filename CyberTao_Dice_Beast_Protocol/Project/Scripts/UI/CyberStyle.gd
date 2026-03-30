@@ -49,6 +49,18 @@ const BTN_BORDER_ORANGE_HOVER := Color(1.0, 0.6, 0.2, 0.85)
 const BTN_TEXT := Color(0.8, 0.9, 0.95)
 const BTN_TEXT_DISABLED := Color(0.35, 0.38, 0.42)
 
+# 棋盘 Phase 1 美化专用
+const BOARD_CELL_DARK := Color(0.04, 0.04, 0.09)
+const BOARD_CELL_LIGHT := Color(0.07, 0.08, 0.14)
+const BOARD_GRID_LINE := Color(0.0, 0.7, 0.9, 0.10)
+const BOARD_INNER_GLOW := Color(0.08, 0.12, 0.22, 0.5)
+const NEON_GOLD := Color(1.0, 0.82, 0.3)
+const NEON_RED := Color(1.0, 0.25, 0.2)
+const NEON_TEAL := Color(0.15, 0.92, 0.75)
+const NEON_PURPLE := Color(0.8, 0.45, 1.0)
+const NEON_BLUE := Color(0.4, 0.75, 1.0)
+const NEON_GREEN := Color(0.25, 1.0, 0.5)
+
 # --- 样式工厂方法 ---
 
 static func make_panel_bg(border_color: Color = BORDER_CYAN, radius: int = 6) -> StyleBoxFlat:

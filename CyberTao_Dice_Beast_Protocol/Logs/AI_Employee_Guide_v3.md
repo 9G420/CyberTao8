@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.44
+**当前版本**: v0.1.45
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -108,6 +108,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 棋盘随机生成（BoardGenerator） | v0.1.35 | 稳定 |
 | BuffManager 接入（tick_turn+伤害修正+道具buff） | v0.1.39 | 稳定 |
 | 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 | 稳定 |
+| 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级） | v0.1.45 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -191,12 +192,14 @@ CardBattleController（卡牌层独立状态机）         ~540行
 └── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
 
 UI层
-├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~640行 ⚠️
+├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~423行（Phase 1 瘦身）
+├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行 ✅ Phase 1 新增
+├── UnitRenderer         — 单位渲染静态类（class_name）   ~159行 ✅ Phase 1 新增
 ├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~520行
 ├── CardBattlePanel      — 卡牌战斗UI                   ~309行
 ├── CardRewardPanel      — 奖励选牌/升级面板             ~230行
 ├── DeckViewPanel        — 牌组查看面板                 ~160行
-├── CyberStyle           — 全局视觉风格（class_name注册）~137行
+├── CyberStyle           — 全局视觉风格（class_name注册）~149行
 └── SettingsPanel        — 显示设置
 
 Main.gd（场景组合+信号中转）                          ~354行
@@ -237,6 +240,8 @@ UnitManager：         Scripts/BattleV2/UnitManager.gd
 CrestActionHandler：  Scripts/BattleV2/CrestActionHandler.gd
 CellEffectHandler：   Scripts/BattleV2/CellEffectHandler.gd
 BoardView：           Scripts/UI/BoardView.gd
+BoardCellRenderer：   Scripts/UI/BoardCellRenderer.gd
+UnitRenderer：        Scripts/UI/UnitRenderer.gd
 DiceDebugPanel：      Scripts/UI/DiceDebugPanel.gd
 CardBattlePanel：     Scripts/UI/CardBattlePanel.gd
 CardRewardPanel：     Scripts/UI/CardRewardPanel.gd
@@ -263,7 +268,7 @@ Main：                Scripts/Main.gd
 ✗ 不要修改 BoardManager 的核心字典结构（occupied_cells等）
 ✗ 卡牌战斗期间不能改变棋盘状态（不动格子、不移动单位）
 ✗ CardBattleController 的逻辑不能写进 BattleFlowController
-✗ 不要往 BoardView.gd 继续堆渲染逻辑（已563行）
+✗ 不要往 BoardView.gd 继续堆渲染逻辑（已423行，渲染委托 Renderer）
 ```
 
 **UI 相关**：
@@ -281,7 +286,7 @@ Main：                Scripts/Main.gd
 | ~~BuffManager.tick_turn() 未接入~~ | ~~中~~ | ~~否~~ | ✅ v0.1.39 已解决 |
 | ~~BattleFlowController 795行，需瘦身~~ | ~~中~~ | ~~否~~ | ✅ v0.1.40 已瘦身至588行 |
 | BattleFlowController 693行（多层地图后增长） | 中 | 否 | 下次大功能前考虑瘦身 |
-| BoardView 640行，职责混杂 | 中 | 否 | 视觉升级前 |
+| ~~BoardView 640行，职责混杂~~ | ~~中~~ | ~~否~~ | ✅ v0.1.45 Phase 1 瘦身至423行 |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 | 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
 | 多层地图难度暂不递增（各层敌方数值相同） | 低 | 否 | 层间难度调优时 |
@@ -291,22 +296,21 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.44 Work Report，按优先级排列：
+以下任务来自 v0.1.45 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心 — 美术美化）
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 1.1：棋盘格视觉升级** | 新建 BoardCellRenderer.gd，发光边缘+渐变+图标符号替代纯文字 |
-| **美化 Phase 1.2：单位视觉升级** | 新建 UnitRenderer.gd，独特形状+发光轮廓+HP条+idle微动画 |
-| **美化 Phase 1.3：高亮系统升级** | 角标线条+准星+脉冲替代半透明矩形 |
+| **美化 Phase 2.1：掷骰演出** | 新建 DiceRollAnimation.gd，骰子旋转+crest图标弹出 |
+| **美化 Phase 2.2：攻击演出增强** | 新建 BattleEffects.gd，屏幕微震+粒子+伤害数字增强 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 2：动态演出** | 掷骰演出+攻击演出增强（粒子+震屏） |
 | **美化 Phase 3：卡牌面板重设计** | 卡牌样式+HP条+能量条可视化 |
+| **美化 Phase 4：氛围与细节** | 背景氛围+UI过渡动画+召唤展开演出 |
 
 ### 🟢 中低优先级
 
@@ -321,6 +325,7 @@ Main：                Scripts/Main.gd
 |------|------|
 | 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 |
 | BUG-001 修复（分辨率/全屏/无边框/窗口模式切换） | v0.1.43 |
+| 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级+BoardView瘦身） | v0.1.45 |
 | 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |
