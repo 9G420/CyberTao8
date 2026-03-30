@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.40
+**当前版本**: v0.1.41
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.38）
+### 2.2 当前完成状态总览（v0.1.41）
 
 **棋盘走位层（全部稳定）**
 
@@ -101,12 +101,13 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 单位地形适性（3种） | v0.1.19 | 稳定 |
 | 道具拾取（2种即时效果） | v0.1.20 | 稳定 |
 | 敌方意图广播 + 攻击预警 | v0.1.21 | 稳定 |
-| 7种可交互格子（含恢复/事件） | v0.1.24 | 稳定 |
+| 9种可交互格子（含恢复/事件/商店/宝箱） | v0.1.41 | 稳定 |
 | 遭遇暂停与ENCOUNTER阶段 | v0.1.23 | 稳定 |
 | 统一赛博朋克视觉风格（CyberStyle） | v0.1.29 | 稳定 |
 | DEFEND/SKILL/TRICK crest 消耗入口 | v0.1.33 | 稳定 |
 | 棋盘随机生成（BoardGenerator） | v0.1.35 | 稳定 |
 | BuffManager 接入（tick_turn+伤害修正+道具buff） | v0.1.39 | 稳定 |
+| 9种可交互格子（含商店格+宝箱格） | v0.1.41 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -173,9 +174,9 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 ### 3.1 模块结构
 
 ```
-BattleFlowController（棋盘层核心控制器）         ~588行 ✅ 已瘦身
+BattleFlowController（棋盘层核心控制器）         ~600行 ✅ 已瘦身
 ├── DiceManager          — 掷骰 + crest 资源池
-├── BoardManager         — 棋盘状态（7个格子字典 + BFS）
+├── BoardManager         — 棋盘状态（9个格子字典 + BFS）
 ├── BoardGenerator       — 棋盘程序化生成（静态工具类）
 ├── UnitManager          — 单位状态（生成/移动/伤害/击杀）
 ├── ActionResolver       — 攻击范围计算
@@ -184,13 +185,13 @@ BattleFlowController（棋盘层核心控制器）         ~588行 ✅ 已瘦身
 ├── AttackRuleHelper     — 伤害公式
 ├── VictoryRuleHelper    — 胜负判定
 ├── CrestActionHandler   — Crest消耗操作（从BFC剥离）      ~66行
-└── CellEffectHandler    — 格子效果处理（从BFC剥离）       ~139行
+└── CellEffectHandler    — 格子效果处理（从BFC剥离）       ~205行
 
 CardBattleController（卡牌层独立状态机）         ~515行
 └── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
 
 UI层
-├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~563行 ⚠️
+├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~640行 ⚠️
 ├── DiceDebugPanel       — 棋盘层HUD                    ~491行
 ├── CardBattlePanel      — 卡牌战斗UI                   ~309行
 ├── CardRewardPanel      — 奖励选牌/升级面板             ~230行
@@ -268,7 +269,7 @@ Main：                Scripts/Main.gd
 | BUG-001：分辨率/窗口模式切换无效 | 低 | 否 | Demo前必须修 |
 | ~~BuffManager.tick_turn() 未接入~~ | ~~中~~ | ~~否~~ | ✅ v0.1.39 已解决 |
 | ~~BattleFlowController 795行，需瘦身~~ | ~~中~~ | ~~否~~ | ✅ v0.1.40 已瘦身至588行 |
-| BoardView 563行，职责混杂 | 中 | 否 | 视觉升级前 |
+| BoardView 640行，职责混杂 | 中 | 否 | 视觉升级前 |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 | 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
 
@@ -282,24 +283,25 @@ Main：                Scripts/Main.gd
 
 | 任务 | 说明 |
 |------|------|
-| **更多格子类型** | 商店格、宝箱格 |
+| **多层地图** | 通关当前棋盘后进入下一层 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **多层地图** | 通关当前棋盘后进入下一层 |
+| **BUG-001 修复** | 分辨率切换无效（Demo前必须解决） |
 
 ### 🟢 中低优先级
 
 | 任务 | 说明 |
 |------|------|
-| **BUG-001 修复** | 分辨率切换无效（Demo前必须解决） |
+| **商店格扩展** | 多选商品 + 独立 UI 面板 |
 
 ### ✅ 已完成
 
 | 任务 | 版本 |
 |------|------|
+| 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |
 | 能量成长机制 | v0.1.38 |

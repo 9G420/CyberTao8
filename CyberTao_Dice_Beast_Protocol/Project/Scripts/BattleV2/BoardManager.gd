@@ -11,6 +11,8 @@ var terrain_cells: Dictionary = {}  # cell -> String ("high_ground" / "trap")
 var encounter_cells: Dictionary = {}  # cell -> String (encounter_id)
 var heal_cells: Dictionary = {}  # cell -> int (heal_amount)
 var event_cells: Dictionary = {}  # cell -> String (event_id)
+var shop_cells: Dictionary = {}  # cell -> int (heal_amount per visit)
+var chest_cells: Dictionary = {}  # cell -> String ("chest")
 
 func build_test_board(size: Vector2i) -> void:
 	board_size = size
@@ -21,6 +23,8 @@ func build_test_board(size: Vector2i) -> void:
 	encounter_cells.clear()
 	heal_cells.clear()
 	event_cells.clear()
+	shop_cells.clear()
+	chest_cells.clear()
 	emit_signal("board_changed")
 
 func clear_board() -> void:
@@ -31,6 +35,8 @@ func clear_board() -> void:
 	encounter_cells.clear()
 	heal_cells.clear()
 	event_cells.clear()
+	shop_cells.clear()
+	chest_cells.clear()
 	emit_signal("board_changed")
 
 func is_in_bounds(cell: Vector2i) -> bool:
@@ -148,4 +154,21 @@ func add_event_cell(cell: Vector2i, event_id: String) -> void:
 ## 清除指定事件格
 func clear_event_cell(cell: Vector2i) -> void:
 	event_cells.erase(cell)
+	emit_signal("board_changed")
+
+## 添加商店格（持久地形，每次踩上消耗 crest 回复 HP）
+func add_shop_cell(cell: Vector2i, heal_amount: int) -> void:
+	if is_in_bounds(cell):
+		shop_cells[cell] = heal_amount
+		emit_signal("board_changed")
+
+## 添加宝箱格（一次性触发，踩后消失）
+func add_chest_cell(cell: Vector2i, chest_id: String) -> void:
+	if is_in_bounds(cell):
+		chest_cells[cell] = chest_id
+		emit_signal("board_changed")
+
+## 清除指定宝箱格
+func clear_chest_cell(cell: Vector2i) -> void:
+	chest_cells.erase(cell)
 	emit_signal("board_changed")

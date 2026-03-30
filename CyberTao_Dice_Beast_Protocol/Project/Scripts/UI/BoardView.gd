@@ -175,6 +175,8 @@ func _draw() -> void:
 	_draw_encounters()
 	_draw_heal_cells()
 	_draw_event_cells()
+	_draw_shop_cells()
+	_draw_chest_cells()
 	_draw_highlights()
 	_draw_attack_highlights()
 	_draw_summon_highlights()
@@ -300,6 +302,44 @@ func _draw_attack_highlights() -> void:
 		draw_rect(Rect2(pos, sz), Color(1.0, 0.2, 0.2, 0.25), true)
 		# Border red highlight
 		draw_rect(Rect2(pos, sz), Color(1.0, 0.25, 0.25, 0.75), false, 2.0)
+
+## 绘制商店格：青绿色填充 + 边框 + "商店" 文字标记
+func _draw_shop_cells() -> void:
+	if board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 10
+	for cell in board_manager.shop_cells.keys():
+		var heal_amount: int = int(board_manager.shop_cells[cell])
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
+		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
+		# 青绿色填充
+		draw_rect(Rect2(pos, sz), Color(0.1, 0.75, 0.65, 0.3), true)
+		# 青绿色边框
+		draw_rect(Rect2(pos, sz), Color(0.15, 0.85, 0.7, 0.85), false, 2.0)
+		# "商店" 文字标记
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + 14)
+		draw_string(font, text_pos, "商店", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, font_size, Color(0.2, 0.95, 0.8, 0.9))
+		# 费用和效果
+		var cost_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 8, cell.y * CELL_SIZE + CELL_SIZE / 2 + 4)
+		draw_string(font, cost_pos, "1步→HP+" + str(heal_amount), HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 16, 9, Color(0.3, 0.9, 0.75, 0.8))
+
+## 绘制宝箱格：金琥珀色填充 + 边框 + "宝箱" 文字标记
+func _draw_chest_cells() -> void:
+	if board_manager == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = 10
+	for cell in board_manager.chest_cells.keys():
+		var pos: Vector2 = Vector2(cell.x * CELL_SIZE + 1, cell.y * CELL_SIZE + 1)
+		var sz: Vector2 = Vector2(CELL_SIZE - 4, CELL_SIZE - 4)
+		# 金琥珀色填充
+		draw_rect(Rect2(pos, sz), Color(0.9, 0.65, 0.15, 0.3), true)
+		# 金琥珀色边框
+		draw_rect(Rect2(pos, sz), Color(0.95, 0.7, 0.2, 0.85), false, 2.0)
+		# "宝箱" 文字标记
+		var text_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 12, cell.y * CELL_SIZE + CELL_SIZE / 2 + 5)
+		draw_string(font, text_pos, "宝箱", HORIZONTAL_ALIGNMENT_LEFT, CELL_SIZE - 24, 12, Color(1.0, 0.85, 0.3, 0.95))
 
 func _draw_summon_highlights() -> void:
 	for cell in summon_highlight_cells:
@@ -569,3 +609,39 @@ func play_event_feedback(cell: Vector2i, text: String, is_positive: bool) -> voi
 	tw3.tween_property(lbl, "modulate:a", 0.0, 0.7)
 	tw3.set_parallel(false)
 	tw3.tween_callback(lbl.queue_free)
+
+## 商店格反馈：青绿色飘字显示购买效果
+func play_shop_feedback(cell: Vector2i, text: String) -> void:
+	var lbl: Label = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(0.2, 0.95, 0.8))
+	var start_x: float = cell.x * CELL_SIZE + 10
+	var start_y: float = cell.y * CELL_SIZE + 8
+	lbl.position = Vector2(start_x, start_y)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw4: Tween = lbl.create_tween()
+	tw4.set_parallel(true)
+	tw4.tween_property(lbl, "position:y", start_y - 36.0, 0.7)
+	tw4.tween_property(lbl, "modulate:a", 0.0, 0.7)
+	tw4.set_parallel(false)
+	tw4.tween_callback(lbl.queue_free)
+
+## 宝箱格反馈：金色飘字显示开箱奖励
+func play_chest_feedback(cell: Vector2i, text: String) -> void:
+	var lbl: Label = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 20)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	var start_x: float = cell.x * CELL_SIZE + 8
+	var start_y: float = cell.y * CELL_SIZE + 6
+	lbl.position = Vector2(start_x, start_y)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw5: Tween = lbl.create_tween()
+	tw5.set_parallel(true)
+	tw5.tween_property(lbl, "position:y", start_y - 40.0, 0.8)
+	tw5.tween_property(lbl, "modulate:a", 0.0, 0.8)
+	tw5.set_parallel(false)
+	tw5.tween_callback(lbl.queue_free)

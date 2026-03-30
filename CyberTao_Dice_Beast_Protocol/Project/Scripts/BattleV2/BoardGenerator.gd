@@ -16,6 +16,9 @@ const ITEM_COUNT: int = 2
 const HEAL_COUNT: int = 2
 const EVENT_COUNT_MIN: int = 2
 const EVENT_COUNT_MAX: int = 3
+const SHOP_COUNT: int = 1
+const CHEST_COUNT_MIN: int = 1
+const CHEST_COUNT_MAX: int = 2
 const ENEMY_COUNT: int = 2
 
 # 可用遭遇 ID 池
@@ -88,7 +91,18 @@ static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i
 	for cell in event_cells:
 		board_mgr.add_event_cell(cell, "random_event")
 		used_cells[cell] = true
-	# 7. 敌方单位（上半区域，row 0~4）
+	# 7. 商店格（不在玩家出生区，持久，回复 3 HP，消耗 1 move crest）
+	var shop_cells: Array[Vector2i] = _pick_random_cells(board_size, SHOP_COUNT, used_cells, true)
+	for cell in shop_cells:
+		board_mgr.add_shop_cell(cell, 3)
+		used_cells[cell] = true
+	# 8. 宝箱格（不在玩家出生区，一次性随机奖励）
+	var chest_count: int = _rand_range(CHEST_COUNT_MIN, CHEST_COUNT_MAX)
+	var chest_cell_list: Array[Vector2i] = _pick_random_cells(board_size, chest_count, used_cells, true)
+	for cell in chest_cell_list:
+		board_mgr.add_chest_cell(cell, "chest")
+		used_cells[cell] = true
+	# 9. 敌方单位（上半区域，row 0~4）
 	_spawn_enemies(unit_mgr, board_size, used_cells)
 
 ## 生成敌方单位（随机位置，上半区域）

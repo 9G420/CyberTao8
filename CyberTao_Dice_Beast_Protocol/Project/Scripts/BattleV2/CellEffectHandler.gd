@@ -91,6 +91,71 @@ func check_event_cell(unit_id: String, cell: Vector2i) -> Dictionary:
 			effect_text = "HP-1"
 	return {"triggered": true, "event_id": event_id, "effect_text": effect_text, "killed": killed}
 
+## 检查商店格：消耗 1 move crest 回复 HP（持久，不消失）
+## 返回 {"used": true, "cost_crest": "move", "heal": int, "actual_heal": int} 或 {"used": false}
+func check_shop_cell(unit_id: String, cell: Vector2i) -> Dictionary:
+	if not board_manager.shop_cells.has(cell):
+		return {"used": false}
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return {"used": false}
+	# 只有玩家单位可以使用商店
+	if String(unit.get("owner", "")) != "player":
+		return {"used": false}
+	# 检查 HP 是否已满
+	var current_hp: int = int(unit.get("hp", 0))
+	var max_hp: int = int(unit.get("max_hp", 1))
+	if current_hp >= max_hp:
+		return {"used": false}
+	# 消耗 1 move crest
+	var cost: Dictionary = {"move": 1}
+	if not dice_manager.can_pay(cost):
+		return {"used": false}
+	dice_manager.pay(cost)
+	var heal_amount: int = int(board_manager.shop_cells[cell])
+	var actual_heal: int = min(heal_amount, max_hp - current_hp)
+	unit["hp"] = current_hp + actual_heal
+	unit_manager.units_by_id[unit_id] = unit
+	unit_manager.emit_signal("units_changed")
+	return {"used": true, "cost_crest": "move", "heal": heal_amount, "actual_heal": actual_heal}
+
+## 检查宝箱格：随机奖励（一次性，踩后消失）
+## 返回 {"opened": true, "effect_text": str} 或 {"opened": false}
+func check_chest_cell(unit_id: String, cell: Vector2i) -> Dictionary:
+	if not board_manager.chest_cells.has(cell):
+		return {"opened": false}
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return {"opened": false}
+	board_manager.clear_chest_cell(cell)
+	var roll: int = randi() % 3
+	var effect_text: String = ""
+	match roll:
+		0:
+			# 回复 3 HP
+			var current_hp: int = int(unit.get("hp", 0))
+			var max_hp: int = int(unit.get("max_hp", 1))
+			var actual_heal: int = min(3, max_hp - current_hp)
+			if actual_heal > 0:
+				unit["hp"] = current_hp + actual_heal
+				unit_manager.units_by_id[unit_id] = unit
+				unit_manager.emit_signal("units_changed")
+			effect_text = "HP+" + str(actual_heal)
+		1:
+			# 随机 crest +2
+			var crest_types: Array[String] = ["move", "attack", "defend", "skill", "trick", "summon"]
+			var picked: String = crest_types[randi() % crest_types.size()]
+			var current: int = int(dice_manager.crest_pool.get(picked, 0))
+			dice_manager.crest_pool[picked] = current + 2
+			effect_text = picked.to_upper() + "+2"
+		2:
+			# 全 crest +1
+			for crest_type in ["move", "attack", "defend", "skill", "trick", "summon"]:
+				var current: int = int(dice_manager.crest_pool.get(crest_type, 0))
+				dice_manager.crest_pool[crest_type] = current + 1
+			effect_text = "ALL CREST+1"
+	return {"opened": true, "effect_text": effect_text}
+
 ## 执行道具效果并返回效果描述（内部方法）
 func _apply_item_effect(item_id: String, unit_id: String) -> String:
 	var context: Dictionary = {"unit_id": unit_id}

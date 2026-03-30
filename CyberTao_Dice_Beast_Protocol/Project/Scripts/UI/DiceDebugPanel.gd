@@ -59,6 +59,10 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
 	if battle_flow.event_cell_triggered and not battle_flow.event_cell_triggered.is_connected(_on_event_cell_triggered):
 		battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
+	if battle_flow.shop_cell_triggered and not battle_flow.shop_cell_triggered.is_connected(_on_shop_cell_triggered):
+		battle_flow.shop_cell_triggered.connect(_on_shop_cell_triggered)
+	if battle_flow.chest_cell_triggered and not battle_flow.chest_cell_triggered.is_connected(_on_chest_cell_triggered):
+		battle_flow.chest_cell_triggered.connect(_on_chest_cell_triggered)
 	# BuffManager 信号
 	if battle_flow.buff_manager:
 		if battle_flow.buff_manager.buff_applied and not battle_flow.buff_manager.buff_applied.is_connected(_on_buff_applied):
@@ -245,7 +249,7 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.40"
+	ver_label.text = "v0.1.41"
 	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -399,6 +403,12 @@ func _on_heal_cell_triggered(_unit_id: String, _cell: Vector2i, _heal_amount: in
 	_refresh_crest_pool()
 
 func _on_event_cell_triggered(_unit_id: String, _cell: Vector2i, _event_id: String, _effect_text: String) -> void:
+	_refresh_crest_pool()
+
+func _on_shop_cell_triggered(_unit_id: String, _cell: Vector2i, _cost_crest: String, _actual_heal: int) -> void:
+	_refresh_crest_pool()
+
+func _on_chest_cell_triggered(_unit_id: String, _cell: Vector2i, _effect_text: String) -> void:
 	_refresh_crest_pool()
 
 func _on_buff_applied(_unit_id: String, buff_type: String, _value: int, duration: int) -> void:

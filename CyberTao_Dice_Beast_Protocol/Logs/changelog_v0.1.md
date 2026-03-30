@@ -922,6 +922,27 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 面板位置 (160,120)，覆盖棋盘中心区域，使用时需手动关闭
 - 支持 RichTextLabel 滚动，牌组变大后可滚动浏览
 
+## v0.1.41 - 2026-03-30
+
+### 新增
+- 商店格（Shop Cell）：持久格子，消耗 1 步进 crest 回复 3 HP，每局 1 个
+- 宝箱格（Chest Cell）：一次性格子，随机奖励（HP+3 / 随机crest+2 / 全crest+1），每局 1-2 个
+- BoardManager 新增 shop_cells/chest_cells 字典，add_shop_cell/add_chest_cell/clear_chest_cell 方法
+- CellEffectHandler 新增 check_shop_cell()/check_chest_cell() 效果计算
+- BFC 新增 shop_cell_triggered/chest_cell_triggered 信号，_check_shop_cell/_check_chest_cell 薄代理
+- BoardGenerator 新增 SHOP_COUNT/CHEST_COUNT 常量和生成逻辑
+- BoardView 新增商店格（青绿色）和宝箱格（金琥珀色）绘制方法和飘字反馈
+
+### 修改
+- try_move_unit 格子检查链扩展：trap→item→heal→event→shop→chest→encounter
+- Main.gd 提示文字新增商店格和宝箱格颜色说明
+- DiceDebugPanel 连接新信号，版本号更新为 v0.1.41
+
+### 备注
+- 商店格当前为自动触发模式（无选择面板），未来可扩展
+- 宝箱格 3 种奖励等概率，数值平衡未经实战测试
+- 棋盘层格子类型从 7 种增至 9 种
+
 ## v0.1.40 - 2026-03-30
 
 ### 新增

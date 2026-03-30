@@ -19,6 +19,8 @@ signal event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, e
 signal defend_crest_used(unit_id: String, new_temp_def: int)
 signal skill_crest_used(unit_id: String, heal_amount: int)
 signal trick_crest_used(gained_crest: String)
+signal shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int)
+signal chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -184,6 +186,16 @@ func _check_event_cell(unit_id: String, cell: Vector2i) -> void:
 		emit_signal("event_cell_triggered", unit_id, cell, String(r["event_id"]), String(r["effect_text"]))
 		if bool(r.get("killed", false)):
 			_check_battle_outcome()
+
+func _check_shop_cell(unit_id: String, cell: Vector2i) -> void:
+	var r: Dictionary = cell_effect_handler.check_shop_cell(unit_id, cell)
+	if r.get("used", false):
+		emit_signal("shop_cell_triggered", unit_id, cell, String(r["cost_crest"]), int(r["actual_heal"]))
+
+func _check_chest_cell(unit_id: String, cell: Vector2i) -> void:
+	var r: Dictionary = cell_effect_handler.check_chest_cell(unit_id, cell)
+	if r.get("opened", false):
+		emit_signal("chest_cell_triggered", unit_id, cell, String(r["effect_text"]))
 
 # ─── 回合流程 ───
 
@@ -373,6 +385,10 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 		_check_heal_cell(unit_id, target_cell)
 	if not unit_manager.get_unit(unit_id).is_empty():
 		_check_event_cell(unit_id, target_cell)
+	if not unit_manager.get_unit(unit_id).is_empty():
+		_check_shop_cell(unit_id, target_cell)
+	if not unit_manager.get_unit(unit_id).is_empty():
+		_check_chest_cell(unit_id, target_cell)
 	if not unit_manager.get_unit(unit_id).is_empty():
 		_check_encounter(unit_id, target_cell)
 	return true

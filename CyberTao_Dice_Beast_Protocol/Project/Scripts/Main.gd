@@ -61,7 +61,7 @@ func _build_debug_view() -> void:
 	add_child(subtitle)
 
 	var hint := Label.new()
-	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 深红=BOSS 蓝白=回复 黄紫=事件 | *=适性激活"
+	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 深红=BOSS 蓝白=回复 黄紫=事件 青绿=商店 金琥珀=宝箱 | *=适性激活"
 	hint.position = Vector2(0, 66)
 	hint.size = Vector2(1280, 20)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -144,6 +144,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.defend_crest_used.connect(_on_defend_crest_used)
 	_battle_flow.skill_crest_used.connect(_on_skill_crest_used)
 	_battle_flow.trick_crest_used.connect(_on_trick_crest_used)
+	_battle_flow.shop_cell_triggered.connect(_on_shop_cell_triggered)
+	_battle_flow.chest_cell_triggered.connect(_on_chest_cell_triggered)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
@@ -263,6 +265,14 @@ func _on_skill_crest_used(unit_id: String, heal_amount: int) -> void:
 	_board_view.queue_redraw()
 
 func _on_trick_crest_used(gained_crest: String) -> void:
+	_board_view.queue_redraw()
+
+func _on_shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int) -> void:
+	_board_view.play_shop_feedback(cell, "-1步 HP+" + str(actual_heal))
+	_board_view.queue_redraw()
+
+func _on_chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String) -> void:
+	_board_view.play_chest_feedback(cell, effect_text)
 	_board_view.queue_redraw()
 
 func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
