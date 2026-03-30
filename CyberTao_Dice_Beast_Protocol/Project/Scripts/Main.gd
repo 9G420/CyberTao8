@@ -10,6 +10,7 @@ const CardBattlePanel = preload("res://Scripts/UI/CardBattlePanel.gd")
 const CardRewardPanel = preload("res://Scripts/UI/CardRewardPanel.gd")
 const DeckViewPanel = preload("res://Scripts/UI/DeckViewPanel.gd")
 const CyberBackground = preload("res://Scripts/UI/CyberBackground.gd")
+const TransitionOverlay = preload("res://Scripts/UI/TransitionOverlay.gd")
 
 var _battle_flow: BattleFlowController
 var _card_battle_ctrl: CardBattleController
@@ -23,6 +24,8 @@ var _deck_view_panel: DeckViewPanel
 var _result_label: Label
 var _restart_btn: Button
 var _dice_anim: DiceRollAnimation
+var _transition: TransitionOverlay
+var _battle_dark_bg: ColorRect
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
@@ -98,6 +101,18 @@ func _build_debug_view() -> void:
 	_card_battle_panel.position = Vector2(390, 125)
 	add_child(_card_battle_panel)
 
+	# 卡牌战斗全屏暗幕（宝可梦式遮罩，置于 CardBattlePanel 之下）
+	_battle_dark_bg = ColorRect.new()
+	_battle_dark_bg.position = Vector2(0, 0)
+	_battle_dark_bg.size = Vector2(1280, 720)
+	_battle_dark_bg.color = Color(0.0, 0.0, 0.0, 0.85)
+	_battle_dark_bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	_battle_dark_bg.visible = false
+	add_child(_battle_dark_bg)
+	# 把 CardBattlePanel 移到暗幕上层
+	remove_child(_card_battle_panel)
+	add_child(_card_battle_panel)
+
 	_card_reward_panel = CardRewardPanel.new()
 	_card_reward_panel.position = Vector2(380, 200)
 	add_child(_card_reward_panel)
@@ -130,6 +145,10 @@ func _build_debug_view() -> void:
 	_dice_anim.set_board_center(Vector2(328, 382))
 	add_child(_dice_anim)
 
+	# 百叶窗过渡动画（CanvasLayer 10，覆盖一切）
+	_transition = TransitionOverlay.new()
+	add_child(_transition)
+
 func _wire_debug_views() -> void:
 	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
 	_board_view.bind_battle_flow(_battle_flow)
@@ -157,6 +176,7 @@ func _wire_debug_views() -> void:
 	_battle_flow.game_won.connect(_on_game_won)
 	_battle_flow.boss_unlocked.connect(_on_boss_unlocked)
 	_battle_flow.portal_spawned.connect(_on_portal_spawned)
+	_battle_flow.hero_warped.connect(_on_hero_warped)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
@@ -247,14 +267,22 @@ func _on_enemy_turn_ended() -> void:
 	_board_view.queue_redraw()
 
 func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i) -> void:
-	# 遭遇触发反馈：橙红色飘字提示
-	_board_view.play_encounter_feedback(cell, "遭遇！")
 	_board_view.queue_redraw()
-	# 启动卡牌战斗控制器（从 BFC 查询当前遭遇单位的 HP）
+	# 查询遭遇敌方名称和 Boss 标识
+	var is_boss: bool = encounter_id.begins_with("encounter_boss_")
+	var enemy_display: String = _get_encounter_display_name(encounter_id)
+	# 查询玩家单位 HP
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
 	var p_hp: int = int(unit.get("hp", 1))
 	var p_max_hp: int = int(unit.get("max_hp", 1))
+	# 宝可梦式过渡：百叶窗合拢 + 闪烁敌方名称
+	await _transition.transition_to_battle(enemy_display, is_boss)
+	# 百叶窗合拢后：显示暗幕 + 卡牌战斗面板 + 启动战斗
+	_battle_dark_bg.visible = true
+	_card_battle_panel.visible = true
 	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp)
+	# 百叶窗展开，露出卡牌战斗界面
+	await _transition.reveal()
 
 func _on_encounter_resolved(encounter_id: String, cell: Vector2i) -> void:
 	_board_view.play_pickup_feedback(cell, "遭遇清除")
@@ -295,7 +323,7 @@ func _on_chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: Stri
 	_board_view.queue_redraw()
 
 func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
-	# 层间奖励完成 → 进入下一层
+	# 层间奖励完成 → 进入下一层（无过渡动画）
 	if _floor_clear_pending:
 		_floor_clear_pending = false
 		_result_label.visible = false
@@ -306,16 +334,24 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 		_battle_flow.advance_to_next_floor()
 		_board_view.queue_redraw()
 		return
-	# CardBattleController 战斗结束 → 先记录遭遇格位置，再结算
+	# 卡牌战斗结束：先等待结果展示
 	var encounter_cell: Vector2i = _battle_flow._encounter_cell
+	await get_tree().create_timer(0.8).timeout
+	# 百叶窗合拢
+	await _transition.transition_to_board()
+	# 百叶窗合拢后：隐藏卡牌战斗面板和暗幕
+	_card_battle_panel.visible = false
+	_battle_dark_bg.visible = false
+	# 结算遭遇
 	_battle_flow.resolve_encounter(victory, player_hp_remaining)
 	# 反馈飘字
 	if victory and encounter_cell.x >= 0:
 		_board_view.play_pickup_feedback(encounter_cell, "战斗胜利！")
 	elif not victory and encounter_cell.x >= 0:
-		# 失败反馈：遭遇格保留，提示玩家可以再次挑战
 		_board_view.play_encounter_feedback(encounter_cell, "战斗失败...")
 	_board_view.queue_redraw()
+	# 百叶窗展开，回到棋盘
+	await _transition.reveal()
 
 func _on_card_battle_reward(reward_text: String) -> void:
 	# 卡牌战斗胜利奖励：将 crest 加入棋盘层资源池
@@ -336,6 +372,10 @@ func _on_game_won() -> void:
 
 func _on_boss_unlocked(cell: Vector2i) -> void:
 	_board_view.play_encounter_feedback(cell, "BOSS 解锁！")
+	_board_view.queue_redraw()
+
+func _on_hero_warped(unit_id: String, target_cell: Vector2i) -> void:
+	_board_view.play_pickup_feedback(target_cell, "传送至 Boss！")
 	_board_view.queue_redraw()
 
 func _on_portal_spawned(cell: Vector2i) -> void:
@@ -365,10 +405,31 @@ func _on_test_card_battle_requested() -> void:
 		return
 	var p_hp: int = int(unit.get("hp", 1))
 	var p_max_hp: int = int(unit.get("max_hp", 1))
+	# 调试也走宝可梦式过渡
+	await _transition.transition_to_battle("异常哨兵", false)
+	_battle_dark_bg.visible = true
+	_card_battle_panel.visible = true
 	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp)
+	await _transition.reveal()
 
 func _on_deck_view_requested() -> void:
 	if _deck_view_panel.is_open():
 		_deck_view_panel.close()
 	else:
 		_deck_view_panel.open()
+
+## 遭遇 ID → 显示名称映射（用于过渡动画闪字）
+func _get_encounter_display_name(encounter_id: String) -> String:
+	var names: Dictionary = {
+		"encounter_01": "异常哨兵",
+		"encounter_02": "赛博游魂",
+		"encounter_03": "暗网爬虫",
+		"encounter_04": "脉冲猎手",
+		"encounter_05": "数据幽灵",
+		"encounter_boss_01": "零号协议",
+	}
+	if names.has(encounter_id):
+		return String(names[encounter_id])
+	if encounter_id.begins_with("encounter_boss_"):
+		return "BOSS"
+	return "未知遭遇"

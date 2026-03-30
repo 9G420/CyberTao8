@@ -1,94 +1,92 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.52
+**版本**: v0.1.53
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.51（P0）：修复 Boss/遭遇格击败消失 Bug
-- v0.1.52（P1）：单位精简 — 1 主角 + 伙伴槽系统
+- v0.1.53：Boss 解锁自动传送 + 宝可梦式卡牌战斗过渡
 
 ---
 
-## v0.1.52（P1）单位精简
+## v0.1.53 实现内容
 
-### 目标
+### 问题背景
 
-玩家出场单位从 3 个减为 1 个主角（blade_shield_dog），伙伴通过召唤系统部署，每层上限 2 次部署、场上上限 1 只伙伴。胜负判定改为英雄存活制。
+1. 哨兵全灭后 Boss 在棋盘远处，玩家需要多回合掷骰走路才能到达，期间零游戏性
+2. 卡牌战斗仍以浮窗形式叠在棋盘上，缺乏场景切换感
+
+### 功能一：Boss 解锁后英雄自动传送
+
+- `_try_unlock_boss()` 末尾新增 `_warp_hero_to_boss(boss_cell)` 调用
+- `_warp_hero_to_boss()` 查找英雄单位（非 summoned 的玩家单位），传送到 Boss 格旁边的空格（优先下方）
+- 新增信号 `hero_warped(unit_id, target_cell)`
+- Main.gd 连接 `hero_warped` 信号，飘字提示"传送至 Boss！"
+
+### 功能二：宝可梦式卡牌战斗过渡
+
+- **新增 `TransitionOverlay.gd`**（~110行）：CanvasLayer（layer 10）百叶窗过渡动画
+  - 8 条水平百叶窗，合拢 0.35s / 展开 0.3s
+  - `transition_to_battle(enemy_name, is_boss)` — 百叶窗合拢 + 闪烁敌方名称
+  - `reveal()` — 百叶窗展开
+  - `transition_to_board()` — 百叶窗合拢（退出战斗）
+  - Boss 遭遇使用暗红色百叶窗区分
+- **Main.gd 遭遇触发流程重写**：
+  - `_on_encounter_triggered()` → 百叶窗合拢 + 闪字 → 显示暗幕+战斗面板 → 百叶窗展开
+  - `_on_card_battle_ended()` → 等待 0.8s 结果展示 → 百叶窗合拢 → 隐藏面板 → 结算 → 百叶窗展开
+- **全屏暗幕**：`_battle_dark_bg`（ColorRect 1280x720，85% 不透明黑色）遮挡棋盘
+- **CardBattlePanel 可见性管理**：移除 `_on_battle_started` 和 `_on_battle_ended` 的自动 visible 控制，改由 Main.gd 通过过渡统一管理
+- **遭遇名称映射**：`_get_encounter_display_name()` 返回中文敌方名称用于闪字
 
 ### 修改文件
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/BattleV2/BattleFlowController.gd` | 新增 `_summon_this_floor`/`SUMMON_FLOOR_LIMIT`/`SUMMON_FIELD_LIMIT`；`_spawn_player_units()` 精简为仅 blade_shield_dog；`get_summon_cells_for()`/`try_summon()` 增加层/场限制；`restart_battle()`/`advance_to_next_floor()` 重置 `_summon_this_floor`；`_spawn_player_units_with_hp()` 精简 |
-| `Scripts/BattleV2/VictoryRuleHelper.gd` | 新增 `has_hero_unit()`（检查非 summoned 的存活玩家单位）；`get_battle_outcome()` 改为英雄存活制 |
-| `Scripts/UI/DiceDebugPanel.gd` | `_refresh_crest_pool()` 末尾追加本层部署剩余次数显示 |
+| `Scripts/UI/TransitionOverlay.gd` | 新增文件，百叶窗过渡动画 |
+| `Scripts/BattleV2/BattleFlowController.gd` | 新增 `hero_warped` 信号、`_warp_hero_to_boss()` 函数；`_try_unlock_boss()` 末尾调用自动传送 |
+| `Scripts/Main.gd` | 新增 TransitionOverlay + 暗幕；重写 `_on_encounter_triggered` / `_on_card_battle_ended` / `_on_test_card_battle_requested`；新增 `_on_hero_warped` / `_get_encounter_display_name` |
+| `Scripts/UI/CardBattlePanel.gd` | `_on_battle_started` / `_on_battle_ended` 移除自动 visible 控制 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.52 条目 |
-
-### 实现细节
-
-1. **出场单位精简**：`_spawn_player_units()` 和 `_spawn_player_units_with_hp()` 的 spawn_data 仅保留 blade_shield_dog 一条
-2. **伙伴槽限制**：`get_summon_cells_for()` 在返回邻居格之前检查 `_summon_this_floor >= SUMMON_FLOOR_LIMIT` 和 `summoned_count >= SUMMON_FIELD_LIMIT`；`try_summon()` 同理，并在成功召唤后 `_summon_this_floor += 1`
-3. **层间重置**：`restart_battle()` 和 `advance_to_next_floor()` 均 `_summon_this_floor = 0`
-4. **胜负判定**：`VictoryRuleHelper.get_battle_outcome()` 使用 `has_hero_unit()` 替代 `has_units_for_owner("player")`，仅非 summoned 的玩家单位视为英雄
-5. **HUD 显示**：DiceDebugPanel 在 Crest 池信息下方显示 `本层部署剩余：N 次`
+| `Logs/changelog_v0.1.md` | 追加 v0.1.53 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+任务优先级 |
 
 ### 接口变更
 
-- `VictoryRuleHelper.has_hero_unit()` — 新增静态方法
-- `VictoryRuleHelper.get_battle_outcome()` — 逻辑变更（hero_alive 替代 player_alive）
-- `BattleFlowController.SUMMON_FLOOR_LIMIT` / `SUMMON_FIELD_LIMIT` — 新增常量
-- `BattleFlowController._summon_this_floor` — 新增变量
+- `BattleFlowController.hero_warped(unit_id, target_cell)` — 新增信号
+- `BattleFlowController._warp_hero_to_boss(boss_cell)` — 新增内部方法
+- `CardBattlePanel._on_battle_started()` — 不再设 `visible = true`
+- `CardBattlePanel._on_battle_ended()` — 不再自动隐藏面板
+- `TransitionOverlay` — 新增 class_name
 
 ### 自查确认
 
-- `_spawn_player_units()` 仅生成 blade_shield_dog，无其他单位
-- `_spawn_player_units_with_hp()` spawn_data 仅 blade_shield_dog 一条
-- `get_summon_cells_for()` 和 `try_summon()` 均检查 SUMMON_FLOOR_LIMIT 和 SUMMON_FIELD_LIMIT
-- `restart_battle()` 和 `advance_to_next_floor()` 均重置 `_summon_this_floor = 0`
-- `has_hero_unit()` 正确过滤 summoned 标签
-- `get_battle_outcome()` 使用 hero_alive 判定
-- DiceDebugPanel 显示部署剩余，引用 `battle_flow.SUMMON_FLOOR_LIMIT - battle_flow._summon_this_floor`
-- v0.1.50 传送门/Boss 锁定逻辑不受影响（仅在 resolve_encounter 胜利分支中）
-- v0.1.51 三分支 resolve_encounter 不受影响（P1 不修改该函数）
-
----
-
-## v0.1.51（P0）遭遇格击败消失 Bug 修复
-
-### 根因
-
-`resolve_encounter()` 无论胜败都调用 `board_manager.clear_encounter_cell()`，导致卡牌战斗失败后遭遇格被清除。
-
-### 修复
-
-- **胜利**：清除遭遇格 → Boss 时生成传送门 → 清空上下文 → 回到 PLAYER_ACTION → 发射 encounter_resolved 信号
-- **失败但存活**：HP 保底 1 → 遭遇格保留 → 回到 PLAYER_ACTION，可再次挑战
-- **失败且全灭**：触发 mark_defeat()
-
-### 自查确认
-
-- 胜利分支保留 is_boss + _spawn_portal_near（v0.1.50 传送门不受影响）
-- 失败分支 HP 保底 max(1, remaining)，不出现 0 HP 存活
-- 失败分支不调用 clear_encounter_cell
-- 失败且全灭时正确触发 mark_defeat()
+- `_warp_hero_to_boss()` 正确查找非 summoned 玩家单位，传送到 Boss 旁空格
+- `_warp_hero_to_boss()` 使用 `unit_manager.move_unit()` 正确更新 occupied_cells
+- TransitionOverlay 使用 CanvasLayer layer 10，不影响任何现有 UI 层级
+- 暗幕 `_battle_dark_bg` 置于 CardBattlePanel 之下，CardBattlePanel 通过 remove/add_child 确保在暗幕上层
+- `_on_encounter_triggered` 正确 await 过渡完成后才启动战斗
+- `_on_card_battle_ended` 先等 0.8s 展示结果，再过渡回棋盘
+- 层间奖励 `_floor_clear_pending` 分支不走过渡动画（保持原流程）
+- 调试按钮"测试战斗"也走过渡流程
+- v0.1.51 三分支 resolve_encounter 不受影响
+- v0.1.52 单位精简+伙伴槽不受影响
 
 ---
 
 ## 剩余问题
 
-- 层间难度暂不递增（已排后）
+- 层间难度暂不递增
 - 阵亡单位跨层不复活
 - CardRewardPanel 暂未使用 CardRenderer 风格
+- CardBattlePanel 内部布局未扩展为真正全屏（保持 500x470 居中+暗幕）
 
 ---
 
 ## 建议下一步
 
-1. 美化 Phase 4.2：UI 过渡动画（宝可梦式全屏场景切换）
+1. CardBattlePanel 全屏布局重设计（利用 1280x720 全屏空间）
 2. 层间难度递增
 3. Crest 蓄力池 + 骰子操控机制

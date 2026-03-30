@@ -25,6 +25,7 @@ signal floor_cleared(floor_number: int)
 signal game_won
 signal boss_unlocked(cell: Vector2i)
 signal portal_spawned(cell: Vector2i)
+signal hero_warped(unit_id: String, target_cell: Vector2i)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -477,6 +478,35 @@ func _try_unlock_boss() -> void:
 	for cell in cells_to_unlock:
 		board_manager.unlock_encounter(cell)
 		emit_signal("boss_unlocked", cell)
+	# 哨兵全灭 → 自动传送英雄到 Boss 旁边
+	if cells_to_unlock.size() > 0:
+		_warp_hero_to_boss(cells_to_unlock[0])
+
+## Boss 解锁后，将英雄单位传送到 Boss 格旁边的空格
+func _warp_hero_to_boss(boss_cell: Vector2i) -> void:
+	# 查找英雄单位（非 summoned 的玩家单位）
+	var hero_id: String = ""
+	for uid in unit_manager.units_by_id.keys():
+		var u: Dictionary = unit_manager.get_unit(String(uid))
+		if String(u.get("owner", "")) != "player":
+			continue
+		var tags: Array = u.get("tags", [])
+		if not tags.has("summoned"):
+			hero_id = String(uid)
+			break
+	if hero_id == "":
+		return
+	# 在 Boss 格四邻找一个空格（优先下方）
+	var dirs: Array[Vector2i] = [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1)]
+	for dir in dirs:
+		var adj: Vector2i = boss_cell + dir
+		if adj.x < 0 or adj.x >= 8 or adj.y < 0 or adj.y >= 8:
+			continue
+		if board_manager.occupied_cells.has(adj):
+			continue
+		unit_manager.move_unit(hero_id, adj)
+		emit_signal("hero_warped", hero_id, adj)
+		return
 
 ## 计算含地形适性加成、临时防御和 Buff 修正的伤害值
 func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> int:

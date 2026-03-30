@@ -1,5 +1,30 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.53 - 2026-03-30
+
+### 新增
+- **Boss 解锁自动传送**：哨兵全灭后英雄自动传送到 Boss 格旁边，消除无意义的走路回合
+  - `BattleFlowController._warp_hero_to_boss()` 查找英雄单位并传送到 Boss 旁空格
+  - 新增 `hero_warped` 信号，Main.gd 连接后飘字"传送至 Boss！"
+- **宝可梦式卡牌战斗过渡**：遭遇触发时播放全屏百叶窗过渡动画
+  - 新增 `TransitionOverlay.gd`（CanvasLayer 10）：8 条水平百叶窗合拢/展开
+  - 进入战斗：百叶窗合拢(0.35s) → 闪烁敌方名称(0.45s) → 展示战斗界面 → 百叶窗展开(0.3s)
+  - 退出战斗：等待结果(0.8s) → 百叶窗合拢 → 隐藏面板 → 展开回棋盘
+  - Boss 遭遇使用暗红色百叶窗
+- **全屏暗幕**：卡牌战斗时黑色遮罩覆盖棋盘，营造独立场景感
+- **遭遇名称闪字**：过渡时在百叶窗合拢后闪烁敌方中文名称
+
+### 修改
+- `CardBattlePanel._on_battle_started()` / `_on_battle_ended()` 不再自动控制 visible，由 Main.gd 通过过渡统一管理
+- `Main._on_encounter_triggered()` 重写为异步过渡流程
+- `Main._on_card_battle_ended()` 重写为异步过渡流程
+- 调试按钮"测试战斗"也走过渡流程
+
+### 备注
+- CardBattlePanel 内部布局保持 500x470 不变，通过暗幕+居中实现场景隔离感
+- TransitionOverlay 不影响任何现有 UI 层级（CanvasLayer 10 独立）
+- v0.1.51 resolve_encounter 三分支、v0.1.52 单位精简均不受影响
+
 ## v0.1.52 - 2026-03-30
 
 ### 改进

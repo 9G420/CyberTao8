@@ -61,7 +61,7 @@ func _on_battle_started(player_hp: int, enemy_hp: int, enemy_name: String) -> vo
 	else:
 		_flee_button.text = "逃跑（-1 HP）"
 	_refresh_status()
-	visible = true
+	# visible 由 Main.gd 通过 TransitionOverlay 统一管理
 
 func _on_hand_changed(new_hand: Array, cur_energy: int, max_e: int) -> void:
 	_rebuild_card_widgets(new_hand, cur_energy)
@@ -110,12 +110,7 @@ func _on_battle_ended(victory: bool, _player_hp_remaining: int) -> void:
 		else:
 			_log_label.text = "逃跑！受到 1 点惩罚伤害。"
 	_refresh_status()
-	if not victory:
-		await get_tree().create_timer(1.2).timeout
-		visible = false
-	else:
-		await get_tree().create_timer(0.5).timeout
-		visible = false
+	# 不再自动隐藏——由 Main.gd 通过 TransitionOverlay 统一管理可见性
 
 func _on_victory_reward(reward_text: String) -> void:
 	_log_label.text = _log_label.text + "\n奖励：" + reward_text

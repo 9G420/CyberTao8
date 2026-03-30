@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.52
+**当前版本**: v0.1.53
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.52）
+### 2.2 当前完成状态总览（v0.1.53）
 
 **棋盘走位层（全部稳定）**
 
@@ -116,6 +116,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | Boss锁定+哨兵前置+传送门机制 | v0.1.50 | 稳定 |
 | Boss/遭遇格击败消失 Bug 修复（resolve_encounter 三分支） | v0.1.51 | 稳定 |
 | 单位精简（1主角+伙伴槽系统）+ 英雄存活制胜负判定 | v0.1.52 | 稳定 |
+| Boss解锁自动传送 + 宝可梦式卡牌战斗过渡 | v0.1.53 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -211,6 +212,7 @@ UI层
 ├── DeckViewPanel        — 牌组查看面板                 ~160行
 ├── CyberStyle           — 全局视觉风格（class_name注册）~149行
 ├── CyberBackground      — 背景氛围系统（class_name注册）  ~155行 ✅ Phase 4.1 新增
+├── TransitionOverlay    — 宝可梦式百叶窗过渡（CanvasLayer 10） ~110行 ✅ v0.1.53 新增
 └── SettingsPanel        — 显示设置
 
 Main.gd（场景组合+信号中转）                          ~356行
@@ -257,6 +259,7 @@ CardRewardPanel：     Scripts/UI/CardRewardPanel.gd
 DeckViewPanel：       Scripts/UI/DeckViewPanel.gd
 CyberStyle：          Scripts/UI/CyberStyle.gd
 CyberBackground：     Scripts/UI/CyberBackground.gd
+TransitionOverlay：   Scripts/UI/TransitionOverlay.gd
 Main：                Scripts/Main.gd
 旧项目参考（只读）：   [仓库根目录] Scripts/ （不要修改）
 ```
@@ -306,7 +309,7 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.52 Work Report，按优先级排列：
+以下任务来自 v0.1.53 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心 — 美术美化）
 
@@ -341,6 +344,7 @@ Main：                Scripts/Main.gd
 | Boss锁定+哨兵前置+传送门机制 | v0.1.50 |
 | Boss/遭遇格击败消失 Bug 修复 | v0.1.51 |
 | 单位精简（1主角+伙伴槽系统）| v0.1.52 |
+| Boss解锁自动传送+宝可梦式过渡 | v0.1.53 |
 | 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |
