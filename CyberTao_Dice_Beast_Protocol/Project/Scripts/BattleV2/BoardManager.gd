@@ -13,6 +13,8 @@ var heal_cells: Dictionary = {}  # cell -> int (heal_amount)
 var event_cells: Dictionary = {}  # cell -> String (event_id)
 var shop_cells: Dictionary = {}  # cell -> int (heal_amount per visit)
 var chest_cells: Dictionary = {}  # cell -> String ("chest")
+var locked_encounters: Dictionary = {}  # cell -> true (boss encounter locked until grunts cleared)
+var portal_cells: Dictionary = {}  # cell -> true (portal to next floor)
 
 func build_test_board(size: Vector2i) -> void:
 	board_size = size
@@ -25,6 +27,8 @@ func build_test_board(size: Vector2i) -> void:
 	event_cells.clear()
 	shop_cells.clear()
 	chest_cells.clear()
+	locked_encounters.clear()
+	portal_cells.clear()
 	emit_signal("board_changed")
 
 func clear_board() -> void:
@@ -37,6 +41,8 @@ func clear_board() -> void:
 	event_cells.clear()
 	shop_cells.clear()
 	chest_cells.clear()
+	locked_encounters.clear()
+	portal_cells.clear()
 	emit_signal("board_changed")
 
 func is_in_bounds(cell: Vector2i) -> bool:
@@ -171,4 +177,29 @@ func add_chest_cell(cell: Vector2i, chest_id: String) -> void:
 ## 清除指定宝箱格
 func clear_chest_cell(cell: Vector2i) -> void:
 	chest_cells.erase(cell)
+	emit_signal("board_changed")
+
+## 锁定遭遇格（Boss 格在哨兵存活时不可触发）
+func lock_encounter(cell: Vector2i) -> void:
+	locked_encounters[cell] = true
+	emit_signal("board_changed")
+
+## 解锁遭遇格
+func unlock_encounter(cell: Vector2i) -> void:
+	locked_encounters.erase(cell)
+	emit_signal("board_changed")
+
+## 是否为锁定的遭遇格
+func is_encounter_locked(cell: Vector2i) -> bool:
+	return locked_encounters.has(cell)
+
+## 添加传送门格
+func add_portal_cell(cell: Vector2i) -> void:
+	if is_in_bounds(cell):
+		portal_cells[cell] = true
+		emit_signal("board_changed")
+
+## 清除传送门格
+func clear_portal_cell(cell: Vector2i) -> void:
+	portal_cells.erase(cell)
 	emit_signal("board_changed")

@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.48
+**当前版本**: v0.1.50
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.48）
+### 2.2 当前完成状态总览（v0.1.50）
 
 **棋盘走位层（全部稳定）**
 
@@ -112,6 +112,8 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 美化 Phase 2（DiceRollAnimation+BattleEffects） | v0.1.46 | 稳定 |
 | 美化 Phase 3（CardRenderer+CardBattlePanel 重设计） | v0.1.47 | 稳定 |
 | 美化 Phase 4.1（CyberBackground 背景氛围升级） | v0.1.48 | 稳定 |
+| 掷骰演出升级（伪3D等距骰子+全屏居中） | v0.1.49 | 稳定 |
+| Boss锁定+哨兵前置+传送门机制 | v0.1.50 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -180,7 +182,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 ```
 BattleFlowController（棋盘层核心控制器）         ~693行（含多层地图）
 ├── DiceManager          — 掷骰 + crest 资源池
-├── BoardManager         — 棋盘状态（9个格子字典 + BFS）
+├── BoardManager         — 棋盘状态（9个格子字典+locked_encounters+portal_cells + BFS）
 ├── BoardGenerator       — 棋盘程序化生成（静态工具类）
 ├── UnitManager          — 单位状态（生成/移动/伤害/击杀）
 ├── ActionResolver       — 攻击范围计算
@@ -198,7 +200,7 @@ UI层
 ├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~423行（Phase 1 瘦身）
 ├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行 ✅ Phase 1 新增
 ├── UnitRenderer         — 单位渲染静态类（class_name）   ~159行 ✅ Phase 1 新增
-├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~158行 ✅ Phase 2 新增
+├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~252行 ✅ v0.1.49 重写
 ├── BattleEffects        — 战斗特效静态类（class_name）   ~103行 ✅ Phase 2 新增
 ├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~540行
 ├── CardRenderer         — 卡牌渲染静态类（class_name）     ~233行 ✅ Phase 3 新增
@@ -222,16 +224,11 @@ encounter_triggered ─────────────→ CardBattleControl
                                          ↓
 resolve_encounter(victory, hp) ←─── Main._on_card_battle_ended()
 
-多层地图信号链：
-_check_battle_outcome() ──→ floor_cleared(floor_number)
-                                   ↓
-                            Main._on_floor_cleared()
-                                   ↓
-                            CardBattleController.offer_floor_reward()
-                                   ↓
-                            battle_ended(true, hp) [层间奖励完成]
-                                   ↓
-                            advance_to_next_floor() ←─ Main（_floor_clear_pending）
+多层地图信号链（v0.1.50 Boss锁定+传送门）：
+击杀哨兵 → _check_battle_outcome() → _try_unlock_boss() → boss_unlocked
+踩Boss遭遇格 → _check_encounter() → encounter_triggered → 卡牌战斗
+Boss战斗胜利 → resolve_encounter() → _spawn_portal_near() → portal_spawned
+踩传送门 → _check_portal() → floor_cleared / game_won
 ```
 
 ### 3.3 关键文件路径
@@ -307,7 +304,7 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.48 Work Report，按优先级排列：
+以下任务来自 v0.1.50 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心 — 美术美化）
 
@@ -338,6 +335,8 @@ Main：                Scripts/Main.gd
 | 美化 Phase 2（DiceRollAnimation+BattleEffects+掷骰演出+攻击增强） | v0.1.46 |
 | 美化 Phase 3（CardRenderer+CardBattlePanel 重设计+HP条+能量点） | v0.1.47 |
 | 美化 Phase 4.1（CyberBackground 背景氛围升级） | v0.1.48 |
+| 掷骰演出升级（伪3D等距骰子+全屏居中） | v0.1.49 |
+| Boss锁定+哨兵前置+传送门机制 | v0.1.50 |
 | 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |

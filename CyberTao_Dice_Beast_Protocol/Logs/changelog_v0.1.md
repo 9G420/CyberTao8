@@ -1,5 +1,55 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.50 - 2026-03-30
+
+### 新增
+- Boss 锁定机制：哨兵（grunt）全灭前 Boss 遭遇格显示为锁定状态（灰暗+锁链符号），不可触发
+- 哨兵全灭自动解锁：所有 grunt 单位被击杀后，BFC 自动解锁 Boss 遭遇格，飘字提示"BOSS 解锁！"
+- 传送门系统：击败 Boss 遭遇后在 Boss 格附近（优先下方）生成传送门
+- 传送门格视觉：青蓝色旋涡同心圆环 + 脉冲辉光（BoardCellRenderer._draw_portal）
+- Boss 锁定格视觉：灰暗红 + X 锁链符号 + LOCKED 文字（BoardCellRenderer._draw_boss_locked）
+- VictoryRuleHelper.has_grunt_units()：检查是否还有存活哨兵单位
+- BoardManager：locked_encounters/portal_cells 字典 + lock/unlock/portal 方法
+- BFC 新信号：boss_unlocked(cell)、portal_spawned(cell)
+
+### 修改
+- BattleFlowController._check_battle_outcome()：不再简单判"全敌方死=胜利"
+  - 哨兵全灭 → 解锁 Boss
+  - 遭遇格仍存在时不判胜（等玩家踩 Boss 格触发卡牌战斗）
+  - 传送门存在时不判胜（等玩家踩传送门触发通关）
+- BattleFlowController._check_encounter()：锁定遭遇格不可触发
+- BattleFlowController.resolve_encounter()：Boss 遭遇胜利 → 生成传送门
+- BattleFlowController.try_move_unit()：新增 _check_portal() 调用
+- BoardGenerator：Boss 遭遇格生成后自动调用 lock_encounter()
+- BoardView：encounter_cells 渲染区分 boss/boss_locked/encounter 三种类型
+- BoardView：新增 portal_cells 渲染循环
+- Main.gd：连接 boss_unlocked/portal_spawned 信号，反馈飘字
+
+### 备注
+- 胜利条件链：击杀哨兵→Boss解锁→踩Boss格→卡牌战斗→胜利→传送门→踩传送门→通关/下一层
+- BoardManager locked_encounters/portal_cells 在 build_test_board/clear_board 中正确清理
+- advance_to_next_floor() 无需额外修改（clear_board 已清理新字典）
+
+## v0.1.49 - 2026-03-30
+
+### 新增
+- 掷骰演出升级：伪 3D 等距骰子 + 全屏居中演出
+- DiceRollAnimation.gd 完全重写（~252行）：
+  - 全屏遮罩 PRESET_FULL_RECT，MOUSE_FILTER_STOP 阻止穿透
+  - 3 枚等距立方体（六边形轮廓+三面着色+骰面符号+名称标签）
+  - 翻滚→逐个定格→持显→淡出 四阶段动画
+  - set_board_center() 接口，居中于棋盘中央而非右侧面板
+- Main.gd 创建 DiceRollAnimation 实例并传入 DiceDebugPanel
+
+### 修改
+- DiceDebugPanel.gd：移除旧内嵌骰子创建代码，改由 Main 传入外部引用
+  - 新增 set_dice_animation(anim) 方法
+
+### 备注
+- 骰子动画不再与 HUD 面板重叠，居中于棋盘区域（328, 382）
+- Tween 动画链：遮罩淡入→翻滚→逐颗定格（弹跳缩放+辉光）→淡出
+- DiceRollAnimation 作为 Main 最后一个 add_child，z-order 在最上层
+
 ## v0.1.48 - 2026-03-30
 
 ### 新增

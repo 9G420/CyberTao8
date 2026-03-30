@@ -1,65 +1,86 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.48
+**版本**: v0.1.50
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 美化 Phase 4.1：背景氛围升级（动态网格背景+粒子+渐变+棋盘发光边框）
+- v0.1.49：掷骰演出升级（伪 3D 等距骰子 + 全屏居中演出）
+- v0.1.50：Boss 锁定 + 哨兵前置条件 + 传送门机制
 
 ---
 
 ## 根因目标
 
-Phase 3 完成了卡牌战斗面板重设计，卡牌层界面已有"卡牌游戏"感。Phase 4.1 目标是提升整体画面氛围——将纯色 ColorRect 背景替换为有层次感的赛博朋克环境：深色三段渐变、棋盘下方透视网格线（模拟赛博空间纵深感）、全屏浮动微粒子（CPUParticles2D 光点漂浮）、棋盘边缘脉冲发光框+四角装饰标记+缓慢扫描线。根据 Art_Beautification_Strategy_zh.md Phase 4.1（P2 优先级）执行。
+v0.1.49：旧版掷骰动画嵌在 DiceDebugPanel 内部，位置与 HUD 面板重叠，视觉效果不佳。升级为全屏居中的等距伪 3D 立方体翻滚演出，提升掷骰仪式感。
+
+v0.1.50：当前关卡流程过于简单（击杀所有敌方单位即可通关）。新增 Boss 锁定机制：必须先击败两个哨兵单位才能解锁并挑战 Boss 遭遇，Boss 击败后生成传送门，踩上传送门进入下一层。增加了战略层次和通关流程感。
 
 ---
 
 ## 修改文件
 
+### v0.1.49
+
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/CyberBackground.gd` | **新建**，~155行，背景氛围渲染系统：渐变+网格+粒子+发光框+扫描线+角标 |
-| `Scripts/Main.gd` | 替换 ColorRect 为 CyberBackground，新增 preload，传入棋盘位置/尺寸 |
+| `Scripts/UI/DiceRollAnimation.gd` | **完全重写**，~252行，全屏等距 3D 骰子演出 |
+| `Scripts/UI/DiceDebugPanel.gd` | 移除旧内嵌骰子创建，新增 set_dice_animation() 方法 |
+| `Scripts/Main.gd` | 创建 DiceRollAnimation 实例，set_board_center，传入 DiceDebugPanel |
+
+### v0.1.50
+
+| 文件 | 修改内容 |
+|------|----------|
+| `Scripts/BattleV2/BoardManager.gd` | 新增 locked_encounters/portal_cells 字典 + 锁定/解锁/传送门方法 |
+| `Scripts/BattleV2/BoardGenerator.gd` | Boss 遭遇格生成后调用 lock_encounter() |
+| `Scripts/BattleV2/BattleFlowController.gd` | 新信号 boss_unlocked/portal_spawned；重写 _check_battle_outcome()；新增 _try_unlock_boss()/_spawn_portal_near()/_check_portal() |
+| `Scripts/BattleV2/VictoryRuleHelper.gd` | 新增 has_grunt_units() 静态方法 |
+| `Scripts/UI/BoardCellRenderer.gd` | 新增 _draw_boss_locked() 和 _draw_portal() 渲染方法 |
+| `Scripts/UI/BoardView.gd` | encounter 渲染区分三态（boss/boss_locked/encounter）；新增 portal_cells 渲染 |
+| `Scripts/Main.gd` | 连接 boss_unlocked/portal_spawned 信号 + 反馈飘字 |
+
+### 日志
+
+| 文件 | 修改内容 |
+|------|----------|
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.48 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.48，§2.2/§3.1/§3.3/§6 同步 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.49 + v0.1.50 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 版本更新至 v0.1.50，§2.2/§3.1/§3.3/§6 同步 |
 
 ---
 
 ## 实现内容
 
-### 1. CyberBackground.gd（全新文件，~155行）
+### 1. 掷骰演出升级（v0.1.49）
 
-- `class_name CyberBackground`，extends Control，作为 Main 的第一个子节点（背景层）
-- **三段渐变背景**：12 级色阶从深暗蓝（顶）→ 暗蓝灰（中）→ 微亮蓝灰（底），取代原来的纯色 ColorRect
-- **透视网格线**：
-  - 棋盘下方区域绘制水平+垂直半透明网格线
-  - 水平线带缓慢向下漂移动画（drift = t * 3.0），模拟数据流纵深感
-  - 垂直线从中心向两侧淡出，中心线加粗强调
-  - 远离棋盘的线条 alpha 递减，营造透视消失感
-- **浮动粒子（CPUParticles2D）**：
-  - 35个粒子，lifetime 6秒，全屏矩形发射区域
-  - 方向随机（spread 180°），无重力缓慢漂浮
-  - Gradient 色彩渐变：淡入→蓝光→渐弱→淡出
-  - gl_compatibility 安全（CPUParticles2D 不依赖 GPU 粒子）
-- **棋盘发光边框**：
-  - 4层外辉光（半透明递减），内层亮线 3px
-  - sin 脉冲呼吸效果（频率 2.0，幅度 ±15%）
-  - 发光颜色使用青蓝色系，与 CyberStyle 一致
-- **角标装饰**：棋盘四角各画两条 14px 短线（L 形），青色半透明
-- **扫描线**：6px 高半透明青色条，缓慢从上至下循环扫过全屏
-- **动画刷新**：50ms Timer（20fps），仅驱动 queue_redraw
+- DiceRollAnimation.gd 完全重写：
+  - 全屏遮罩（PRESET_FULL_RECT + MOUSE_FILTER_STOP）
+  - 3 枚等距立方体：六边形轮廓 + 三面着色（顶/左/右）+ Crest 符号（顶面）+ 名称（右面）
+  - 四阶段动画：tumble（随机翻面）→ settle（逐颗定格+弹跳缩放+辉光）→ hold → fade_out
+  - set_board_center() 接口，默认居中于棋盘区域 (328, 382)
+- DiceDebugPanel 不再内部创建动画，由 Main 传入外部引用
+- Main.gd 在 _build_debug_view() 末尾创建 DiceRollAnimation，z-order 最高
 
-### 2. Main.gd 修改
+### 2. Boss 锁定 + 传送门（v0.1.50）
 
-- 新增 `CyberBackground` preload
-- `_build_debug_view()` 中用 `CyberBackground.new()` 替代旧 `ColorRect.new()`
-- 通过 `set_board_rect(Vector2(40, 94), Vector2(576, 576))` 告知背景棋盘位置
-- CyberBackground 的 mouse_filter = MOUSE_FILTER_IGNORE，不影响交互
+- **BoardManager**：新增 locked_encounters 和 portal_cells 字典，6 个新方法
+- **BoardGenerator**：Boss 遭遇格生成后自动锁定
+- **VictoryRuleHelper**：新增 has_grunt_units() 检测哨兵存活
+- **BattleFlowController**：
+  - _check_battle_outcome() 重写：DEFEAT 优先判定 → 哨兵全灭时解锁 Boss → 仍有遭遇格/传送门时不判胜
+  - _try_unlock_boss()：遍历 locked_encounters 并解锁 + 发信号
+  - _spawn_portal_near()：Boss 击败后在附近（优先下方）生成传送门
+  - _check_portal()：玩家踩传送门 → FLOOR_CLEAR 或 VICTORY
+  - try_move_unit() 新增 _check_portal() 调用
+  - _check_encounter() 跳过锁定遭遇格
+  - resolve_encounter() Boss 胜利时生成传送门
+- **BoardCellRenderer**：新增 boss_locked（灰暗+X锁链+LOCKED文字）和 portal（青蓝旋涡）渲染
+- **BoardView**：encounter 渲染三态区分 + portal_cells 渲染循环
+- **Main.gd**：连接新信号 + 反馈飘字
 
 ---
 
@@ -67,33 +88,43 @@ Phase 3 完成了卡牌战斗面板重设计，卡牌层界面已有"卡牌游�
 
 ### 新增
 
-- `CyberBackground`（class_name 全局注册）：`set_board_rect(origin, size)` 方法
+- `BoardManager.lock_encounter(cell)` / `unlock_encounter(cell)` / `is_encounter_locked(cell)`
+- `BoardManager.add_portal_cell(cell)` / `clear_portal_cell(cell)`
+- `BoardManager.locked_encounters: Dictionary` / `portal_cells: Dictionary`
+- `VictoryRuleHelper.has_grunt_units(unit_manager)` 静态方法
+- `BattleFlowController.boss_unlocked` / `portal_spawned` 信号
+- `BoardCellRenderer._draw_boss_locked()` / `_draw_portal()` 静态方法
+- `DiceRollAnimation.set_board_center(center)` 方法
+- `DiceDebugPanel.set_dice_animation(anim)` 方法
 
 ### 修改
 
-- `Main._build_debug_view()` 背景从 ColorRect 改为 CyberBackground
+- `BattleFlowController._check_battle_outcome()` 逻辑重写
+- `BattleFlowController._check_encounter()` 新增锁定检查
+- `BattleFlowController.resolve_encounter()` Boss 胜利生成传送门
+- `DiceRollAnimation` 全部重写（保留 animation_finished 信号签名不变）
 
 ### 无变化
 
-- BattleFlowController 零修改
 - CardBattleController 零修改
-- BoardView 零修改
 - CardBattlePanel 零修改
-- CyberStyle 零修改（CyberBackground 使用内部常量，不污染全局）
+- CyberStyle 零修改
 
 ---
 
 ## 测试确认
 
 代码审查确认：
-- CyberBackground mouse_filter = MOUSE_FILTER_IGNORE，不拦截任何输入事件
-- CPUParticles2D 数量 35 个，远低于性能警戒线（<3 个发射器同时活跃）
-- _draw() 中无每帧创建对象（纯 draw_rect/draw_line 调用）
-- 渐变 12 级色阶用循环 draw_rect 实现，无 Shader 依赖，gl_compatibility 安全
-- 网格线使用 draw_line，线宽 1px，性能无压力
-- 浮动粒子 Gradient 色彩渐变：两端 alpha=0 确保粒子自然淡入淡出
-- 棋盘发光脉冲使用 Time.get_ticks_msec() + sin()，与 BoardCellRenderer 模式一致，不创建 Tween
-- Main.gd 仅替换一个子节点，所有信号连接不变
+- BoardManager locked_encounters/portal_cells 在 build_test_board() 和 clear_board() 中都正确清理
+- advance_to_next_floor() 调用 clear_board() 会自动清理新字典，无需额外修改
+- restart_battle() 调用 clear_board() 会自动清理新字典，无需额外修改
+- _check_battle_outcome() DEFEAT 在最前判断，不会遗漏失败判定
+- _try_unlock_boss() 先收集待解锁格再遍历解锁，避免遍历中修改字典
+- _spawn_portal_near() 有 fallback（所有邻格被占时放在原格）
+- _check_portal() 只对 player 单位生效，敌方单位踩传送门不触发
+- BoardCellRenderer.draw_overlay() dispatch 新增 boss_locked 和 portal 分支
+- BoardView 正确区分 boss/boss_locked/encounter 三态渲染
+- DiceRollAnimation 保持 animation_finished 信号签名不变，DiceDebugPanel 兼容
 
 ---
 
@@ -102,6 +133,7 @@ Phase 3 完成了卡牌战斗面板重设计，卡牌层界面已有"卡牌游�
 - 层间难度暂不递增（已排后）
 - 阵亡单位跨层不复活
 - CardRewardPanel 暂未使用 CardRenderer 风格（可在后续统一）
+- Boss 卡牌战斗失败时玩家不死（HP 设为 max(1, remaining)），需要考虑是否改为真正死亡
 
 ---
 
@@ -115,10 +147,8 @@ Phase 3 完成了卡牌战斗面板重设计，卡牌层界面已有"卡牌游�
 
 ## Codex 复审标注
 
-1. **CyberBackground 独立模块设计**：背景氛围作为独立 Control，不依赖任何游戏逻辑模块。仅通过 `set_board_rect()` 接收棋盘位置参数。这保持了渲染层与逻辑层的完全分离。
+1. **胜利条件链变更**：原来是"全敌方死=胜利"，现在是"哨兵死→Boss解锁→踩Boss格→卡牌战斗→胜利→传送门→踩传送门→通关"。这大幅增加了通关步骤，需要测试实际游戏节奏是否合理。
 
-2. **颜色常量未加入 CyberStyle**：CyberBackground 的渐变/网格/辉光颜色定义为文件内部常量，未加入 CyberStyle。原因：这些颜色是背景专用的微调值，不会被其他模块复用。如果未来有其他模块需要引用背景配色，可以迁移到 CyberStyle。
+2. **传送门位置选择**：优先 Boss 格下方，然后右、左、上。如果所有邻格被占则放在 Boss 原格（fallback）。这个逻辑在大多数情况下能正常工作，但如果 Boss 格在最下排（row 7），下方格子不在棋盘内，会 fallback 到右侧。
 
-3. **粒子数量选择**：35个粒子是在"有氛围感"和"不分散注意力"之间的平衡。粒子 alpha 控制在 0.18-0.22 的低区间，作为背景纹理而非前景元素。实际感受可能需要在 Godot 运行时微调 amount 和 color_ramp。
-
-4. **网格漂移速度**：drift = t * 3.0，每秒漂移 3 个像素单位。偏慢是有意为之——背景动态应该是"呼吸感"而非"运动感"。如果觉得太静可以调大到 5-8。
+3. **_check_battle_outcome 复杂度增加**：原来 3 行逻辑变成约 20 行。核心改变是增加了"遭遇格仍存在"和"传送门存在"两个中间状态检查。这使得胜利条件不再是纯粹基于单位存活状态，而是结合了棋盘格子状态。

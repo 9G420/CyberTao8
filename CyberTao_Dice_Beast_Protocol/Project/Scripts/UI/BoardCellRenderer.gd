@@ -41,6 +41,10 @@ static func draw_overlay(c: CanvasItem, rect: Rect2, cell_type: String, pulse: f
 			_draw_encounter(c, rect, pulse, font)
 		"boss":
 			_draw_boss(c, rect, pulse, font)
+		"boss_locked":
+			_draw_boss_locked(c, rect, pulse, font)
+		"portal":
+			_draw_portal(c, rect, pulse, font)
 		"heal":
 			_draw_heal(c, rect, pulse, font, extra)
 		"event":
@@ -116,6 +120,43 @@ static func _draw_boss(c: CanvasItem, rect: Rect2, pulse: float, font: Font) -> 
 	var tx: float = rect.position.x + rect.size.x * 0.15
 	var ty: float = rect.position.y + rect.size.y * 0.6
 	c.draw_string(font, Vector2(tx, ty), "BOSS", HORIZONTAL_ALIGNMENT_LEFT, int(rect.size.x * 0.7), 13, Color(col.r, col.g, col.b, 0.9 + pulse * 0.1))
+
+# --- Boss 锁定：灰暗 + 锁链符号 ---
+
+static func _draw_boss_locked(c: CanvasItem, rect: Rect2, pulse: float, font: Font) -> void:
+	var col: Color = Color(0.5, 0.2, 0.2)
+	c.draw_rect(rect, Color(col.r, col.g, col.b, 0.25 + pulse * 0.08), true)
+	_glow(c, rect, col, 0.5 + pulse * 0.2)
+	c.draw_rect(rect, Color(col.r, col.g, col.b, 0.4 + pulse * 0.15), false, 2.0)
+	# 锁链 X 符号
+	var cx: float = rect.position.x + rect.size.x * 0.5
+	var cy: float = rect.position.y + rect.size.y * 0.35
+	var s: float = 10.0
+	var lc: Color = Color(0.6, 0.3, 0.3, 0.6 + pulse * 0.2)
+	c.draw_line(Vector2(cx - s, cy - s), Vector2(cx + s, cy + s), lc, 2.0)
+	c.draw_line(Vector2(cx + s, cy - s), Vector2(cx - s, cy + s), lc, 2.0)
+	# 锁文字
+	var tx: float = rect.position.x + rect.size.x * 0.1
+	var ty: float = rect.position.y + rect.size.y * 0.78
+	c.draw_string(font, Vector2(tx, ty), "LOCKED", HORIZONTAL_ALIGNMENT_LEFT, int(rect.size.x * 0.8), 10, Color(0.6, 0.3, 0.3, 0.7))
+
+# --- 传送门：青蓝旋涡 + PORTAL 文字 ---
+
+static func _draw_portal(c: CanvasItem, rect: Rect2, pulse: float, font: Font) -> void:
+	var col: Color = CyberStyle.ACCENT_CYAN
+	c.draw_rect(rect, Color(col.r, col.g, col.b, 0.2 + pulse * 0.12), true)
+	_glow(c, rect, col, 0.9 + pulse * 0.5)
+	c.draw_rect(rect, Color(col.r, col.g, col.b, 0.5 + pulse * 0.3), false, 2.5)
+	# 同心旋涡圆环
+	var cx: float = rect.position.x + rect.size.x * 0.5
+	var cy: float = rect.position.y + rect.size.y * 0.4
+	var r1: float = 12.0
+	var r2: float = 7.0
+	var r3: float = 3.0
+	var la: float = 0.6 + pulse * 0.3
+	c.draw_arc(Vector2(cx, cy), r1, 0.0, TAU, 20, Color(col.r, col.g, col.b, la * 0.6), 1.5)
+	c.draw_arc(Vector2(cx, cy), r2, 0.0, TAU, 16, Color(col.r, col.g, col.b, la * 0.8), 2.0)
+	c.draw_arc(Vector2(cx, cy), r3, 0.0, TAU, 12, Color(col.r, col.g, col.b, la), 2.5)
 
 # --- 回复格：蓝色辉光 + ✚ 十字 + 回复量 ---
 

@@ -85,6 +85,12 @@ func bind_board_view(board_view: Node) -> void:
 	if board_view.unit_deselected and not board_view.unit_deselected.is_connected(_on_unit_deselected):
 		board_view.unit_deselected.connect(_on_unit_deselected)
 
+## 由 Main 调用，传入全屏掷骰动画引用
+func set_dice_animation(anim: DiceRollAnimation) -> void:
+	_dice_anim = anim
+	if _dice_anim and not _dice_anim.animation_finished.is_connected(_on_dice_anim_finished):
+		_dice_anim.animation_finished.connect(_on_dice_anim_finished)
+
 func _build_ui() -> void:
 	# --- 面板背景 ---
 	add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.BORDER_CYAN, 8))
@@ -242,11 +248,7 @@ func _build_ui() -> void:
 	roll_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	add_child(roll_label)
 
-	# --- 掷骰演出动画（覆盖掷骰结果区域） ---
-	_dice_anim = DiceRollAnimation.new()
-	_dice_anim.position = Vector2(16, 290)
-	_dice_anim.animation_finished.connect(_on_dice_anim_finished)
-	add_child(_dice_anim)
+	# 掷骰演出动画由 Main 创建并传入（全屏居中）
 
 	# --- Crest 资源池 ---
 	crest_label = RichTextLabel.new()
@@ -268,7 +270,7 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.47"
+	ver_label.text = "v0.1.50"
 	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

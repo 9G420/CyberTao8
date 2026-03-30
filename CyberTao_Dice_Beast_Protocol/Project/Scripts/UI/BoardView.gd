@@ -209,7 +209,14 @@ func _draw_layer_overlays(pulse: float, font: Font) -> void:
 		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), String(board_manager.terrain_cells[cell]), pulse, font, "")
 	for cell in board_manager.encounter_cells.keys():
 		var enc_id: String = String(board_manager.encounter_cells[cell])
-		var ctype: String = "boss" if enc_id.begins_with("encounter_boss_") else "encounter"
+		var is_boss: bool = enc_id.begins_with("encounter_boss_")
+		var ctype: String
+		if is_boss and board_manager.is_encounter_locked(cell):
+			ctype = "boss_locked"
+		elif is_boss:
+			ctype = "boss"
+		else:
+			ctype = "encounter"
 		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), ctype, pulse, font, "")
 	for cell in board_manager.heal_cells.keys():
 		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "heal", pulse, font, str(int(board_manager.heal_cells[cell])))
@@ -228,6 +235,8 @@ func _draw_layer_overlays(pulse: float, font: Font) -> void:
 		var item_id: String = String(board_manager.item_cells[cell])
 		var display: String = String(_item_names.get(item_id, "?"))
 		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 3), "item", pulse, font, display)
+	for cell in board_manager.portal_cells.keys():
+		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "portal", pulse, font, "")
 
 # Layer 3: 高亮系统
 func _draw_layer_highlights(pulse: float) -> void:

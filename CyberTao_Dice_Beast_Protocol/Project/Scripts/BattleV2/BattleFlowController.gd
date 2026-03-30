@@ -23,6 +23,8 @@ signal shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, 
 signal chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String)
 signal floor_cleared(floor_number: int)
 signal game_won
+signal boss_unlocked(cell: Vector2i)
+signal portal_spawned(cell: Vector2i)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -397,6 +399,8 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 		_check_chest_cell(unit_id, target_cell)
 	if not unit_manager.get_unit(unit_id).is_empty():
 		_check_encounter(unit_id, target_cell)
+	if not unit_manager.get_unit(unit_id).is_empty():
+		_check_portal(unit_id, target_cell)
 	return true
 
 func get_attackable_cells_for(unit_id: String) -> Array[Vector2i]:
@@ -442,7 +446,19 @@ func try_attack_unit(attacker_id: String, target_cell: Vector2i) -> bool:
 
 func _check_battle_outcome() -> void:
 	var outcome: String = VictoryRuleHelper.get_battle_outcome(unit_manager)
+	if outcome == "DEFEAT" or outcome == "DRAW":
+		mark_defeat()
+		return
+	# 哨兵全灭 → 解锁 Boss 遭遇格
+	if not VictoryRuleHelper.has_grunt_units(unit_manager):
+		_try_unlock_boss()
+	# 所有敌方单位清空但棋盘上仍有遭遇格（Boss 遭遇）→ 不判胜
 	if outcome == "VICTORY":
+		if board_manager.encounter_cells.size() > 0:
+			return  # Boss 遭遇尚存，等玩家踩上触发卡牌战斗
+		if board_manager.portal_cells.size() > 0:
+			return  # 传送门已出现，等玩家踩上
+		# 无遭遇无传送门：正常判胜/通关
 		if current_floor < MAX_FLOOR:
 			current_phase = BattlePhase.FLOOR_CLEAR
 			emit_signal("phase_changed", _phase_name(current_phase))
@@ -450,8 +466,15 @@ func _check_battle_outcome() -> void:
 		else:
 			emit_signal("game_won")
 			mark_victory()
-	elif outcome == "DEFEAT" or outcome == "DRAW":
-		mark_defeat()
+
+## 尝试解锁所有 Boss 遭遇格
+func _try_unlock_boss() -> void:
+	var cells_to_unlock: Array[Vector2i] = []
+	for cell in board_manager.locked_encounters.keys():
+		cells_to_unlock.append(cell)
+	for cell in cells_to_unlock:
+		board_manager.unlock_encounter(cell)
+		emit_signal("boss_unlocked", cell)
 
 ## 计算含地形适性加成、临时防御和 Buff 修正的伤害值
 func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> int:
@@ -474,6 +497,9 @@ func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> in
 func _check_encounter(unit_id: String, cell: Vector2i) -> void:
 	if not board_manager.encounter_cells.has(cell):
 		return
+	# 锁定的遭遇格（Boss 未解锁）不可触发
+	if board_manager.is_encounter_locked(cell):
+		return
 	var encounter_id: String = String(board_manager.encounter_cells[cell])
 	_encounter_unit_id = unit_id
 	_encounter_id = encounter_id
@@ -491,6 +517,7 @@ func resolve_encounter(victory: bool = true, player_hp_remaining: int = -1) -> v
 	var resolved_id: String = _encounter_id
 	var resolved_cell: Vector2i = _encounter_cell
 	var unit_id: String = _encounter_unit_id
+	var is_boss: bool = resolved_id.begins_with("encounter_boss_")
 	board_manager.clear_encounter_cell(resolved_cell)
 	if player_hp_remaining >= 0:
 		var unit: Dictionary = unit_manager.get_unit(unit_id)
@@ -505,12 +532,47 @@ func resolve_encounter(victory: bool = true, player_hp_remaining: int = -1) -> v
 		var killed: bool = unit_manager.apply_damage(unit_id, 2)
 		if killed:
 			_check_battle_outcome()
+	# Boss 击败 → 在 Boss 格下方生成传送门
+	if is_boss and victory:
+		_spawn_portal_near(resolved_cell)
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)
 	current_phase = BattlePhase.PLAYER_ACTION
 	emit_signal("encounter_resolved", resolved_id, resolved_cell)
 	emit_signal("phase_changed", _phase_name(current_phase))
+
+## 在指定格子附近（优先下方）生成传送门
+func _spawn_portal_near(cell: Vector2i) -> void:
+	# 优先下方，然后右、左、上
+	var candidates: Array[Vector2i] = [
+		cell + Vector2i(0, 1), cell + Vector2i(1, 0),
+		cell + Vector2i(-1, 0), cell + Vector2i(0, -1),
+	]
+	for c in candidates:
+		if board_manager.is_in_bounds(c) and not board_manager.occupied_cells.has(c):
+			board_manager.add_portal_cell(c)
+			emit_signal("portal_spawned", c)
+			return
+	# 如果全被占，放在原格
+	board_manager.add_portal_cell(cell)
+	emit_signal("portal_spawned", cell)
+
+## 检查玩家踩上传送门 → 通关 / 进入下一层
+func _check_portal(unit_id: String, cell: Vector2i) -> void:
+	if not board_manager.portal_cells.has(cell):
+		return
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty() or String(unit.get("owner", "")) != "player":
+		return
+	board_manager.clear_portal_cell(cell)
+	if current_floor < MAX_FLOOR:
+		current_phase = BattlePhase.FLOOR_CLEAR
+		emit_signal("phase_changed", _phase_name(current_phase))
+		emit_signal("floor_cleared", current_floor)
+	else:
+		emit_signal("game_won")
+		mark_victory()
 
 # ─── 召唤系统 ───
 

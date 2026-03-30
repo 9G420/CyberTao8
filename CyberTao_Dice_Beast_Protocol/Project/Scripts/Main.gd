@@ -22,6 +22,7 @@ var _card_reward_panel: CardRewardPanel
 var _deck_view_panel: DeckViewPanel
 var _result_label: Label
 var _restart_btn: Button
+var _dice_anim: DiceRollAnimation
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
@@ -124,6 +125,11 @@ func _build_debug_view() -> void:
 	CyberStyle.style_button(_restart_btn, "orange")
 	add_child(_restart_btn)
 
+	# 掷骰演出（全屏居中等距 3D 骰子，覆盖在最上层）
+	_dice_anim = DiceRollAnimation.new()
+	_dice_anim.set_board_center(Vector2(328, 382))
+	add_child(_dice_anim)
+
 func _wire_debug_views() -> void:
 	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
 	_board_view.bind_battle_flow(_battle_flow)
@@ -149,6 +155,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.chest_cell_triggered.connect(_on_chest_cell_triggered)
 	_battle_flow.floor_cleared.connect(_on_floor_cleared)
 	_battle_flow.game_won.connect(_on_game_won)
+	_battle_flow.boss_unlocked.connect(_on_boss_unlocked)
+	_battle_flow.portal_spawned.connect(_on_portal_spawned)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
@@ -160,6 +168,7 @@ func _wire_debug_views() -> void:
 	_deck_view_panel.bind_controller(_card_battle_ctrl)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
+	_dice_panel.set_dice_animation(_dice_anim)
 	_dice_panel.test_card_battle_requested.connect(_on_test_card_battle_requested)
 	_dice_panel.deck_view_requested.connect(_on_deck_view_requested)
 
@@ -321,6 +330,14 @@ func _on_floor_cleared(floor_number: int) -> void:
 func _on_game_won() -> void:
 	# 全部层通关（最终胜利在 _on_phase_changed VICTORY 中处理显示）
 	pass
+
+func _on_boss_unlocked(cell: Vector2i) -> void:
+	_board_view.play_encounter_feedback(cell, "BOSS 解锁！")
+	_board_view.queue_redraw()
+
+func _on_portal_spawned(cell: Vector2i) -> void:
+	_board_view.play_pickup_feedback(cell, "传送门！")
+	_board_view.queue_redraw()
 
 func _on_restart_pressed() -> void:
 	_board_view.selected_unit_id = ""

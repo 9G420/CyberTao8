@@ -78,6 +78,7 @@ static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i
 	if boss_cells.size() > 0:
 		var boss_id: String = BOSS_ENCOUNTER_IDS[randi() % BOSS_ENCOUNTER_IDS.size()]
 		board_mgr.add_encounter_cell(boss_cells[0], boss_id)
+		board_mgr.lock_encounter(boss_cells[0])
 		used_cells[boss_cells[0]] = true
 	# 5. 恢复格
 	var heal_cells: Array[Vector2i] = _pick_random_cells(board_size, HEAL_COUNT, used_cells, false)

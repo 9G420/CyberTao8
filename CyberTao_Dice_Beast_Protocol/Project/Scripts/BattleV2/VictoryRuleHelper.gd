@@ -39,3 +39,20 @@ static func describe_unit_hp(unit: Dictionary) -> String:
 	if unit.is_empty():
 		return "-/-"
 	return str(int(unit.get("hp", 0))) + "/" + str(int(unit.get("max_hp", 0)))
+
+## 检查是否还有存活的哨兵（grunt）单位
+static func has_grunt_units(unit_manager: Node) -> bool:
+	if unit_manager == null:
+		return false
+	for unit_id in unit_manager.units_by_id.keys():
+		var state: Dictionary = unit_manager.get_unit(String(unit_id))
+		if state.is_empty():
+			continue
+		if String(state.get("owner", "")) != "enemy":
+			continue
+		if not is_unit_alive(state):
+			continue
+		var tags: Array = state.get("tags", [])
+		if tags.has("grunt"):
+			return true
+	return false
