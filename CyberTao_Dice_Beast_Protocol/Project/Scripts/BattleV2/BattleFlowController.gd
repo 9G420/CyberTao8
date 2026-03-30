@@ -220,6 +220,12 @@ func _spawn_debug_encounters() -> void:
 	board_manager.add_encounter_cell(Vector2i(4, 4), "encounter_01")
 	# 遭遇格 2：偏侧翼，可选择绕行或主动踩入
 	board_manager.add_encounter_cell(Vector2i(6, 5), "encounter_02")
+	# 遭遇格 3：上方区域，早期路线分支
+	board_manager.add_encounter_cell(Vector2i(2, 2), "encounter_03")
+	# 遭遇格 4：右侧纵深，冒险路线高威胁
+	board_manager.add_encounter_cell(Vector2i(7, 4), "encounter_04")
+	# 遭遇格 5：中部偏下，玩家必经之路附近
+	board_manager.add_encounter_cell(Vector2i(5, 1), "encounter_05")
 
 ## 放置调试用恢复格（蓝白色，持久回复，可重复踩）
 func _spawn_debug_heal_cells() -> void:

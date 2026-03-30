@@ -120,6 +120,21 @@ static func get_encounter_enemy_data(enc_id: String) -> Dictionary:
 				"name": "赛博游魂", "hp": 6, "atk": 3,
 				"pattern": ["attack", "heavy_attack", "attack"],
 			}
+		"encounter_03":
+			return {
+				"name": "暗网爬虫", "hp": 12, "atk": 1,
+				"pattern": ["defend_attack", "defend_attack", "heavy_attack", "attack"],
+			}
+		"encounter_04":
+			return {
+				"name": "脉冲猎手", "hp": 5, "atk": 4,
+				"pattern": ["heavy_attack", "attack", "attack"],
+			}
+		"encounter_05":
+			return {
+				"name": "数据幽灵", "hp": 9, "atk": 2,
+				"pattern": ["attack", "defend_attack", "heavy_attack", "heavy_attack", "attack"],
+			}
 	return {
 		"name": "未知敌人", "hp": 5, "atk": 2,
 		"pattern": ["attack", "attack"],
