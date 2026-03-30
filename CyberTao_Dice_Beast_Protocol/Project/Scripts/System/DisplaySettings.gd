@@ -17,27 +17,36 @@ var current_mode: int = DEFAULT_MODE
 
 func _ready() -> void:
 	load_settings()
-	apply_settings()
+	# 延迟一帧应用，确保引擎窗口系统完全初始化
+	call_deferred("apply_settings")
 
 func apply_settings() -> void:
-	# 更新视口虚拟分辨率，使不同分辨率有真实视觉变化
-	var root: Window = null
-	if get_tree():
-		root = get_tree().root
-	if root:
-		root.content_scale_size = Vector2i(current_resolution.x, current_resolution.y)
+	if not is_inside_tree():
+		return
+	var root: Window = get_tree().root
+	if root == null:
+		return
+
+	# 1) 无论目标模式是什么，先强制回退到普通窗口模式
+	#    解决从全屏/无边框切换到其他模式时 DisplayServer 忽略后续操作的问题
+	var prev_mode: int = DisplayServer.window_get_mode()
+	if prev_mode != DisplayServer.WINDOW_MODE_WINDOWED:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
+
+	# 2) 更新视口虚拟分辨率（canvas_items 拉伸模式下控制渲染精度）
+	root.content_scale_size = current_resolution
+
+	# 3) 按目标模式应用
 	match current_mode:
-		0: # Windowed
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
-			DisplayServer.window_set_size(Vector2i(current_resolution.x, current_resolution.y))
+		0: # 窗口化
+			DisplayServer.window_set_size(current_resolution)
 			_center_window()
-		1: # Fullscreen
+		1: # 全屏
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-		2: # Borderless windowed
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		2: # 无边框窗口
 			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
-			DisplayServer.window_set_size(Vector2i(current_resolution.x, current_resolution.y))
+			DisplayServer.window_set_size(current_resolution)
 			_center_window()
 
 func _center_window() -> void:

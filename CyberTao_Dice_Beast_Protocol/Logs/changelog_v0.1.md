@@ -1097,3 +1097,18 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 难度暂不递增（各层敌方数值相同），后续可根据 floor 调整
 - 阵亡单位不复活，可能导致后续层困难，需平衡测试
 - BFC 从 605 行增长至约 693 行（+88行）
+
+## v0.1.43 - 2026-03-30
+
+### 修复
+- BUG-001：分辨率切换无效 — apply_settings() 在 _ready() 中同步调用，窗口系统尚未初始化，改为 call_deferred 延迟一帧
+- BUG-001：全屏/无边框窗口切换无效 — 从全屏切回窗口/无边框时 DisplayServer 忽略后续操作，修复为先强制回退 WINDOW_MODE_WINDOWED 再设置目标模式
+- BUG-001：无边框窗口切换无效 — 旧代码先设 WINDOW_MODE_WINDOWED 再设 BORDERLESS 标志，但 borderless 标志可能被模式切换覆盖；修复为先清除 borderless 标志，再按目标模式正确设置
+
+### 修改
+- DiceDebugPanel 版本号更新为 v0.1.43
+
+### 备注
+- DisplaySettings.gd 核心修复：call_deferred 延迟初始化 + 先回退窗口模式再应用目标模式
+- 修复覆盖三种场景：分辨率切换、全屏↔窗口切换、无边框窗口切换
+- 棋盘层和卡牌层完整闭环不受影响
