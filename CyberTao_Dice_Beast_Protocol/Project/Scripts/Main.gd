@@ -8,6 +8,7 @@ const DisplaySettings = preload("res://Scripts/System/DisplaySettings.gd")
 const SettingsPanel = preload("res://Scripts/UI/SettingsPanel.gd")
 const CardBattlePanel = preload("res://Scripts/UI/CardBattlePanel.gd")
 const CardRewardPanel = preload("res://Scripts/UI/CardRewardPanel.gd")
+const DeckViewPanel = preload("res://Scripts/UI/DeckViewPanel.gd")
 
 var _battle_flow: BattleFlowController
 var _card_battle_ctrl: CardBattleController
@@ -17,6 +18,7 @@ var _display_settings: DisplaySettings
 var _settings_panel: SettingsPanel
 var _card_battle_panel: CardBattlePanel
 var _card_reward_panel: CardRewardPanel
+var _deck_view_panel: DeckViewPanel
 var _result_label: Label
 var _restart_btn: Button
 var _last_attack_damage: int = 0
@@ -98,6 +100,10 @@ func _build_debug_view() -> void:
 	_card_reward_panel.position = Vector2(380, 200)
 	add_child(_card_reward_panel)
 
+	_deck_view_panel = DeckViewPanel.new()
+	_deck_view_panel.position = Vector2(160, 120)
+	add_child(_deck_view_panel)
+
 	_result_label = Label.new()
 	_result_label.position = Vector2(0, 44)
 	_result_label.size = Vector2(1280, 40)
@@ -145,9 +151,12 @@ func _wire_debug_views() -> void:
 	_card_battle_panel.bind_controller(_card_battle_ctrl)
 	# 卡牌奖励面板绑定控制器
 	_card_reward_panel.bind_controller(_card_battle_ctrl)
+	# 牌组查看面板绑定控制器
+	_deck_view_panel.bind_controller(_card_battle_ctrl)
 	_dice_panel.bind_battle_flow(_battle_flow)
 	_dice_panel.bind_board_view(_board_view)
 	_dice_panel.test_card_battle_requested.connect(_on_test_card_battle_requested)
+	_dice_panel.deck_view_requested.connect(_on_deck_view_requested)
 
 func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
@@ -296,3 +305,9 @@ func _on_test_card_battle_requested() -> void:
 	var p_hp: int = int(unit.get("hp", 1))
 	var p_max_hp: int = int(unit.get("max_hp", 1))
 	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp)
+
+func _on_deck_view_requested() -> void:
+	if _deck_view_panel.is_open():
+		_deck_view_panel.close()
+	else:
+		_deck_view_panel.open()

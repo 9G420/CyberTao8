@@ -2,6 +2,7 @@ extends Panel
 class_name DiceDebugPanel
 
 signal test_card_battle_requested
+signal deck_view_requested
 
 var battle_flow: Node = null
 var dice_manager: Node = null
@@ -155,13 +156,22 @@ func _build_ui() -> void:
 	add_child(path_button)
 
 	var card_test_button := Button.new()
-	card_test_button.text = "测试卡牌战斗"
+	card_test_button.text = "测试战斗"
 	card_test_button.position = Vector2(16, 218)
-	card_test_button.size = Vector2(248, 32)
+	card_test_button.size = Vector2(120, 32)
 	card_test_button.add_theme_font_size_override("font_size", 12)
 	card_test_button.pressed.connect(_on_test_card_battle_pressed)
 	CyberStyle.style_button(card_test_button, "orange")
 	add_child(card_test_button)
+
+	var deck_view_button := Button.new()
+	deck_view_button.text = "查看牌组"
+	deck_view_button.position = Vector2(142, 218)
+	deck_view_button.size = Vector2(122, 32)
+	deck_view_button.add_theme_font_size_override("font_size", 12)
+	deck_view_button.pressed.connect(_on_deck_view_pressed)
+	CyberStyle.style_button(deck_view_button, "cyan")
+	add_child(deck_view_button)
 
 	# --- Crest 使用按钮（护持/术式/机巧） ---
 	var defend_btn := Button.new()
@@ -229,7 +239,7 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.33"
+	ver_label.text = "v0.1.34"
 	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -286,6 +296,9 @@ func _on_spawn_path_pressed() -> void:
 
 func _on_test_card_battle_pressed() -> void:
 	test_card_battle_requested.emit()
+
+func _on_deck_view_pressed() -> void:
+	deck_view_requested.emit()
 
 func _on_defend_crest_pressed() -> void:
 	if battle_flow and _selected_unit_id_cache != "":

@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.33
+**版本**: v0.1.34
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- Day 15：DEFEND/SKILL/TRICK crest 消耗入口
+- Day 16：牌组查看面板
 
 ---
 
 ## 根因目标
 
-骰子 6 面中有 3 面（护持/术式/机巧）占 50% 概率却完全无法使用，玩家每回合有一半骰面是"废骰"。Day 15 的目标是为这 3 种 crest 设计实际消耗入口，让每颗骰子都有价值，提升掷骰决策深度。服务于棋盘走位层。
+持久牌组系统（v0.1.31）引入后，玩家无法在棋盘阶段查看当前牌组内容和大小，只有在选牌奖励时才能看到牌组张数。缺少透明度导致玩家无法做出有效的构筑决策（不知道牌组里有什么牌、多少张）。Day 16 的目标是提供一个随时可查看牌组的面板，让构筑成长可视化。服务于卡牌战斗层。
 
 ---
 
@@ -22,94 +22,90 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 新增 3 个 crest 使用方法（try_use_defend_crest / try_use_skill_crest / try_use_trick_crest）；新增 3 个信号；修改 _calc_damage_with_terrain 加入 temp_def；end_player_turn 中清除临时防御 |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | 新增护持/术式/机巧 3 个操作按钮（紧凑一行排列）；按钮回调接入 BFC 方法；UI 元素下移适配；版本号更新为 v0.1.33；面板高度从 540 调整为 574 |
-| `Project/Scripts/Main.gd` | 接入 defend_crest_used / skill_crest_used / trick_crest_used 信号；新增 3 个回调函数提供视觉反馈 |
-| `Logs/Mulerun_Work_Report.md` | 本文件，Day 15 工作报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.33 条目 |
+| `Project/Scripts/UI/DeckViewPanel.gd` | 全新文件，牌组查看面板：显示持久牌组所有卡牌（名称/类型/费用/数值），按名称排序，合并同名卡牌计数，BBCode 彩色区分卡牌类型 |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | 原"测试卡牌战斗"按钮拆分为"测试战斗"+"查看牌组"并排两按钮；新增 deck_view_requested 信号；版本号更新为 v0.1.34 |
+| `Project/Scripts/Main.gd` | 新增 DeckViewPanel 实例化和定位(160,120)；绑定 CardBattleController；连接 deck_view_requested 信号；新增 _on_deck_view_requested 回调（toggle 开关） |
+| `Logs/Mulerun_Work_Report.md` | 本文件，Day 16 工作报告 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.34 条目 |
 
 ---
 
 ## 实现内容
 
-1. **护持(DEFEND) crest — 临时防御**
-   - 消耗 1 护持 crest，选中玩家单位本回合 DEF +1
-   - 可多次使用累加（每次 +1）
-   - 回合结束时自动清零（不持续到下回合）
-   - 集成到伤害公式：`max(1, ATK - DEF - 地形加成 - 临时防御)`
-   - 需要先选中单位再点击按钮
+1. **DeckViewPanel 牌组查看面板**
+   - 青色边框赛博朋克风格面板（340x440）
+   - 标题"当前牌组" + 牌组张数统计
+   - 卡牌列表按名称排序显示，合并同名卡牌（如"斩击 x2"）
+   - 每张牌显示：名称（类型色）、数量、费用、类型中文、数值
+   - 类型颜色区分：攻击=橙色、防御=青色、回复=绿色、穿透/吸血=品红、电击=紫色
+   - RichTextLabel 支持滚动（牌组变大后可滚动浏览）
+   - 关闭按钮关闭面板
+   - 默认隐藏，隐藏时 mouse_filter=IGNORE 不阻挡棋盘点击
 
-2. **术式(SKILL) crest — 即时回复**
-   - 消耗 1 术式 crest，选中玩家单位回复 2 HP
-   - 满血时无法使用（防止浪费）
-   - 不超过最大 HP
-   - 需要先选中单位再点击按钮
+2. **DiceDebugPanel 按钮布局调整**
+   - 原"测试卡牌战斗"(248宽) 拆分为"测试战斗"(120宽) + "查看牌组"(122宽) 并排
+   - "测试战斗"保持橙色主题，"查看牌组"使用青色主题
+   - 不影响其他 UI 元素位置
 
-3. **机巧(TRICK) crest — 资源转化**
-   - 消耗 1 机巧 crest，随机获得 +1 实用 crest（步进/杀伐/显化三选一）
-   - 不需要选中单位
-   - 等概率 33.3% 每种
-
-4. **UI 集成**
-   - 3 个按钮紧凑排列在召唤和测试卡牌按钮下方
-   - 护持按钮橙色主题，术式和机巧按钮青色主题
-   - 使用后棋盘飘字反馈（DEF+N / HP+N）
-   - 资源池面板实时刷新
+3. **Toggle 交互**
+   - 点击"查看牌组"打开面板，再次点击关闭
+   - 每次打开时从 CardBattleController.persistent_deck 实时读取最新数据
+   - 选牌奖励后再次打开可看到新增的卡牌
 
 ---
 
 ## 接口变更
 
-### 新增信号（BattleFlowController）
-- `defend_crest_used(unit_id: String, new_temp_def: int)` — 护持 crest 使用后
-- `skill_crest_used(unit_id: String, heal_amount: int)` — 术式 crest 使用后
-- `trick_crest_used(gained_crest: String)` — 机巧 crest 使用后
+### 新增文件
+- `Project/Scripts/UI/DeckViewPanel.gd` — 牌组查看面板（class_name DeckViewPanel）
 
-### 新增方法（BattleFlowController）
-- `try_use_defend_crest(unit_id: String) -> bool` — 使用护持 crest
-- `try_use_skill_crest(unit_id: String) -> bool` — 使用术式 crest
-- `try_use_trick_crest() -> bool` — 使用机巧 crest
+### 新增信号（DiceDebugPanel）
+- `deck_view_requested` — 点击"查看牌组"按钮时发射
 
-### 修改方法
-- `_calc_damage_with_terrain()` — 新增 temp_def 参与防御计算
-- `end_player_turn()` — 新增 _clear_temp_def() 调用
+### 新增方法（DeckViewPanel）
+- `bind_controller(controller: CardBattleController)` — 绑定控制器
+- `open()` — 打开面板并刷新牌组数据
+- `close()` — 关闭面板
+- `is_open() -> bool` — 查询是否打开
 
-### 新增数据字段
-- 单位字典新增 `temp_def: int`（临时防御，回合结束清零）
+### 新增方法（Main）
+- `_on_deck_view_requested()` — toggle 牌组查看面板
 
 ---
 
 ## 测试确认
 
 代码逻辑自查通过：
-- 3 种 crest 均在 PLAYER_ACTION 阶段才可使用
-- 护持/术式需要选中玩家单位，机巧不需要
-- temp_def 在 end_player_turn 中正确清零
-- 伤害公式正确集成 temp_def
-- DiceDebugPanel 布局无重叠（已下移所有下方元素 34px）
-- 面板底部 ver_label 在 y=554，面板高度 574，不超出视口（94+574=668 < 720）
+- DeckViewPanel 默认 visible=false，mouse_filter=IGNORE，不阻挡棋盘交互
+- open() 时切换为 MOUSE_FILTER_STOP，close() 时恢复 IGNORE
+- _refresh_deck_list() 每次打开重新读取 persistent_deck，确保数据实时
+- 同名卡牌合并计数逻辑正确（Dictionary 键唯一）
+- RichTextLabel 滚动对大牌组有效
+- DiceDebugPanel 按钮拆分后总宽度 120+6gap+122=248，与原 248 一致，不影响布局
+- 面板位置 (160,120) 不超出 1280x720 视口（160+340=500, 120+440=560）
+- 棋盘层和卡牌层完整闭环不受影响（只新增了 UI 查看功能，无逻辑变更）
 
 ---
 
 ## 剩余问题
 
-- 护持/术式按钮未选中单位时点击无效果但无提示（可后续加提示文字）
-- 机巧转化结果在 UI 上没有直接文字提示（只有资源池数值变化）
-- 敌方目前不使用 defend/skill/trick crest（敌方 AI 仍只用 move/attack）
-- DiceDebugPanel 面板高度增加到 574，如果后续再添加按钮需要考虑布局空间
+- 牌组面板打开时会遮挡棋盘中心区域（需要时手动关闭）
+- 卡牌战斗进行中也可打开牌组面板（不影响功能但可能影响视觉层级）
+- 牌组面板不显示卡牌描述文本（只显示类型和数值）
+- 排序方式为名称排序，未按费用或类型分组（可后续增加排序选项）
 
 ---
 
 ## 建议下一步
 
-1. **牌组查看面板**（中优先）— 构筑系统配套 UI
-2. **棋盘随机生成**（高优先）— 固定布局重玩性低
-3. **BFC 瘦身**（中优先）— 将 debug spawn 剥离
-4. **DiceDebugPanel 重构**（低优先）— 面板已接近空间上限，可考虑折叠/分页
+1. **棋盘随机生成**（高优先）— 从固定布局升级为程序化生成
+2. **卡牌升级机制**（高优先）— 基础牌可升级为强化版本
+3. **BFC 瘦身**（中优先）— 将 debug spawn 剥离到 DebugScenario.gd
+4. **Boss 遭遇**（中优先）— 特殊遭遇格触发 Boss 战
 
 ---
 
 ## Codex 复审标注
 
-1. **Crest 效果平衡** — 护持 DEF+1 对比敌方 ATK 2~3 来说偏弱但安全；术式 HP+2 是即时收益，比较实用；机巧 1/3 概率转化为所需 crest，风险收益适中。如果测试中护持感觉过弱，可考虑改为 DEF+2。
-2. **temp_def 存储位置** — 选择直接存在 unit 字典中而非 BuffManager，因为效果简单（单回合清零），不需要 buff 系统的持续时间管理。如果后续 buff 类型增多，应统一迁移到 BuffManager。
+1. **面板定位**：DeckViewPanel 放在 Main.gd 实例化层（与 CardRewardPanel、SettingsPanel 一致），通过 DiceDebugPanel 信号触发，不在 DiceDebugPanel 内部持有引用，符合 UI 分层原则。
+2. **数据读取方式**：直接读取 CardBattleController.persistent_deck 数组，没有经过额外的查询方法封装。当前可接受，如果后续需要牌组过滤/搜索功能，建议在 CardBattleController 添加 get_persistent_deck() 方法做一层抽象。
