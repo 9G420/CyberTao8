@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.37
+**当前版本**: v0.1.38
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.37）
+### 2.2 当前完成状态总览（v0.1.38）
 
 **棋盘走位层（全部稳定）**
 
@@ -113,7 +113,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 |------|------|------|
 | 双层闭环首次跑通 | v0.1.25 | 稳定 |
 | CardBattleController独立状态机 | v0.1.26 | 稳定 |
-| 能量系统（每回合3点） | v0.1.27 | 稳定 |
+| 能量系统（每回合3点，成长至上限5） | v0.1.27/38 | 稳定 |
 | 双牌堆系统（抽牌/弃牌/洗牌） | v0.1.27 | 稳定 |
 | 3种敌方行为模式 + 意图预告 | v0.1.27 | 稳定 |
 | 胜利奖励crest | v0.1.27 | 稳定 |
@@ -126,6 +126,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | DeckViewPanel 牌组查看面板 | v0.1.34 | 稳定 |
 | 卡牌升级机制（14种牌升级数据+奖励面板双模式） | v0.1.36 | 稳定 |
 | Boss 遭遇（零号协议 HP20/ATK3/6阶段+独立视觉+增强奖励） | v0.1.37 | 稳定 |
+| 能量成长机制（遭遇胜利+1/Boss+2，上限5） | v0.1.38 | 稳定 |
 
 ### 2.3 当前牌组数据（14种牌，初始10张，均可升级一次）
 
@@ -183,7 +184,7 @@ BattleFlowController（棋盘层核心控制器）         ~785行 ⚠️ 已接
 ├── VictoryRuleHelper    — 胜负判定
 └── ItemEffectLibrary    — 道具效果
 
-CardBattleController（卡牌层独立状态机）         ~505行
+CardBattleController（卡牌层独立状态机）         ~515行
 └── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
 
 UI层
@@ -277,13 +278,12 @@ Main：                Scripts/Main.gd
 
 | 任务 | 说明 |
 |------|------|
-| **能量成长机制** | 随游戏进度每回合能量上限+1 |
+| **BuffManager 接入** | tick_turn 在回合流程中正式调用 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **BuffManager 接入** | tick_turn 在回合流程中正式调用 |
 | **BattleFlowController 瘦身** | 剥离逻辑到独立模块，目标降至 600 行以下 |
 
 ### 🟢 中低优先级
@@ -298,6 +298,7 @@ Main：                Scripts/Main.gd
 
 | 任务 | 版本 |
 |------|------|
+| 能量成长机制 | v0.1.38 |
 | Boss 遭遇（零号协议） | v0.1.37 |
 | 卡牌升级机制 | v0.1.36 |
 | 棋盘随机生成 | v0.1.35 |

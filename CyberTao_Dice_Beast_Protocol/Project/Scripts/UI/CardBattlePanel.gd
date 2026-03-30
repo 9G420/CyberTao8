@@ -47,6 +47,8 @@ func bind_controller(controller: CardBattleController) -> void:
 		_controller.battle_ended.connect(_on_battle_ended)
 	if _controller.victory_reward and not _controller.victory_reward.is_connected(_on_victory_reward):
 		_controller.victory_reward.connect(_on_victory_reward)
+	if _controller.energy_grown and not _controller.energy_grown.is_connected(_on_energy_grown):
+		_controller.energy_grown.connect(_on_energy_grown)
 
 # --- 控制器信号回调 ---
 
@@ -103,6 +105,9 @@ func _on_battle_ended(victory: bool, _player_hp_remaining: int) -> void:
 
 func _on_victory_reward(reward_text: String) -> void:
 	_log_label.text = _log_label.text + "\n奖励：" + reward_text
+
+func _on_energy_grown(old_max: int, new_max: int) -> void:
+	_log_label.text = _log_label.text + "\n能量上限提升！" + str(old_max) + " → " + str(new_max)
 
 # --- 按钮回调 ---
 

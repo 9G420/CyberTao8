@@ -17,6 +17,7 @@ signal victory_reward(reward_text: String)
 signal reward_cards_offered(options: Array)
 signal reward_card_selected(card: Dictionary)
 signal card_upgrade_completed(old_card: Dictionary, new_card: Dictionary)
+signal energy_grown(old_max: int, new_max: int)
 
 enum BattleState { IDLE, PLAYER_TURN, ENEMY_TURN, VICTORY, DEFEAT, REWARD_SELECT }
 
@@ -35,6 +36,8 @@ var def_bonus: int = 0
 # --- 能量系统 ---
 var energy: int = 0
 var max_energy: int = 3
+const INITIAL_MAX_ENERGY: int = 3
+const MAX_ENERGY_CAP: int = 5
 
 # --- 牌组系统（参考旧 Deck.gd 双牌堆） ---
 var draw_pile: Array[Dictionary] = []
@@ -376,6 +379,12 @@ func _win() -> void:
 	var reward_types: Array[String] = ["move", "attack", "defend", "skill", "trick", "summon"]
 	var picked: String = reward_types[randi() % reward_types.size()]
 	emit_signal("victory_reward", picked.to_upper() + "+1")
+	# 能量成长：每次遭遇胜利 +1，Boss 胜利 +2（上限 MAX_ENERGY_CAP）
+	var old_max: int = max_energy
+	var growth: int = 2 if is_boss_encounter() else 1
+	max_energy = min(MAX_ENERGY_CAP, max_energy + growth)
+	if max_energy > old_max:
+		emit_signal("energy_grown", old_max, max_energy)
 	# 进入选牌奖励阶段（不立即结束战斗）
 	_generate_reward_options()
 	state = BattleState.REWARD_SELECT
@@ -499,6 +508,7 @@ func get_deck_size() -> int:
 func reset_persistent_deck() -> void:
 	persistent_deck = _build_deck()
 	_deck_initialized = true
+	max_energy = INITIAL_MAX_ENERGY
 
 func _lose() -> void:
 	state = BattleState.DEFEAT

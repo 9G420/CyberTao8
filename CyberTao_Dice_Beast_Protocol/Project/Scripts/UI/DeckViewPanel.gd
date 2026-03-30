@@ -45,7 +45,7 @@ func _refresh_deck_list() -> void:
 	if _controller == null:
 		return
 	var deck: Array[Dictionary] = _controller.persistent_deck
-	_deck_size_label.text = "牌组总数：" + str(deck.size()) + " 张"
+	_deck_size_label.text = "牌组总数：" + str(deck.size()) + " 张 | 能量上限：" + str(_controller.max_energy)
 	# 统计每种牌的数量
 	var card_counts: Dictionary = {}
 	for card in deck:

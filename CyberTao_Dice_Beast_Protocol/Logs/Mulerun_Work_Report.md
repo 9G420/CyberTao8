@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.37
+**版本**: v0.1.38
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- Day 19：Boss 遭遇
+- Day 20：能量成长机制
 
 ---
 
 ## 根因目标
 
-当前 5 种遭遇敌方（HP 4~12，ATK 1~4）均为普通战斗，缺乏终局挑战感。Boss 遭遇作为特殊高难度战斗，具有高 HP（20）、独特多阶段行为模式（含回复和超载重击）、独立的棋盘视觉标识和增强奖励，为玩家的卡牌构筑提供终极考验。服务于卡牌战斗层 + 棋盘走位层（Boss 格放置）。
+当前卡牌战斗每回合固定 3 点能量，无论玩家经历多少次遭遇。随着牌组通过奖励选牌和升级逐渐强化，高费卡牌（猛攻 3E、超频修复 3E）的使用受限于固定能量上限，导致后期构筑深度不足。能量成长机制让每次遭遇胜利后能量上限+1（Boss 胜利+2），上限 5，使玩家随游戏进度获得更多操作空间，与牌组成长形成正反馈循环。服务于卡牌战斗层。
 
 ---
 
@@ -22,113 +22,95 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/BattleV2/CardBattleController.gd` | 新增 encounter_boss_01 数据（HP20/ATK3/6阶段模式/is_boss标记）；_enemy_act() 新增 heal 和 mega_attack 两种敌方行为；_update_enemy_intent() 新增对应意图文案；Boss 胜利提供 4 张奖励牌（普通 3 张）；新增 is_boss_encounter() 辅助方法 |
-| `Project/Scripts/BattleV2/BoardGenerator.gd` | 新增 BOSS_ENCOUNTER_IDS 常量；generate_board() 每局放置 1 个 Boss 遭遇格（优先右上象限）；新增 _pick_boss_cell() 选位方法 |
-| `Project/Scripts/UI/BoardView.gd` | _draw_encounters() 区分 Boss 与普通遭遇：Boss 格深红填充 + 粗边框 + "BOSS" 文字 |
-| `Project/Scripts/UI/CardBattlePanel.gd` | Boss 战斗标题显示 [BOSS] 标记；Boss 战斗禁止逃跑 |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | 版本号更新为 v0.1.37 |
-| `Project/Scripts/Main.gd` | 棋盘图例提示新增"深红=BOSS" |
-| `Logs/Mulerun_Work_Report.md` | 本文件，Day 19 工作报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.37 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步更新至 v0.1.37 状态 |
+| `Project/Scripts/BattleV2/CardBattleController.gd` | 新增 INITIAL_MAX_ENERGY(3) 和 MAX_ENERGY_CAP(5) 常量；新增 energy_grown 信号；_win() 中遭遇胜利 max_energy+1、Boss 胜利+2（上限 5）；reset_persistent_deck() 重置 max_energy |
+| `Project/Scripts/UI/CardBattlePanel.gd` | 连接 energy_grown 信号；新增 _on_energy_grown() 回调在战斗日志中显示能量提升 |
+| `Project/Scripts/UI/CardRewardPanel.gd` | 奖励面板 deck_info_label 新增显示当前能量上限 |
+| `Project/Scripts/UI/DeckViewPanel.gd` | 牌组查看面板 deck_size_label 新增显示当前能量上限 |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | 版本号更新为 v0.1.38 |
+| `Logs/Mulerun_Work_Report.md` | 本文件，Day 20 工作报告 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.38 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步更新至 v0.1.38 状态 |
 
 ---
 
 ## 实现内容
 
-1. **Boss 遭遇敌方数据**
-   - encounter_boss_01："零号协议"
-   - HP: 20，ATK: 3，is_boss: true
-   - 6 阶段行为循环：attack → defend_attack → heavy_attack → heal → attack → mega_attack
-   - heal 行为：Boss 回复 3 HP（上限为满血）
-   - mega_attack 行为：造成 3×ATK = 9 伤害（含减免计算）
+1. **能量成长规则**
+   - 初始 max_energy = 3（每回合 3 点能量）
+   - 每次遭遇胜利后 max_energy += 1
+   - Boss 遭遇胜利后 max_energy += 2
+   - 能量上限 MAX_ENERGY_CAP = 5（不可超过）
+   - 重新开始游戏时重置为 INITIAL_MAX_ENERGY = 3
 
-2. **Boss 行为模式设计思路**
-   - 6 回合一循环，覆盖攻防和回复，玩家需在 heal 前尽量削血
-   - mega_attack 作为循环终点给予高威胁，玩家需在第 5~6 回合储备防御
-   - heal 只回复 3 HP（max 20 的 15%），不过强但增加持久战压力
-   - 不可逃跑，玩家必须正面应战
+2. **能量成长通知**
+   - 新信号 `energy_grown(old_max, new_max)` 在能量实际提升时发射
+   - CardBattlePanel 战斗日志显示"能量上限提升！3 → 4"
+   - 已满上限（5）时不发射信号、不显示提示
 
-3. **Boss 棋盘放置**
-   - 每局棋盘放置 1 个 Boss 遭遇格
-   - 优先放置在右上象限（col ≥ 4, row ≤ 3），远离玩家出生区
-   - 如右上象限满则回退到整个上半区域
+3. **UI 信息同步**
+   - 奖励选牌面板：deck_info_label 显示"当前牌组：X 张 | 能量上限：Y"
+   - 牌组查看面板：deck_size_label 显示"牌组总数：X 张 | 能量上限：Y"
+   - 战斗面板能量显示已有"能量：X / Y"，自动反映新上限
 
-4. **Boss 视觉区分**
-   - 棋盘：Boss 格使用深红色填充 + 更粗边框（3px vs 普通 2.5px）+ "BOSS" 文字（12号字，纯红色）
-   - 战斗面板标题显示"卡牌战斗 — 零号协议 [BOSS]"
-   - 图例提示新增"深红=BOSS"
-
-5. **Boss 奖励增强**
-   - Boss 战胜利后奖励选牌提供 4 张（普通遭遇 3 张），增加获得稀有牌的机会
-
-6. **Boss 战不可逃跑**
-   - Boss 战斗中逃跑按钮禁用，显示"无法逃跑"
+4. **持久化设计**
+   - max_energy 跨战斗保留（与 persistent_deck 同级别持久状态）
+   - start_battle() 中 `energy = max_energy` 使用当前上限
+   - reset_persistent_deck() 同时重置 max_energy = 3
 
 ---
 
 ## 接口变更
 
-### 新增数据（CardBattleController）
-- `encounter_boss_01` 遭遇数据：含 `is_boss: true` 标记
-- `"heal"` 敌方行为：Boss 回复 3 HP
-- `"mega_attack"` 敌方行为：造成 ATK×3 伤害
+### 新增信号（CardBattleController）
+- `energy_grown(old_max: int, new_max: int)` — 能量上限提升时发射
 
-### 新增方法（CardBattleController）
-- `is_boss_encounter() -> bool` — 判断当前战斗是否为 Boss 遭遇
-
-### 新增常量（BoardGenerator）
-- `BOSS_ENCOUNTER_IDS: Array[String]` — Boss 遭遇 ID 池
-
-### 新增方法（BoardGenerator）
-- `_pick_boss_cell(board_size, used_cells) -> Array[Vector2i]` — 为 Boss 选择放置位置
+### 新增常量（CardBattleController）
+- `INITIAL_MAX_ENERGY: int = 3` — 初始能量上限
+- `MAX_ENERGY_CAP: int = 5` — 能量上限天花板
 
 ---
 
 ## 测试确认
 
 代码逻辑自查通过：
-- `get_encounter_enemy_data("encounter_boss_01")` 返回正确的 Boss 数据（HP20/ATK3/6阶段模式/is_boss=true）
-- `_enemy_act()` 正确处理 heal 行为：回复 3 HP，不超过 enemy_max_hp
-- `_enemy_act()` 正确处理 mega_attack 行为：3×ATK=9 伤害，含 def_bonus 减免
-- `_update_enemy_intent()` 正确显示 heal 和 mega_attack 的意图文案
-- `is_boss_encounter()` 根据 encounter_id 查询 is_boss 字段，默认返回 false
-- `_generate_reward_options()` Boss 胜利时 choice_count=4，普通时 choice_count=3
-- BoardGenerator 每局放置 1 个 Boss 遭遇格，不与其他格子重叠
-- Boss 格优先选择右上象限，远离玩家出生区
-- BoardView 正确区分 Boss 格（enc_id.begins_with("encounter_boss_")）和普通遭遇格
-- CardBattlePanel Boss 战标题显示 [BOSS] 标记，逃跑按钮禁用
-- 棋盘层完整闭环不受影响：未触碰 BattleFlowController 核心逻辑
-- 卡牌层闭环正常：Boss 遭遇触发 → 卡牌战斗 → 出牌/敌方行动（含 heal 和 mega_attack）→ 奖励选牌（4选1）→ HP 同步回棋盘
-- 普通遭遇不受影响：原有 5 种遭遇数据和行为模式无变化
-- 重新开始后 Boss 格随机重新生成
+- `_win()` 中 growth 计算正确：普通遭遇 +1，Boss +2
+- `min(MAX_ENERGY_CAP, max_energy + growth)` 确保不超过 5
+- `max_energy > old_max` 条件判断：仅在实际提升时发射 energy_grown 信号
+- `start_battle()` 中 `energy = max_energy` 正确使用持久化的上限值
+- `reset_persistent_deck()` 重置 max_energy = INITIAL_MAX_ENERGY = 3
+- CardBattlePanel 正确连接 energy_grown 信号，显示提升文案
+- CardRewardPanel deck_info_label 正确显示能量上限
+- DeckViewPanel deck_size_label 正确显示能量上限
+- 棋盘层完整闭环不受影响：未触碰 BattleFlowController
+- 卡牌层闭环正常：遭遇胜利 → 能量+1 → 下次战斗使用新上限
+- 普通遭遇连续 2 次胜利：3→4→5，第 3 次胜利不再增长
+- Boss 胜利：如从 3 开始直接到 5（3+2=5）
+- 重新开始后 max_energy 回到 3
 
 ---
 
 ## 剩余问题
 
-- Boss 只有 1 种（零号协议），后续可扩展更多 Boss（加入 BOSS_ENCOUNTER_IDS 即可）
-- Boss 的 heal 行为固定回复 3 HP，未参数化（后续可加入数据驱动）
-- mega_attack 固定 3 倍 ATK，未参数化
-- Boss 战无特殊胜利画面或音效（依赖视觉演出阶段）
-- Boss 数值（HP20/ATK3）未经平衡测试
-- Boss 不可逃跑但可以通过被击败退出（扣 HP 惩罚），设计上是否合理待验证
+- 能量成长只在遭遇胜利时触发，没有其他获取途径（如商店格/事件格）
+- 上限 5 点是否合理需要实际测试（5 点可以一回合出猛攻+连斩，可能过强）
+- 逃跑或战败不增长能量（设计选择，非 bug）
+- Boss 胜利 +2 是否过多待验证（如果玩家第一次就打 Boss，3→5 跳跃较大）
 
 ---
 
 ## 建议下一步
 
-1. **能量成长机制**（中优先）— 随游戏进度每回合能量上限+1
-2. **BuffManager 接入**（中优先）— tick_turn 在回合流程中正式调用
-3. **BattleFlowController 瘦身**（中优先）— 剥离逻辑到独立模块，目标降至 600 行以下
-4. **更多 Boss 类型**（低优先）— 扩展 Boss 池，不同 Boss 有不同行为模式
+1. **BuffManager 接入**（中优先）— tick_turn 在回合流程中正式调用
+2. **BattleFlowController 瘦身**（中优先）— 剥离逻辑到独立模块，目标降至 600 行以下
+3. **更多格子类型**（中低优先）— 商店格、宝箱格
+4. **多层地图**（中低优先）— 通关当前棋盘后进入下一层
 
 ---
 
 ## Codex 复审标注
 
-1. **架构判断**：Boss 遭遇数据和行为逻辑全部在 CardBattleController 内实现（新增约 35 行），未创建独立文件。理由：(a) Boss 和普通敌方共用同一套状态机和行为框架，仅在数据层面区分；(b) heal 和 mega_attack 是通用敌方行为类型，未来普通敌方也可使用；(c) Controller 从约 490 行增长到约 505 行，仍在合理范围。如果后续 Boss 需要多阶段转换（如 HP 低于 50% 切换模式）或专属技能系统，可提取到独立的 BossEncounterManager。
+1. **架构判断**：能量成长逻辑完全在 CardBattleController 内实现（新增约 10 行），未创建独立文件。理由：max_energy 本身就是 Controller 的核心状态变量，成长逻辑只是在 _win() 中加了 3 行。Controller 从约 505 行增长到约 515 行，仍在合理范围。
 
-2. **数值设计**：Boss HP20 约为当前最强普通敌（暗网爬虫 HP12）的 1.67 倍。ATK3 低于脉冲猎手的 ATK4，但 mega_attack（ATK×3=9）是全游戏最高单回合伤害。6 回合循环中，前 3 回合累计伤害约 3+5+6=14（不含减免），heal 回复 3，回合 5~6 累计 3+9=12。玩家初始牌组 10 张平均每回合约 3~5 伤害输出，需 4~7 回合击杀 Boss（考虑 heal），节奏合理。但未实际测试，可能需要微调。
+2. **数值设计**：初始 3 → 上限 5 的设计参考了 STS（STS 初始 3，通过遗物可达 4~5）。5 点能量允许一回合出 1 张 3E 牌 + 1 张 2E 牌，或 5 张 1E 牌，操作空间显著提升但不失控。Boss 胜利 +2 是因为 Boss 战难度显著高于普通遭遇，额外奖励合理。如果测试中发现 5E 过强，可将 MAX_ENERGY_CAP 改为 4。
 
-3. **不可逃跑决策**：Boss 战禁止逃跑是为了保证 Boss 遭遇的仪式感和挑战性。玩家只有两种结局：击败 Boss 获得增强奖励，或被 Boss 击败受到 HP 惩罚。这参考了 STS 的 Boss 战不可跳过设计。如果测试中发现 Boss 战过于惩罚性（玩家因牌组弱而必败），可考虑恢复逃跑或加入"投降"选项（HP 惩罚较轻）。
+3. **持久化一致性**：max_energy 的持久化模式与 persistent_deck 完全一致——跨战斗保留，reset 时重置。没有引入新的持久化机制或存储方式。

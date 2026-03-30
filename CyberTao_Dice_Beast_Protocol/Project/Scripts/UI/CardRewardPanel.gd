@@ -45,7 +45,7 @@ func bind_controller(controller: CardBattleController) -> void:
 func _on_reward_offered(options: Array) -> void:
 	_upgrade_mode = false
 	_rebuild_card_options(options)
-	_deck_info_label.text = "当前牌组：" + str(_controller.get_deck_size()) + " 张"
+	_deck_info_label.text = "当前牌组：" + str(_controller.get_deck_size()) + " 张 | 能量上限：" + str(_controller.max_energy)
 	_title_label.text = "战斗胜利 — 选择奖励卡牌"
 	_subtitle_label.text = "选择 1 张加入牌组，或升级已有牌，或跳过"
 	_upgrade_toggle_button.visible = true
