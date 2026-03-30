@@ -22,6 +22,7 @@ var _deck_view_panel: DeckViewPanel
 var _result_label: Label
 var _restart_btn: Button
 var _last_attack_damage: int = 0
+var _floor_clear_pending: bool = false
 
 func _ready() -> void:
 	_display_settings = DisplaySettings.new()
@@ -146,6 +147,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.trick_crest_used.connect(_on_trick_crest_used)
 	_battle_flow.shop_cell_triggered.connect(_on_shop_cell_triggered)
 	_battle_flow.chest_cell_triggered.connect(_on_chest_cell_triggered)
+	_battle_flow.floor_cleared.connect(_on_floor_cleared)
+	_battle_flow.game_won.connect(_on_game_won)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
@@ -185,7 +188,7 @@ func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
 
 func _on_phase_changed(phase_name: String) -> void:
 	if phase_name == "VICTORY":
-		_result_label.text = "胜利"
+		_result_label.text = "通关胜利！"
 		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 		_result_label.visible = true
 		_restart_btn.visible = true
@@ -194,6 +197,12 @@ func _on_phase_changed(phase_name: String) -> void:
 		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_WARN)
 		_result_label.visible = true
 		_restart_btn.visible = true
+	elif phase_name == "FLOOR_CLEAR":
+		var floor_num: int = _battle_flow.get_current_floor()
+		_result_label.text = "第 " + str(floor_num) + " 层通关！"
+		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
+		_result_label.visible = true
+		_restart_btn.visible = false
 	else:
 		_result_label.visible = false
 		_restart_btn.visible = false
@@ -276,6 +285,17 @@ func _on_chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: Stri
 	_board_view.queue_redraw()
 
 func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
+	# 层间奖励完成 → 进入下一层
+	if _floor_clear_pending:
+		_floor_clear_pending = false
+		_result_label.visible = false
+		_board_view.selected_unit_id = ""
+		_board_view.highlight_cells = []
+		_board_view.attack_highlight_cells = []
+		_board_view.summon_highlight_cells = []
+		_battle_flow.advance_to_next_floor()
+		_board_view.queue_redraw()
+		return
 	# CardBattleController 战斗结束 → 先记录遭遇格位置，再结算
 	var encounter_cell: Vector2i = _battle_flow._encounter_cell
 	_battle_flow.resolve_encounter(victory, player_hp_remaining)
@@ -292,11 +312,21 @@ func _on_card_battle_reward(reward_text: String) -> void:
 		var current: int = int(dm.crest_pool.get(crest_type, 0))
 		dm.crest_pool[crest_type] = current + 1
 
+func _on_floor_cleared(floor_number: int) -> void:
+	# 层通关 → 触发层间奖励（选牌/升级），完成后进入下一层
+	_floor_clear_pending = true
+	_card_battle_ctrl.offer_floor_reward()
+
+func _on_game_won() -> void:
+	# 全部层通关（最终胜利在 _on_phase_changed VICTORY 中处理显示）
+	pass
+
 func _on_restart_pressed() -> void:
 	_board_view.selected_unit_id = ""
 	_board_view.highlight_cells = []
 	_board_view.attack_highlight_cells = []
 	_board_view.summon_highlight_cells = []
+	_floor_clear_pending = false
 	_card_battle_ctrl.reset_persistent_deck()
 	_battle_flow.restart_battle()
 	_board_view.queue_redraw()

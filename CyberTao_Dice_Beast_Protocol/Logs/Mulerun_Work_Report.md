@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-30
-**版本**: v0.1.41
+**版本**: v0.1.42
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- Day 23：更多格子类型 — 商店格 + 宝箱格
+- Day 24：多层地图 — 通关当前棋盘后进入下一层（3层，预留扩展）
 
 ---
 
 ## 根因目标
 
-棋盘走位层已有 7 种可交互格子（高台/陷阱/道具/遭遇/恢复/事件/Boss遭遇），但缺少经济循环和探索奖励机制。商店格为玩家提供"消耗步进 crest 换取 HP 回复"的策略选择，宝箱格提供一次性随机奖励增加探索激励。这两种格子丰富了棋盘层的策略深度，为后续多层地图的经济系统铺路。服务于棋盘走位层。
+棋盘走位层此前只有单层棋盘，通关即结束，缺少层级推进和跨层成长体验。多层地图为玩家提供"通关当前层 → 层间奖励 → 进入下一层"的 Roguelike 核心循环，使牌组构筑、能量成长、HP 管理等系统在多层推进中产生真正的策略深度。服务于棋盘走位层 + 卡牌战斗层（层间奖励涉及卡牌系统）。
 
 ---
 
@@ -22,122 +22,117 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/BattleV2/BoardManager.gd` | 新增 shop_cells/chest_cells 字典，add_shop_cell/add_chest_cell/clear_chest_cell 方法，build_test_board/clear_board 中清理新字典 |
-| `Project/Scripts/BattleV2/CellEffectHandler.gd` | 新增 check_shop_cell()（商店格效果：消耗1步进crest回复HP）、check_chest_cell()（宝箱格效果：3种随机奖励） |
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 新增 shop_cell_triggered/chest_cell_triggered 信号，_check_shop_cell/_check_chest_cell 薄代理，try_move_unit 格子检查链中接入新格子 |
-| `Project/Scripts/BattleV2/BoardGenerator.gd` | 新增 SHOP_COUNT/CHEST_COUNT 常量，generate_board 中放置商店格（1个）和宝箱格（1-2个） |
-| `Project/Scripts/UI/BoardView.gd` | 新增 _draw_shop_cells()（青绿色）、_draw_chest_cells()（金琥珀色）绘制方法，play_shop_feedback/play_chest_feedback 飘字反馈 |
-| `Project/Scripts/UI/DiceDebugPanel.gd` | 连接 shop_cell_triggered/chest_cell_triggered 信号，版本号更新为 v0.1.41 |
-| `Project/Scripts/Main.gd` | 连接 shop_cell_triggered/chest_cell_triggered 信号，新增 _on_shop_cell_triggered/_on_chest_cell_triggered 反馈处理，更新提示文字 |
-| `Logs/Mulerun_Work_Report.md` | 本文件，Day 23 工作报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.41 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步更新至 v0.1.41 状态 |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | 新增 FLOOR_CLEAR 阶段、MAX_FLOOR 常量、current_floor 变量、floor_cleared/game_won 信号、advance_to_next_floor()、_snapshot_player_hp()、_spawn_player_units_with_hp()、get_current_floor()/get_max_floor()；修改 _check_battle_outcome() 区分层通关与最终胜利；修改 is_battle_over() 包含 FLOOR_CLEAR；restart_battle() 重置 current_floor |
+| `Project/Scripts/BattleV2/CardBattleController.gd` | 新增 offer_floor_reward() 方法（直接进入 REWARD_SELECT 状态，不经过战斗） |
+| `Project/Scripts/Main.gd` | 新增 _floor_clear_pending 标志、_on_floor_cleared()、_on_game_won()；修改 _on_phase_changed() 处理 FLOOR_CLEAR 和最终胜利文字；修改 _on_card_battle_ended() 区分层间奖励和遭遇战斗结算；修改 _on_restart_pressed() 重置 _floor_clear_pending；连接 floor_cleared/game_won 信号 |
+| `Project/Scripts/UI/DiceDebugPanel.gd` | 新增 floor_label 显示"层数：X/3"；连接 floor_cleared 信号；_on_phase_changed() 处理 FLOOR_CLEAR 阶段；_phase_label_text() 新增"本层通关"；版本号更新为 v0.1.42 |
+| `Logs/Mulerun_Work_Report.md` | 本文件，Day 24 工作报告 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.42 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步更新至 v0.1.42 状态 |
 
 ---
 
 ## 实现内容
 
-1. **商店格（Shop Cell）**
-   - 持久格子（不消失，可重复使用）
-   - 效果：消耗 1 步进(move) crest，回复 3 HP
-   - 条件：单位 HP 未满 + 有 move crest 可用 + 仅玩家单位可触发
-   - 视觉：青绿色填充 + 边框 + "商店" 文字 + "1步→HP+3" 费用标注
-   - 飘字反馈：青绿色 "-1步 HP+X"
-   - 每局生成 1 个，不在玩家出生区
+1. **多层地图核心机制（3层，预留扩展）**
+   - 通关条件：击杀当前层所有棋盘敌方单位
+   - 3层结构：第1-2层通关后进入 FLOOR_CLEAR 阶段 → 层间奖励 → 自动生成新层；第3层通关后进入 VICTORY（最终胜利）
+   - MAX_FLOOR 常量可调整层数上限
 
-2. **宝箱格（Chest Cell）**
-   - 一次性格子（踩后消失）
-   - 随机奖励（等概率 3 选 1）：
-     - HP+3（受 max_hp 限制）
-     - 随机 crest +2
-     - 全 crest +1
-   - 视觉：金琥珀色填充 + 边框 + "宝箱" 文字
-   - 飘字反馈：金色飘字显示具体奖励
-   - 每局生成 1-2 个，不在玩家出生区
+2. **层间状态保留/重置策略**
+   - 保留：存活玩家单位 HP（带伤进入下一层）、持久牌组、能量上限、卡牌升级状态
+   - 重置：棋盘布局（每层随机生成新布局）、crest 资源池、buff、回合数、召唤计数
+   - 已阵亡单位不复活，下一层不生成该单位
 
-3. **架构遵循**
-   - 沿用 CellEffectHandler 薄代理模式：handler 返回结果字典，BFC 负责信号发射
-   - BoardManager 新增字典 + 增删方法
-   - BoardGenerator 静态生成逻辑
-   - BoardView 纯渲染层绘制
-   - 所有消费方（DiceDebugPanel/Main）通过信号订阅
+3. **层间奖励**
+   - 通关一层后弹出 CardRewardPanel，提供选牌/升级机会（复用现有奖励面板）
+   - 通过 CardBattleController.offer_floor_reward() 直接进入 REWARD_SELECT 状态
+   - 奖励选择/跳过后自动进入下一层
+
+4. **UI 显示**
+   - DiceDebugPanel 新增"层数：X/3"标签（品红色）
+   - Main.gd result_label：层通关显示"第 X 层通关！"（绿色），最终胜利显示"通关胜利！"
+   - FLOOR_CLEAR 阶段禁用掷骰/结束回合按钮，intent 显示"本层通关！选择奖励后进入下一层"
+
+5. **架构遵循**
+   - BFC 新增 FLOOR_CLEAR 阶段，不污染已有阶段逻辑
+   - 层间奖励通过 CardBattleController 现有 REWARD_SELECT 流程实现，零新增 UI 组件
+   - _floor_clear_pending 标志在 Main.gd 中隔离层间奖励 vs 遭遇奖励的结算路径
+   - advance_to_next_floor() 保守复用 clear_board + build_test_board + BoardGenerator 现有流程
 
 ---
 
 ## 接口变更
 
 ### 新增 BFC 信号
-- `signal shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int)`
-- `signal chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String)`
+- `signal floor_cleared(floor_number: int)` — 当前层通关（非最终层）
+- `signal game_won` — 全部层通关
 
-### 新增 BFC 内部方法
-- `_check_shop_cell(unit_id, cell)` — 商店格薄代理
-- `_check_chest_cell(unit_id, cell)` — 宝箱格薄代理
+### 新增 BFC 阶段
+- `BattlePhase.FLOOR_CLEAR` — 层通关等待奖励阶段
 
-### 新增 BoardManager 变量
-- `var shop_cells: Dictionary = {}` — cell -> int (heal_amount)
-- `var chest_cells: Dictionary = {}` — cell -> String ("chest")
+### 新增 BFC 常量/变量
+- `const MAX_FLOOR: int = 3` — 最大层数
+- `var current_floor: int = 1` — 当前层数
 
-### 新增 BoardManager 方法
-- `add_shop_cell(cell, heal_amount)` — 添加商店格
-- `add_chest_cell(cell, chest_id)` — 添加宝箱格
-- `clear_chest_cell(cell)` — 清除宝箱格
+### 新增 BFC 方法
+- `advance_to_next_floor()` — 保留 HP 进入下一层
+- `_snapshot_player_hp() -> Dictionary` — 存活玩家单位 HP 快照
+- `_spawn_player_units_with_hp(hp_snapshot)` — 带 HP 快照生成玩家单位
+- `get_current_floor() -> int` — 获取当前层数
+- `get_max_floor() -> int` — 获取最大层数
 
-### 新增 CellEffectHandler 方法
-- `check_shop_cell(unit_id, cell) -> Dictionary` — 商店格效果
-- `check_chest_cell(unit_id, cell) -> Dictionary` — 宝箱格效果
+### 新增 CardBattleController 方法
+- `offer_floor_reward()` — 不经过战斗直接进入选牌/升级阶段
 
-### 新增 BoardView 方法
-- `_draw_shop_cells()` — 商店格渲染
-- `_draw_chest_cells()` — 宝箱格渲染
-- `play_shop_feedback(cell, text)` — 商店格飘字
-- `play_chest_feedback(cell, text)` — 宝箱格飘字
-
-### 新增 BoardGenerator 常量
-- `SHOP_COUNT = 1`
-- `CHEST_COUNT_MIN = 1`
-- `CHEST_COUNT_MAX = 2`
+### 修改 BFC 方法
+- `_check_battle_outcome()` — 区分层通关（FLOOR_CLEAR）和最终胜利（VICTORY）
+- `is_battle_over()` — 包含 FLOOR_CLEAR 阶段
+- `restart_battle()` — 重置 current_floor = 1
 
 ---
 
 ## 测试确认
 
 代码逻辑自查通过：
-- BoardManager.build_test_board 和 clear_board 中正确清理 shop_cells 和 chest_cells ✅
-- CellEffectHandler.check_shop_cell 条件完整：has(cell) + 非空单位 + player + HP未满 + can_pay ✅
-- CellEffectHandler.check_chest_cell 条件完整：has(cell) + 非空单位 + clear_chest_cell 一次性消失 ✅
-- BFC 薄代理 _check_shop_cell/_check_chest_cell 正确委托 + 信号发射 ✅
-- try_move_unit 格子检查链完整：trap → item → heal → event → shop → chest → encounter ✅
-- BoardGenerator 在事件格之后、敌方单位之前放置商店格和宝箱格，avoid_player_zone=true ✅
-- BoardView._draw 中新增 _draw_shop_cells 和 _draw_chest_cells 调用 ✅
-- DiceDebugPanel 正确连接 shop_cell_triggered 和 chest_cell_triggered 信号 ✅
-- Main.gd 正确连接信号并调用 play_shop_feedback/play_chest_feedback ✅
-- 棋盘层完整闭环：掷骰/移动/攻击/召唤/敌方回合/胜负重开均不受影响 ✅
-- 卡牌层完整闭环：未触碰 CardBattleController 及其 UI 面板 ✅
-- 20 个 BFC 信号（原18+新2），外部消费方通过新信号订阅 ✅
+- _check_battle_outcome() 在 outcome == "VICTORY" 时正确区分 floor < MAX_FLOOR（FLOOR_CLEAR）和 floor >= MAX_FLOOR（VICTORY） ✅
+- advance_to_next_floor() 仅在 FLOOR_CLEAR 阶段可调用，防止非法状态转换 ✅
+- _snapshot_player_hp() 正确筛选存活单位（hp > 0），阵亡单位不进入快照 ✅
+- _spawn_player_units_with_hp() 跳过不在快照中的单位，HP 覆盖为保存值 ✅
+- Main._on_card_battle_ended() 正确区分 _floor_clear_pending（层间奖励）和正常遭遇结算 ✅
+- Main._on_floor_cleared() 设置 _floor_clear_pending=true 并调用 offer_floor_reward() ✅
+- Main._on_restart_pressed() 重置 _floor_clear_pending=false ✅
+- DiceDebugPanel 正确显示 floor_label 并在 phase_changed/round_changed 时更新 ✅
+- FLOOR_CLEAR 阶段 is_battle_over()=true，阻止掷骰/移动/攻击/结束回合 ✅
+- 棋盘层完整闭环：掷骰/移动/攻击/召唤/敌方回合/层通关/重开均正确 ✅
+- 卡牌层完整闭环：遭遇触发/卡牌战斗/选牌奖励/HP同步/返回棋盘不受影响 ✅
+- BFC 信号数量从 20 增至 22（+floor_cleared +game_won） ✅
 
 ---
 
 ## 剩余问题
 
-- 商店格当前仅提供"消耗 move crest 回复 HP"单一功能，未来可扩展为多选商品（需要 UI 面板支持）
-- 宝箱格奖励池较小（3 种），未来可增加更多奖励类型（如 buff、卡牌相关）
-- BoardView 行数从 572 增长至约 640 行，职责继续膨胀（但未超出可维护范围）
+- 难度暂不递增（各层敌方数值相同），后续可在 BoardGenerator 中根据 floor 调整
+- CardRewardPanel 层间奖励标题仍显示"战斗胜利"，可在后续优化为"层通关奖励"
+- 阵亡单位不复活可能导致后续层极度困难，需实际测试平衡
+- BFC 从 605 行增长至约 693 行（+88行），仍在可维护范围
 
 ---
 
 ## 建议下一步
 
-1. **多层地图**（中优先）— 通关当前棋盘后进入下一层
-2. **BUG-001 修复**（中低优先）— 分辨率切换无效（Demo 前必须解决）
+1. **BUG-001 修复**（中优先）— 分辨率切换无效（Demo 前必须解决）
+2. **层间难度递增**（中优先）— 根据 current_floor 调整敌方 HP/ATK 或数量
 3. **商店格扩展**（低优先）— 多选商品 + 独立 UI 面板
 
 ---
 
 ## Codex 复审标注
 
-1. **商店格设计选择**：选择"自动触发"模式而非"弹出选择面板"模式。原因：当前没有商店 UI 面板，且实现一个完整的商店选择界面会扩大任务范围。自动触发模式（消耗 1 move crest 回复 3 HP）足以验证商店格的核心机制，未来可在此基础上扩展为多选商品。标注为保守方案。
+1. **通关条件选择**：选择"击杀所有棋盘敌方单位"作为通关条件。这与现有 VictoryRuleHelper.get_battle_outcome() 的 VICTORY 判定完全一致，无需新增判定逻辑。保守方案。
 
-2. **宝箱格奖励平衡**：HP+3/crest+2/全crest+1 三种奖励等概率。HP+3 对于 max_hp 5-8 的玩家单位是较高回复量；crest+2 相当于减少一次掷骰依赖；全 crest+1 总计 6 点资源。三者价值大致均衡但未经实战测试。
+2. **层间 HP 保留策略**：存活单位保留当前 HP，阵亡单位不复活。这是 Roguelike 经典设计（如 STS 的 HP 跨层保留），但可能导致后续层过于困难。建议在数值平衡轮次中评估是否需要层间 HP 回复机制。
 
-3. **格子检查顺序**：商店格和宝箱格插入在 event → encounter 之间（event → shop → chest → encounter），确保遭遇格优先级最低（因为遭遇会暂停棋盘）。商店格在宝箱前是因为商店有消耗条件，宝箱无条件触发。
+3. **层间奖励复用 CardBattleController**：通过 offer_floor_reward() 复用现有 REWARD_SELECT 状态和 CardRewardPanel，避免新增 UI 组件。代价是 CardRewardPanel 的标题文字仍显示"战斗胜利"，但功能完全正确。标注为保守方案。
+
+4. **FLOOR_CLEAR 阶段设计**：新增独立阶段而非复用 VICTORY，原因是 VICTORY 是终态（不可恢复），而 FLOOR_CLEAR 需要在奖励后转换回 PLAYER_ROLL。is_battle_over() 包含 FLOOR_CLEAR 确保该阶段期间棋盘操作被阻止。

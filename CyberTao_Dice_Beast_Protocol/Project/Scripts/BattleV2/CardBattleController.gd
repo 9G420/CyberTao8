@@ -528,3 +528,10 @@ func get_discard_count() -> int:
 func is_boss_encounter() -> bool:
 	var data: Dictionary = get_encounter_enemy_data(encounter_id)
 	return data.get("is_boss", false)
+
+## 通关层奖励：不经过战斗，直接进入选牌/升级阶段
+func offer_floor_reward() -> void:
+	_reward_options = []
+	_generate_reward_options()
+	state = BattleState.REWARD_SELECT
+	emit_signal("reward_cards_offered", _reward_options)

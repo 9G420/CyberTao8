@@ -15,6 +15,7 @@ var crest_label: RichTextLabel
 var enemy_intent_label: Label
 var roll_button: Button
 var end_turn_button: Button
+var floor_label: Label
 var encounter_panel: Panel
 var encounter_title_label: Label
 var encounter_resolve_button: Button
@@ -63,6 +64,8 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		battle_flow.shop_cell_triggered.connect(_on_shop_cell_triggered)
 	if battle_flow.chest_cell_triggered and not battle_flow.chest_cell_triggered.is_connected(_on_chest_cell_triggered):
 		battle_flow.chest_cell_triggered.connect(_on_chest_cell_triggered)
+	if battle_flow.floor_cleared and not battle_flow.floor_cleared.is_connected(_on_floor_cleared):
+		battle_flow.floor_cleared.connect(_on_floor_cleared)
 	# BuffManager 信号
 	if battle_flow.buff_manager:
 		if battle_flow.buff_manager.buff_applied and not battle_flow.buff_manager.buff_applied.is_connected(_on_buff_applied):
@@ -70,6 +73,7 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		if battle_flow.buff_manager.buff_expired and not battle_flow.buff_manager.buff_expired.is_connected(_on_buff_expired):
 			battle_flow.buff_manager.buff_expired.connect(_on_buff_expired)
 	round_label.text = "回合：" + str(battle_flow.round_index)
+	floor_label.text = "层数：" + str(battle_flow.current_floor) + "/" + str(battle_flow.get_max_floor())
 	_refresh_crest_pool()
 
 func bind_board_view(board_view: Node) -> void:
@@ -106,10 +110,18 @@ func _build_ui() -> void:
 	round_label = Label.new()
 	round_label.text = "回合：1"
 	round_label.position = Vector2(20, 44)
-	round_label.size = Vector2(120, 20)
+	round_label.size = Vector2(80, 20)
 	round_label.add_theme_font_size_override("font_size", 14)
 	round_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	add_child(round_label)
+
+	floor_label = Label.new()
+	floor_label.text = "层数：1/3"
+	floor_label.position = Vector2(100, 44)
+	floor_label.size = Vector2(40, 20)
+	floor_label.add_theme_font_size_override("font_size", 14)
+	floor_label.add_theme_color_override("font_color", CyberStyle.ACCENT_MAGENTA)
+	add_child(floor_label)
 
 	phase_label = Label.new()
 	phase_label.text = "阶段：玩家掷骰"
@@ -249,7 +261,7 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.41"
+	ver_label.text = "v0.1.42"
 	ver_label.position = Vector2(210, 554)
 	ver_label.size = Vector2(60, 16)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -336,6 +348,13 @@ func _on_phase_changed(phase_name: String) -> void:
 			phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 		else:
 			phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_WARN)
+	elif phase_name == "FLOOR_CLEAR":
+		roll_button.disabled = true
+		end_turn_button.disabled = true
+		enemy_intent_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
+		enemy_intent_label.text = "本层通关！选择奖励后进入下一层"
+		encounter_panel.visible = false
+		phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 	elif phase_name == "ENCOUNTER":
 		roll_button.disabled = true
 		end_turn_button.disabled = true
@@ -347,10 +366,15 @@ func _on_phase_changed(phase_name: String) -> void:
 		encounter_panel.visible = false
 		if phase_name == "PLAYER_ROLL" or phase_name == "PLAYER_ACTION":
 			enemy_intent_label.text = ""
+		# 刷新层数显示（进入新层后更新）
+		if battle_flow:
+			floor_label.text = "层数：" + str(battle_flow.current_floor) + "/" + str(battle_flow.get_max_floor())
 	_refresh_crest_pool()
 
 func _on_round_changed(round_number: int) -> void:
 	round_label.text = "回合：" + str(round_number)
+	if battle_flow:
+		floor_label.text = "层数：" + str(battle_flow.current_floor) + "/" + str(battle_flow.get_max_floor())
 
 func _on_dice_rolled(results: Array[String], next_crest_pool: Dictionary) -> void:
 	roll_label.text = "上次掷骰：" + ", ".join(results)
@@ -410,6 +434,9 @@ func _on_shop_cell_triggered(_unit_id: String, _cell: Vector2i, _cost_crest: Str
 
 func _on_chest_cell_triggered(_unit_id: String, _cell: Vector2i, _effect_text: String) -> void:
 	_refresh_crest_pool()
+
+func _on_floor_cleared(floor_number: int) -> void:
+	floor_label.text = "层数：" + str(floor_number) + "/" + str(battle_flow.get_max_floor()) if battle_flow else ""
 
 func _on_buff_applied(_unit_id: String, buff_type: String, _value: int, duration: int) -> void:
 	var label: String = ""
@@ -494,6 +521,8 @@ func _phase_label_text(phase_name: String) -> String:
 			return "敌方掷骰"
 		"ENEMY_ACTION":
 			return "敌方行动"
+		"FLOOR_CLEAR":
+			return "本层通关"
 		"VICTORY":
 			return "胜利"
 		"DEFEAT":

@@ -1070,3 +1070,30 @@ PLAYER_ACTION 恢复 ←────────────── battle_ended 
 - 重新开始后自动生成新布局，重玩性大幅提升
 - BFC 行数维持 785 行（删除 50 行 debug spawn，新增少量调用）
 - 棋盘层和卡牌层完整闭环不受影响
+
+## v0.1.42 - 2026-03-30
+
+### 新增
+- 多层地图系统：3层棋盘推进，击杀所有棋盘敌方单位通关当前层
+- FLOOR_CLEAR 阶段：层通关后暂停棋盘，等待层间奖励完成
+- floor_cleared/game_won 信号：区分层通关和最终通关
+- advance_to_next_floor()：保留存活单位 HP，重新生成棋盘，进入下一层
+- _snapshot_player_hp()：存活玩家单位 HP 快照（跨层保留）
+- _spawn_player_units_with_hp()：带 HP 快照生成玩家单位（阵亡单位不复活）
+- CardBattleController.offer_floor_reward()：层间奖励直接进入选牌/升级阶段
+- DiceDebugPanel 新增"层数：X/3"标签（品红色）
+- MAX_FLOOR 常量（默认 3），current_floor 变量
+
+### 修改
+- _check_battle_outcome() 区分层通关（FLOOR_CLEAR）和最终胜利（VICTORY）
+- is_battle_over() 包含 FLOOR_CLEAR 阶段，阻止层通关期间操作
+- restart_battle() 重置 current_floor = 1
+- Main._on_phase_changed() 处理 FLOOR_CLEAR（"第 X 层通关！"）和最终 VICTORY（"通关胜利！"）
+- Main._on_card_battle_ended() 通过 _floor_clear_pending 区分层间奖励和遭遇战斗结算
+- DiceDebugPanel 版本号更新为 v0.1.42
+
+### 备注
+- 层间保留：牌组/能量上限/卡牌升级；层间重置：棋盘/crest/buff/回合
+- 难度暂不递增（各层敌方数值相同），后续可根据 floor 调整
+- 阵亡单位不复活，可能导致后续层困难，需平衡测试
+- BFC 从 605 行增长至约 693 行（+88行）

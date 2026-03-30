@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.41
+**当前版本**: v0.1.42
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.41）
+### 2.2 当前完成状态总览（v0.1.42）
 
 **棋盘走位层（全部稳定）**
 
@@ -107,7 +107,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | DEFEND/SKILL/TRICK crest 消耗入口 | v0.1.33 | 稳定 |
 | 棋盘随机生成（BoardGenerator） | v0.1.35 | 稳定 |
 | BuffManager 接入（tick_turn+伤害修正+道具buff） | v0.1.39 | 稳定 |
-| 9种可交互格子（含商店格+宝箱格） | v0.1.41 | 稳定 |
+| 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -174,7 +174,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 ### 3.1 模块结构
 
 ```
-BattleFlowController（棋盘层核心控制器）         ~600行 ✅ 已瘦身
+BattleFlowController（棋盘层核心控制器）         ~693行（含多层地图）
 ├── DiceManager          — 掷骰 + crest 资源池
 ├── BoardManager         — 棋盘状态（9个格子字典 + BFS）
 ├── BoardGenerator       — 棋盘程序化生成（静态工具类）
@@ -187,19 +187,19 @@ BattleFlowController（棋盘层核心控制器）         ~600行 ✅ 已瘦身
 ├── CrestActionHandler   — Crest消耗操作（从BFC剥离）      ~66行
 └── CellEffectHandler    — 格子效果处理（从BFC剥离）       ~205行
 
-CardBattleController（卡牌层独立状态机）         ~515行
+CardBattleController（卡牌层独立状态机）         ~540行
 └── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
 
 UI层
 ├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~640行 ⚠️
-├── DiceDebugPanel       — 棋盘层HUD                    ~491行
+├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~520行
 ├── CardBattlePanel      — 卡牌战斗UI                   ~309行
 ├── CardRewardPanel      — 奖励选牌/升级面板             ~230行
 ├── DeckViewPanel        — 牌组查看面板                 ~160行
 ├── CyberStyle           — 全局视觉风格（class_name注册）~137行
 └── SettingsPanel        — 显示设置
 
-Main.gd（场景组合+信号中转）                          ~315行
+Main.gd（场景组合+信号中转）                          ~354行
 ```
 
 ### 3.2 双层通信信号链
@@ -211,6 +211,17 @@ encounter_triggered ─────────────→ CardBattleControl
                                     battle_ended(victory, hp_remaining)
                                          ↓
 resolve_encounter(victory, hp) ←─── Main._on_card_battle_ended()
+
+多层地图信号链：
+_check_battle_outcome() ──→ floor_cleared(floor_number)
+                                   ↓
+                            Main._on_floor_cleared()
+                                   ↓
+                            CardBattleController.offer_floor_reward()
+                                   ↓
+                            battle_ended(true, hp) [层间奖励完成]
+                                   ↓
+                            advance_to_next_floor() ←─ Main（_floor_clear_pending）
 ```
 
 ### 3.3 关键文件路径
@@ -269,27 +280,30 @@ Main：                Scripts/Main.gd
 | BUG-001：分辨率/窗口模式切换无效 | 低 | 否 | Demo前必须修 |
 | ~~BuffManager.tick_turn() 未接入~~ | ~~中~~ | ~~否~~ | ✅ v0.1.39 已解决 |
 | ~~BattleFlowController 795行，需瘦身~~ | ~~中~~ | ~~否~~ | ✅ v0.1.40 已瘦身至588行 |
+| BattleFlowController 693行（多层地图后增长） | 中 | 否 | 下次大功能前考虑瘦身 |
 | BoardView 640行，职责混杂 | 中 | 否 | 视觉升级前 |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 | 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
+| 多层地图难度暂不递增（各层敌方数值相同） | 低 | 否 | 层间难度调优时 |
+| 阵亡单位跨层不复活（可能导致后续层过难） | 低 | 否 | 数值调优轮次 |
 
 ---
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.36 Work Report，按优先级排列：
+以下任务来自 v0.1.42 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心）
 
 | 任务 | 说明 |
 |------|------|
-| **多层地图** | 通关当前棋盘后进入下一层 |
+| **BUG-001 修复** | 分辨率切换无效（Demo前必须解决） |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **BUG-001 修复** | 分辨率切换无效（Demo前必须解决） |
+| **层间难度递增** | 根据 current_floor 调整敌方 HP/ATK 或数量 |
 
 ### 🟢 中低优先级
 
@@ -301,6 +315,7 @@ Main：                Scripts/Main.gd
 
 | 任务 | 版本 |
 |------|------|
+| 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 |
 | 商店格+宝箱格（9种可交互格子） | v0.1.41 |
 | BattleFlowController 瘦身（795→588行） | v0.1.40 |
 | BuffManager 接入 | v0.1.39 |

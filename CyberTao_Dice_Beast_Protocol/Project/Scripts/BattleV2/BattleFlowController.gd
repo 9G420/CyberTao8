@@ -21,6 +21,8 @@ signal skill_crest_used(unit_id: String, heal_amount: int)
 signal trick_crest_used(gained_crest: String)
 signal shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int)
 signal chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String)
+signal floor_cleared(floor_number: int)
+signal game_won
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -43,12 +45,16 @@ enum BattlePhase {
 	ENEMY_ROLL,
 	ENEMY_ACTION,
 	RESOLUTION,
+	FLOOR_CLEAR,
 	VICTORY,
 	DEFEAT,
 }
 
+const MAX_FLOOR: int = 3
+
 var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
+var current_floor: int = 1
 var _summon_counter: int = 0
 var _encounter_unit_id: String = ""
 var _encounter_id: String = ""
@@ -108,7 +114,7 @@ func _bootstrap() -> void:
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func is_battle_over() -> bool:
-	return current_phase == BattlePhase.VICTORY or current_phase == BattlePhase.DEFEAT
+	return current_phase == BattlePhase.VICTORY or current_phase == BattlePhase.DEFEAT or current_phase == BattlePhase.FLOOR_CLEAR
 
 func start_player_roll() -> void:
 	if current_phase != BattlePhase.PLAYER_ROLL:
@@ -437,7 +443,13 @@ func try_attack_unit(attacker_id: String, target_cell: Vector2i) -> bool:
 func _check_battle_outcome() -> void:
 	var outcome: String = VictoryRuleHelper.get_battle_outcome(unit_manager)
 	if outcome == "VICTORY":
-		mark_victory()
+		if current_floor < MAX_FLOOR:
+			current_phase = BattlePhase.FLOOR_CLEAR
+			emit_signal("phase_changed", _phase_name(current_phase))
+			emit_signal("floor_cleared", current_floor)
+		else:
+			emit_signal("game_won")
+			mark_victory()
 	elif outcome == "DEFEAT" or outcome == "DRAW":
 		mark_defeat()
 
@@ -561,6 +573,79 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 	emit_signal("summon_completed", summon_id, extended_paths, target_cell)
 	return true
 
+# ─── 多层地图 ───
+
+## 获取存活玩家单位的 HP 快照（用于跨层保留）
+func _snapshot_player_hp() -> Dictionary:
+	var snapshot: Dictionary = {}
+	var player_ids: Array[String] = unit_manager.get_player_units()
+	for uid in player_ids:
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		if not unit.is_empty() and int(unit.get("hp", 0)) > 0:
+			snapshot[uid] = {"hp": int(unit["hp"]), "max_hp": int(unit["max_hp"])}
+	return snapshot
+
+## 进入下一层：保留存活单位 HP，重新生成棋盘
+func advance_to_next_floor() -> void:
+	if current_phase != BattlePhase.FLOOR_CLEAR:
+		return
+	# 保存玩家单位 HP
+	var hp_snapshot: Dictionary = _snapshot_player_hp()
+	# 清理当前层
+	dice_manager.reset_for_battle()
+	buff_manager.clear_all()
+	unit_manager.clear_all_units()
+	board_manager.clear_board()
+	board_manager.build_test_board(Vector2i(8, 8))
+	_summon_counter = 0
+	_encounter_unit_id = ""
+	_encounter_id = ""
+	_encounter_cell = Vector2i(-1, -1)
+	# 递增层数
+	current_floor += 1
+	# 重新生成玩家单位（仅存活的，恢复保存的 HP）
+	_spawn_player_units_with_hp(hp_snapshot)
+	# 生成新棋盘布局
+	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8))
+	# 重置回合
+	current_phase = BattlePhase.PLAYER_ROLL
+	round_index = 1
+	emit_signal("round_changed", round_index)
+	emit_signal("phase_changed", _phase_name(current_phase))
+
+## 带 HP 快照生成玩家单位（跳过已阵亡单位）
+func _spawn_player_units_with_hp(hp_snapshot: Dictionary) -> void:
+	var spawn_data: Array[Dictionary] = [
+		{"path": "res://Data/Units/blade_shield_dog.tres", "cell": Vector2i(0, 6)},
+		{"path": "res://Data/Units/hacker_fox.tres", "cell": Vector2i(1, 7)},
+		{"path": "res://Data/Units/crow_caster.tres", "cell": Vector2i(0, 5)},
+	]
+	for entry in spawn_data:
+		var data := load(String(entry["path"])) as UnitData
+		if data == null:
+			continue
+		# 跳过已阵亡单位（不在快照中）
+		if not hp_snapshot.has(data.unit_id):
+			continue
+		var saved: Dictionary = hp_snapshot[data.unit_id]
+		unit_manager.spawn_unit(data.unit_id, {
+			"max_hp": int(saved["max_hp"]), "atk": data.atk, "def": data.def,
+			"move_range": data.move_range, "attack_range": data.attack_range,
+			"owner": "player", "tags": data.meme_tags,
+			"terrain_affinity": data.terrain_affinity, "display_name": data.unit_name,
+		}, entry["cell"])
+		# 覆盖 HP 为保存值
+		var unit: Dictionary = unit_manager.get_unit(data.unit_id)
+		if not unit.is_empty():
+			unit["hp"] = int(saved["hp"])
+			unit_manager.units_by_id[data.unit_id] = unit
+
+func get_current_floor() -> int:
+	return current_floor
+
+func get_max_floor() -> int:
+	return MAX_FLOOR
+
 # ─── 工具方法 ───
 
 func _phase_name(phase: BattlePhase) -> String:
@@ -579,6 +664,8 @@ func _phase_name(phase: BattlePhase) -> String:
 			return "ENEMY_ACTION"
 		BattlePhase.RESOLUTION:
 			return "RESOLUTION"
+		BattlePhase.FLOOR_CLEAR:
+			return "FLOOR_CLEAR"
 		BattlePhase.VICTORY:
 			return "VICTORY"
 		BattlePhase.DEFEAT:
@@ -596,6 +683,7 @@ func restart_battle() -> void:
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)
+	current_floor = 1
 	_spawn_player_units()
 	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8))
 	current_phase = BattlePhase.PLAYER_ROLL
