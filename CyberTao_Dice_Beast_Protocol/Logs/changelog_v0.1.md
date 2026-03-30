@@ -1,5 +1,22 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.51 - 2026-03-30
+
+### 修复
+- **Boss/遭遇格击败消失 Bug**（阻塞性）
+  - 根因：`resolve_encounter()` 无论胜败都调用 `board_manager.clear_encounter_cell()`
+  - 修复：重写为三分支判断
+    - 胜利 → 清除遭遇格 + Boss 生成传送门 + encounter_resolved 信号
+    - 失败但存活 → 遭遇格保留（不清除），HP 保底 1，回到 PLAYER_ACTION，可再次挑战
+    - 失败且全灭 → 触发 DEFEAT
+  - 影响文件：BattleFlowController.gd、Main.gd
+- Main.gd `_on_card_battle_ended()` 新增失败反馈飘字（"战斗失败..."）
+
+### 备注
+- 函数签名不变，信号签名不变，下游（CardBattleController/CardBattlePanel）零修改
+- 失败时不发射 encounter_resolved 信号（遭遇未真正结束，DiceDebugPanel 的 encounter_panel 通过 phase_changed 正确隐藏）
+- v0.1.50 的 Boss 传送门机制完整保留（is_boss + _spawn_portal_near 在胜利分支中）
+
 ## v0.1.50 - 2026-03-30
 
 ### 新增

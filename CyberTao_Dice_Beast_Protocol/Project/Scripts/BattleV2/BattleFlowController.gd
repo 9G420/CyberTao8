@@ -518,7 +518,8 @@ func resolve_encounter(victory: bool = true, player_hp_remaining: int = -1) -> v
 	var resolved_cell: Vector2i = _encounter_cell
 	var unit_id: String = _encounter_unit_id
 	var is_boss: bool = resolved_id.begins_with("encounter_boss_")
-	board_manager.clear_encounter_cell(resolved_cell)
+
+	# 同步卡牌战斗后的 HP 到棋盘单位
 	if player_hp_remaining >= 0:
 		var unit: Dictionary = unit_manager.get_unit(unit_id)
 		if not unit.is_empty():
@@ -529,18 +530,45 @@ func resolve_encounter(victory: bool = true, player_hp_remaining: int = -1) -> v
 			unit_manager.units_by_id[unit_id] = unit
 			unit_manager.emit_signal("units_changed")
 	elif not victory:
-		var killed: bool = unit_manager.apply_damage(unit_id, 2)
-		if killed:
-			_check_battle_outcome()
-	# Boss 击败 → 在 Boss 格下方生成传送门
-	if is_boss and victory:
-		_spawn_portal_near(resolved_cell)
-	_encounter_unit_id = ""
-	_encounter_id = ""
-	_encounter_cell = Vector2i(-1, -1)
-	current_phase = BattlePhase.PLAYER_ACTION
-	emit_signal("encounter_resolved", resolved_id, resolved_cell)
-	emit_signal("phase_changed", _phase_name(current_phase))
+		# 无 HP 数据的失败回退：扣 2 点惩罚
+		unit_manager.apply_damage(unit_id, 2)
+
+	if victory:
+		# 胜利：清除遭遇格（此遭遇已完成，不再触发）
+		board_manager.clear_encounter_cell(resolved_cell)
+		# Boss 击败 → 在 Boss 格下方生成传送门
+		if is_boss:
+			_spawn_portal_near(resolved_cell)
+		# 清空遭遇上下文
+		_encounter_unit_id = ""
+		_encounter_id = ""
+		_encounter_cell = Vector2i(-1, -1)
+		# 回到玩家行动阶段
+		current_phase = BattlePhase.PLAYER_ACTION
+		emit_signal("encounter_resolved", resolved_id, resolved_cell)
+		emit_signal("phase_changed", _phase_name(current_phase))
+	else:
+		# 失败：检查玩家单位是否全部阵亡
+		var any_player_alive: bool = false
+		for uid in unit_manager.units_by_id.keys():
+			var u: Dictionary = unit_manager.get_unit(String(uid))
+			if String(u.get("owner", "")) == "player" and int(u.get("hp", 0)) > 0:
+				any_player_alive = true
+				break
+
+		if not any_player_alive:
+			# 所有单位死亡 → 触发 DEFEAT
+			_encounter_unit_id = ""
+			_encounter_id = ""
+			_encounter_cell = Vector2i(-1, -1)
+			mark_defeat()
+		else:
+			# 单位存活但战斗失败 → 遭遇格保留，玩家可重新挑战
+			_encounter_unit_id = ""
+			_encounter_id = ""
+			_encounter_cell = Vector2i(-1, -1)
+			current_phase = BattlePhase.PLAYER_ACTION
+			emit_signal("phase_changed", _phase_name(current_phase))
 
 ## 在指定格子附近（优先下方）生成传送门
 func _spawn_portal_near(cell: Vector2i) -> void:

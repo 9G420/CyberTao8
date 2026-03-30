@@ -312,6 +312,9 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 	# 反馈飘字
 	if victory and encounter_cell.x >= 0:
 		_board_view.play_pickup_feedback(encounter_cell, "战斗胜利！")
+	elif not victory and encounter_cell.x >= 0:
+		# 失败反馈：遭遇格保留，提示玩家可以再次挑战
+		_board_view.play_encounter_feedback(encounter_cell, "战斗失败...")
 	_board_view.queue_redraw()
 
 func _on_card_battle_reward(reward_text: String) -> void:
