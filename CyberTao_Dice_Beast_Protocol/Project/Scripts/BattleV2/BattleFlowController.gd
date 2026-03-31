@@ -54,6 +54,7 @@ enum BattlePhase {
 }
 
 const MAX_FLOOR: int = 3
+const BOARD_SIZE: Vector2i = Vector2i(12, 12)	# v0.1.62 扩展棋盘
 
 var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
@@ -111,9 +112,9 @@ func _bootstrap() -> void:
 	cell_effect_handler.dice_manager = dice_manager
 	cell_effect_handler.buff_manager = buff_manager
 
-	board_manager.build_test_board(Vector2i(8, 8))
+	board_manager.build_test_board(BOARD_SIZE)
 	_spawn_player_units()
-	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8), current_floor)
+	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -155,7 +156,7 @@ func mark_defeat() -> void:
 func spawn_demo_path() -> void:
 	var owner_id: String = "player"
 	for x in range(1, 4):
-		board_manager.add_path_cell(Vector2i(x, 6), owner_id)
+		board_manager.add_path_cell(Vector2i(x, 10), owner_id)
 
 ## 从 UnitData 资源生成一个玩家单位（内部辅助）
 func _spawn_unit_from_data(res_path: String, cell: Vector2i) -> void:
@@ -170,7 +171,7 @@ func _spawn_unit_from_data(res_path: String, cell: Vector2i) -> void:
 
 func _spawn_player_units() -> void:
 	# 玩家主角：刀盾狗（前排坦克，路径适性）— 唯一出场单位
-	_spawn_unit_from_data("res://Data/Units/blade_shield_dog.tres", Vector2i(0, 6))
+	_spawn_unit_from_data("res://Data/Units/blade_shield_dog.tres", Vector2i(0, 10))
 
 # ─── 格子效果薄代理（委托 CellEffectHandler，BFC 负责信号和结算） ───
 
@@ -500,7 +501,7 @@ func _warp_hero_to_boss(boss_cell: Vector2i) -> void:
 	var dirs: Array[Vector2i] = [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1)]
 	for dir in dirs:
 		var adj: Vector2i = boss_cell + dir
-		if adj.x < 0 or adj.x >= 8 or adj.y < 0 or adj.y >= 8:
+		if adj.x < 0 or adj.x >= board_manager.board_size.x or adj.y < 0 or adj.y >= board_manager.board_size.y:
 			continue
 		if board_manager.occupied_cells.has(adj):
 			continue
@@ -745,7 +746,7 @@ func advance_to_next_floor() -> void:
 	buff_manager.clear_all()
 	unit_manager.clear_all_units()
 	board_manager.clear_board()
-	board_manager.build_test_board(Vector2i(8, 8))
+	board_manager.build_test_board(BOARD_SIZE)
 	_summon_counter = 0
 	_summon_this_floor = 0
 	_encounter_unit_id = ""
@@ -756,7 +757,7 @@ func advance_to_next_floor() -> void:
 	# 重新生成玩家单位（仅存活的，恢复保存的 HP）
 	_spawn_player_units_with_hp(hp_snapshot)
 	# 生成新棋盘布局（传入 current_floor 用于难度缩放）
-	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8), current_floor)
+	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, current_floor)
 	# 重置回合
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
@@ -766,7 +767,7 @@ func advance_to_next_floor() -> void:
 ## 带 HP 快照生成玩家单位（跳过已阵亡单位）
 func _spawn_player_units_with_hp(hp_snapshot: Dictionary) -> void:
 	var spawn_data: Array[Dictionary] = [
-		{"path": "res://Data/Units/blade_shield_dog.tres", "cell": Vector2i(0, 6)},
+		{"path": "res://Data/Units/blade_shield_dog.tres", "cell": Vector2i(0, 10)},
 	]
 	for entry in spawn_data:
 		var data := load(String(entry["path"])) as UnitData
@@ -826,7 +827,7 @@ func restart_battle() -> void:
 	buff_manager.clear_all()
 	unit_manager.clear_all_units()
 	board_manager.clear_board()
-	board_manager.build_test_board(Vector2i(8, 8))
+	board_manager.build_test_board(BOARD_SIZE)
 	_summon_counter = 0
 	_summon_this_floor = 0
 	_encounter_unit_id = ""
@@ -834,7 +835,7 @@ func restart_battle() -> void:
 	_encounter_cell = Vector2i(-1, -1)
 	current_floor = 1
 	_spawn_player_units()
-	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8), current_floor)
+	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

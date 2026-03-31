@@ -1,22 +1,24 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-31
-**版本**: v0.1.61
+**版本**: v0.1.62
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.61：棋盘渲染回退至程序化（移除 AI 贴图 + 程序化菱形绘制）
+- v0.1.62：棋盘扩展+鼠标拖拽相机+平滑跟随+悬停高亮
 
 ---
 
 ## 根因目标
 
-用户截图反馈 v0.1.60 运行效果严重异常：AI 生成的等距贴图为高耸 3D 方块图（TILE_FULL_H=192 / TILE_ELEVATED_H=256），渲染后整个棋盘看起来像积木墙而非游戏地图。画面大量黑色空白，底部方块严重堆叠遮挡，特殊格与普通格视觉割裂。
-
-用户明确要求：回退到程序化渲染，删除所有 AI 贴图文件。
+用户参考 Mythmatic 的 "Dino Card Hunt" 视频，明确要求：
+1. 鼠标可以拖动平移相机
+2. 不要限制棋盘格数量（从 8x8 扩展）
+3. 交互效果和 UI 布局改进
+4. 完整的游戏画面体验
 
 ---
 
@@ -24,90 +26,83 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/IsoTileRenderer.gd` | 全面重写：移除贴图加载体系，改为程序化菱形绘制（填充+渐变+边框+9种类型装饰符号） |
-| `Scripts/UI/BoardView.gd` | _draw_layer_grid 传入 pulse 参数适配新 API |
-| `Assets/Tiles/*.png` | 删除全部 11 张 AI 生成贴图 |
+| `Scripts/UI/IsoTileRenderer.gd` | GRID_SIZE → DEFAULT_GRID_SIZE=12，draw_board 动态读取 board_mgr.board_size |
+| `Scripts/UI/BoardView.gd` | 鼠标拖拽平移+平滑相机插值+悬停高亮+移除硬编码 GRID_W/GRID_H |
+| `Scripts/BattleV2/BattleFlowController.gd` | 新增 BOARD_SIZE 常量=12x12，替换所有 Vector2i(8,8)，动态 bounds check |
+| `Scripts/BattleV2/BoardGenerator.gd` | 生成参数按 12x12 比例上调，玩家出生区调整至 row 9-11，新增哨兵丙 |
+| `Scripts/UI/CyberBackground.gd` | board_size 更新至 864x864 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.61 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表 |
-| `Logs/Handoff_Package_latest.md` | 同步至 v0.1.60 状态（本轮同时完成文档补齐） |
-| `Logs/CyberTao_Migration_Snapshot_zh_v3.md` | 同步至 v0.1.60 状态（本轮同时完成文档补齐） |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.62 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步版本号 |
 
 ---
 
 ## 实现内容
 
-### IsoTileRenderer 程序化重写
+### 1. 鼠标拖拽平移相机
 
-- 移除的内容：
-  - TILE_FULL_H / TILE_ELEVATED_H / ELEVATION_OFFSET 常量（导致方块高耸的根因）
-  - TILE_PATHS / _textures / _loaded / _ensure_loaded（贴图加载体系）
-  - _draw_single_tile 中的 draw_texture_rect 调用
-  - ELEVATED_KEYS / is_elevated（高起判断）
+- BoardView._gui_input 新增右键/中键拖拽处理
+- _drag_active / _drag_start_pos / _drag_start_origin / _drag_offset 状态管理
+- 拖拽松开后将偏移量保存到 _drag_offset，后续相机跟随时叠加偏移
 
-- 新增的内容：
-  - `_draw_tile_procedural()`：程序化绘制菱形格子
-    - 基础菱形填充（CyberStyle 配色，深浅交替）
-    - 内部缩小菱形模拟径向渐变
-    - 网格边框线（类型格子有独立边框色 + 脉冲呼吸）
-    - 9种类型装饰符号（高台▲/陷阱✖/遭遇⚡/回复✚/商店◆/宝箱⬡/道具◇/事件?/传送门旋涡圆环）
-  - `draw_board()` 新增 pulse 参数
-  - `_get_fill_color()` / `_get_border_color()` / `_draw_tile_decoration()` 分离渲染逻辑
+### 2. 平滑相机跟随
 
-- 完全保留的内容：
-  - TILE_W=192 / TILE_H_DIAMOND / TILE_H_HALF / GRID_SIZE
-  - grid_to_screen / screen_to_grid / calc_origin_for_cell（坐标转换+相机跟随）
-  - diamond_points / draw_diamond_highlight / draw_diamond_corners（叠层辅助）
-  - _get_tile_key（格子类型判定）
+- set_camera_target 不再直接设置 iso_origin，而是设置 _iso_origin_target
+- _on_anim_tick 中每帧 Lerp 插值 iso_origin → _iso_origin_target + _drag_offset
+- CAMERA_LERP_SPEED = 8.0，0.05s 间隔 × 8.0 = ~40% 每帧追赶
 
-### 文档补齐
+### 3. 悬停高亮
 
-- Handoff_Package_latest.md 从 v0.1.54 更新至 v0.1.60
-- CyberTao_Migration_Snapshot_zh_v3.md 从 v0.1.54 更新至 v0.1.60
+- _gui_input 中 InputEventMouseMotion 时更新 _hover_cell
+- _draw_layer_hover 在 Layer 2.5 绘制白色半透明菱形叠层
+
+### 4. 棋盘扩展至 12x12
+
+- IsoTileRenderer.DEFAULT_GRID_SIZE = 12
+- draw_board 优先从 board_mgr.board_size 读取实际尺寸
+- BattleFlowController.BOARD_SIZE = Vector2i(12, 12)
+- 所有 Vector2i(8, 8) 改为 BOARD_SIZE
+- 硬编码 `adj >= 8` bounds check 改为 `board_manager.board_size.x/y`
+- BoardGenerator 生成参数按比例上调
+- 玩家出生位置从 (0,6) 调整至 (0,10)
+- BoardGenerator._mark_player_spawn_cells 同步更新
 
 ---
 
 ## 接口变更
 
-- `IsoTileRenderer.draw_board(canvas, origin, board_mgr, pulse)`: 新增 pulse 参数（默认 0.5）
-- 移除：`IsoTileRenderer.TILE_FULL_H` / `TILE_ELEVATED_H` / `ELEVATION_OFFSET`
-- 移除：`IsoTileRenderer.ELEVATED_KEYS` / `is_elevated()`
-- 移除：`IsoTileRenderer.TILE_PATHS` / `_textures` / `_loaded` / `_ensure_loaded()`
+- `IsoTileRenderer.GRID_SIZE` → `IsoTileRenderer.DEFAULT_GRID_SIZE`（值从 8 改为 12）
+- `IsoTileRenderer._get_grid_size(board_mgr)` 新增：动态获取棋盘尺寸
+- `BoardView.GRID_W` / `GRID_H` 已移除
+- `BoardView._drag_active` / `_drag_offset` / `_iso_origin_target` / `_hover_cell` 新增
+- `BattleFlowController.BOARD_SIZE` 新增
 
 ---
 
 ## 测试确认
 
-- 代码层面确认：IsoTileRenderer 不再引用任何贴图文件
-- 坐标系完全保留：grid_to_screen / screen_to_grid / calc_origin_for_cell 签名不变
-- 相机跟随链完整：BoardView.set_camera_target → iso_origin 动态计算 → 重绘
-- BoardView._draw_layer_grid 正确传入 pulse 参数
-- 叠层/高亮/单位/攻击闪光/边缘渐暗层零修改
+- draw_board 使用动态尺寸，兼容任意 board_size
+- 鼠标右键/中键拖拽和松开正确计算偏移
+- 平滑相机在 _on_anim_tick 中正确 Lerp
+- 悬停高亮仅在有效格子内显示
+- 玩家出生位置与 BoardGenerator._mark_player_spawn_cells 一致
 - 需用户在 Godot 中实际运行确认视觉效果
 
 ---
 
 ## 剩余问题
 
-- 相机跟随暂无平滑过渡（仍为瞬间跳转）
-- 阵亡单位跨层不复活
+- UI 布局尚未重新设计（底部卡牌栏、侧面信息面板等 Dino Card Hunt 风格）
 - CardRewardPanel 暂未使用 CardRenderer 风格
 - 扇形手牌暂无拖拽机制
 - SettingsPanel 暂未添加音量控件
-- 路径格无专属装饰（仅半透明菱形叠层，由 BoardView._draw_layer_overlays 处理）
+- 阵亡单位跨层不复活
 
 ---
 
 ## 建议下一步
 
-1. 用户在 Godot 中运行确认程序化渲染效果
-2. 相机跟随平滑过渡（Tween 插值 iso_origin）
-3. 商店格扩展（多选商品 + 独立 UI 面板）
-4. 阵亡单位跨层复活机制
-
----
-
-## Codex 复审标注
-
-- 判断依据：AI 贴图为高耸 3D 方块（TILE_FULL_H=192，方块体高度远超菱形面），导致棋盘渲染为积木墙。用户明确要求回退。
-- 选择方案：程序化菱形渲染（最保守方案），保留等距坐标系和相机跟随，仅替换贴图绘制层。后续如有合适的扁平贴图素材可随时替换回去。
+1. 用户在 Godot 中运行确认 12x12 棋盘+拖拽相机效果
+2. UI 布局重新设计（底部卡牌栏、顶部资源条、侧面信息面板）
+3. 更丰富的棋盘内容（更多遭遇类型、NPC、地标等）
+4. 卡牌拖拽使用机制

@@ -1,5 +1,23 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.62 - 2026-03-31
+
+### 新增
+- **鼠标拖拽平移相机**：右键/中键拖拽可自由平移棋盘视角
+- **平滑相机跟随**：set_camera_target 改为 Lerp 插值过渡（CAMERA_LERP_SPEED=8.0）
+- **悬停高亮**：鼠标悬停格子显示白色菱形高亮反馈
+- **棋盘扩展至 12x12**：GRID_SIZE 从 8 扩展到 12，内容更丰富
+
+### 修改
+- IsoTileRenderer: GRID_SIZE → DEFAULT_GRID_SIZE=12，draw_board 动态从 board_mgr 读取尺寸
+- BoardView: 移除 GRID_W/GRID_H 常量，改用 board_manager.is_in_bounds() 动态判定
+- BoardView: 新增 _drag_active/_drag_offset/_iso_origin_target 拖拽和平滑相机状态
+- BattleFlowController: 新增 BOARD_SIZE 常量，所有 Vector2i(8,8) 替换为 BOARD_SIZE
+- BattleFlowController: 硬编码 bounds check (adj >= 8) 改为 board_manager.board_size 动态判定
+- BoardGenerator: 所有生成参数按 12x12 棋盘比例上调（遭遇4-6/高台3-5/陷阱3-5/道具3/回复3/事件3-5/商店2/宝箱2-3/敌人3）
+- BoardGenerator: 玩家出生区调整至 row 9-11，新增哨兵丙敌方模板
+- CyberBackground: board_size 更新至 864x864
+
 ## v0.1.61 - 2026-03-31
 
 ### 修改

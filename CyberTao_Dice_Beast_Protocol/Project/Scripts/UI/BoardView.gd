@@ -8,17 +8,23 @@ signal attack_requested(unit_id: String, target_cell: Vector2i)
 signal summon_requested(unit_id: String, target_cell: Vector2i)
 
 const CELL_SIZE: int = 72
-const GRID_W: int = 8
-const GRID_H: int = 8
 
+# --- 相机跟随（v0.1.62：拖拽平移+平滑插值）---
 var board_manager: Node = null
 var unit_manager: Node = null
 var battle_flow: Node = null
 
-# --- 相机跟随（v0.1.60）---
 var camera_cell: Vector2i = Vector2i(0, 0)
 var iso_origin: Vector2 = Vector2(640.0, 360.0)
+var _iso_origin_target: Vector2 = Vector2(640.0, 360.0)
 const SCREEN_CENTER: Vector2 = Vector2(640.0, 360.0)
+const CAMERA_LERP_SPEED: float = 8.0	# 平滑跟随速度
+
+# 鼠标拖拽平移
+var _drag_active: bool = false
+var _drag_start_pos: Vector2 = Vector2.ZERO
+var _drag_start_origin: Vector2 = Vector2.ZERO
+var _drag_offset: Vector2 = Vector2.ZERO	# 用户拖拽累积偏移
 
 # Selection state
 var selected_unit_id: String = ""
@@ -29,6 +35,9 @@ var summon_highlight_cells: Array[Vector2i] = []
 # Attack feedback state
 var _flash_cell: Vector2i = Vector2i(-1, -1)
 var _flash_alpha: float = 0.0
+
+# Hover highlight（v0.1.62）
+var _hover_cell: Vector2i = Vector2i(-1, -1)
 
 # Animation pulse (20fps refresh via Timer)
 var _anim_timer: Timer = null
@@ -46,7 +55,8 @@ func _ready() -> void:
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# 初始相机位置
-	iso_origin = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
+	iso_origin = _iso_origin_target
 	# 动画刷新定时器（50ms=20fps，驱动呼吸/脉冲效果）
 	_anim_timer = Timer.new()
 	_anim_timer.wait_time = 0.05
@@ -55,12 +65,20 @@ func _ready() -> void:
 	add_child(_anim_timer)
 
 func _on_anim_tick() -> void:
+	# 平滑插值相机位置（v0.1.62）
+	if not _drag_active:
+		var target: Vector2 = _iso_origin_target + _drag_offset
+		var diff: Vector2 = target - iso_origin
+		if diff.length() > 0.5:
+			iso_origin = iso_origin.lerp(target, clampf(CAMERA_LERP_SPEED * 0.05, 0.0, 1.0))
+		else:
+			iso_origin = target
 	queue_redraw()
 
-## 设置相机跟随目标格子（v0.1.60）
+## 设置相机跟随目标格子（v0.1.62：平滑过渡）
 func set_camera_target(cell: Vector2i) -> void:
 	camera_cell = cell
-	iso_origin = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
 	queue_redraw()
 
 func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
@@ -91,9 +109,42 @@ func _on_state_changed() -> void:
 		summon_highlight_cells = _filter_summon_cells(battle_flow.get_summon_cells_for(selected_unit_id))
 	queue_redraw()
 
-# --- 点击交互逻辑（完全保留，零修改）---
+# --- 点击/拖拽交互逻辑（v0.1.62：鼠标拖拽平移）---
 
 func _gui_input(event: InputEvent) -> void:
+	# 鼠标拖拽平移（右键或中键）
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
+			if mb.pressed:
+				_drag_active = true
+				_drag_start_pos = mb.position
+				_drag_start_origin = iso_origin
+			else:
+				_drag_active = false
+				# 将拖拽结果存入偏移
+				_drag_offset = iso_origin - _iso_origin_target
+			accept_event()
+			return
+	if event is InputEventMouseMotion and _drag_active:
+		var mm: InputEventMouseMotion = event as InputEventMouseMotion
+		iso_origin = _drag_start_origin + (mm.position - _drag_start_pos)
+		queue_redraw()
+		accept_event()
+		return
+	# 悬停高亮（v0.1.62）
+	if event is InputEventMouseMotion and not _drag_active:
+		var mm: InputEventMouseMotion = event as InputEventMouseMotion
+		var hcell: Vector2i = _pixel_to_cell(mm.position)
+		if _is_valid_cell(hcell):
+			if _hover_cell != hcell:
+				_hover_cell = hcell
+				queue_redraw()
+		elif _hover_cell.x >= 0:
+			_hover_cell = Vector2i(-1, -1)
+			queue_redraw()
+		return
+	# 左键点击选择/移动
 	if not event is InputEventMouseButton:
 		return
 	var mb: InputEventMouseButton = event as InputEventMouseButton
@@ -109,7 +160,9 @@ func _pixel_to_cell(pixel_pos: Vector2) -> Vector2i:
 	return IsoTileRenderer.screen_to_grid(pixel_pos, iso_origin)
 
 func _is_valid_cell(cell: Vector2i) -> bool:
-	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_W and cell.y < GRID_H
+	if board_manager != null:
+		return board_manager.is_in_bounds(cell)
+	return cell.x >= 0 and cell.y >= 0 and cell.x < 12 and cell.y < 12
 
 func _handle_cell_click(cell: Vector2i) -> void:
 	if battle_flow and (battle_flow.is_battle_over() or battle_flow.current_phase == battle_flow.BattlePhase.ENCOUNTER):
@@ -198,7 +251,7 @@ func _iso_cell_center(cell: Vector2i) -> Vector2:
 	return IsoTileRenderer.grid_to_screen(cell.x, cell.y, iso_origin)
 
 # ===========================================================
-#  绘制层（v0.1.58 Phase 6：等距贴图渲染）
+#  绘制层（v0.1.62：悬停高亮+拖拽相机）
 # ===========================================================
 
 func _draw() -> void:
@@ -206,6 +259,7 @@ func _draw() -> void:
 	var font: Font = ThemeDB.fallback_font
 	_draw_layer_grid(pulse)
 	_draw_layer_overlays(pulse, font)
+	_draw_layer_hover(pulse)
 	_draw_layer_highlights(pulse)
 	_draw_layer_units(pulse, font)
 	_draw_attack_flash()
@@ -257,6 +311,15 @@ func _draw_layer_overlays(pulse: float, font: Font) -> void:
 func _draw_iso_label(center: Vector2, text: String, col: Color, font: Font, font_size: int) -> void:
 	var text_w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	draw_string(font, Vector2(center.x - text_w * 0.5, center.y + float(font_size) * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
+
+# Layer 2.5: 悬停高亮（v0.1.62）
+func _draw_layer_hover(pulse: float) -> void:
+	if _hover_cell.x < 0:
+		return
+	var center: Vector2 = _iso_cell_center(_hover_cell)
+	var col: Color = Color(1.0, 1.0, 1.0, 0.08 + pulse * 0.04)
+	var border_col: Color = Color(1.0, 1.0, 1.0, 0.2 + pulse * 0.1)
+	IsoTileRenderer.draw_diamond_highlight(self, center, col, border_col, 4.0)
 
 # Layer 3: 高亮系统（菱形）
 func _draw_layer_highlights(pulse: float) -> void:

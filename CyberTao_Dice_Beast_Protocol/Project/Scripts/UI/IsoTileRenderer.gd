@@ -9,7 +9,7 @@ class_name IsoTileRenderer
 const TILE_W: int = 192			# 菱形宽度（像素）
 const TILE_H_DIAMOND: int = 96	# 菱形高度 = TILE_W / 2
 const TILE_H_HALF: int = 48		# 菱形半高 = 格子行步进
-const GRID_SIZE: int = 8
+const DEFAULT_GRID_SIZE: int = 12	# 默认棋盘尺寸（v0.1.62 扩展）
 
 # --- 相机跟随：根据目标格子计算 iso_origin ---
 
@@ -50,13 +50,22 @@ static func diamond_points(center: Vector2, shrink: float = 0.0) -> PackedVector
 
 ## 按 painter's algorithm 顺序绘制整张棋盘
 static func draw_board(canvas: CanvasItem, origin: Vector2, board_mgr: Node, pulse: float = 0.5) -> void:
-	for depth in range(GRID_SIZE * 2 - 1):
-		var gx_min: int = max(0, depth - GRID_SIZE + 1)
-		var gx_max: int = min(GRID_SIZE - 1, depth)
+	var gs: Vector2i = _get_grid_size(board_mgr)
+	var gw: int = gs.x
+	var gh: int = gs.y
+	for depth in range(gw + gh - 1):
+		var gx_min: int = max(0, depth - gh + 1)
+		var gx_max: int = min(gw - 1, depth)
 		for gx in range(gx_min, gx_max + 1):
 			var gy: int = depth - gx
 			var tile_key: String = _get_tile_key(gx, gy, board_mgr)
 			_draw_tile_procedural(canvas, gx, gy, tile_key, origin, pulse)
+
+## 获取棋盘尺寸（优先从 board_mgr 取，否则用默认值）
+static func _get_grid_size(board_mgr: Node) -> Vector2i:
+	if board_mgr != null and board_mgr.board_size != Vector2i.ZERO:
+		return board_mgr.board_size
+	return Vector2i(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE)
 
 ## 程序化绘制单个菱形格子
 static func _draw_tile_procedural(canvas: CanvasItem, gx: int, gy: int, tile_key: String, origin: Vector2, pulse: float) -> void:

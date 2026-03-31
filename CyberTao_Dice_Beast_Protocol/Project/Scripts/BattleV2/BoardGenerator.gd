@@ -5,21 +5,21 @@ class_name BoardGenerator
 ## 从固定 debug 布局升级为每局随机生成
 ## 纯静态工具类，不持有状态，不修改 BFC 逻辑
 
-# --- 生成参数 ---
-const ENCOUNTER_COUNT_MIN: int = 3
-const ENCOUNTER_COUNT_MAX: int = 4
-const HIGH_GROUND_COUNT_MIN: int = 2
-const HIGH_GROUND_COUNT_MAX: int = 3
-const TRAP_COUNT_MIN: int = 2
-const TRAP_COUNT_MAX: int = 3
-const ITEM_COUNT: int = 2
-const HEAL_COUNT: int = 2
-const EVENT_COUNT_MIN: int = 2
-const EVENT_COUNT_MAX: int = 3
-const SHOP_COUNT: int = 1
-const CHEST_COUNT_MIN: int = 1
-const CHEST_COUNT_MAX: int = 2
-const ENEMY_COUNT: int = 2
+# --- 生成参数（v0.1.62：扩展棋盘配置）---
+const ENCOUNTER_COUNT_MIN: int = 4
+const ENCOUNTER_COUNT_MAX: int = 6
+const HIGH_GROUND_COUNT_MIN: int = 3
+const HIGH_GROUND_COUNT_MAX: int = 5
+const TRAP_COUNT_MIN: int = 3
+const TRAP_COUNT_MAX: int = 5
+const ITEM_COUNT: int = 3
+const HEAL_COUNT: int = 3
+const EVENT_COUNT_MIN: int = 3
+const EVENT_COUNT_MAX: int = 5
+const SHOP_COUNT: int = 2
+const CHEST_COUNT_MIN: int = 2
+const CHEST_COUNT_MAX: int = 3
+const ENEMY_COUNT: int = 3
 
 # 可用遭遇 ID 池
 const ENCOUNTER_IDS: Array[String] = [
@@ -38,8 +38,8 @@ const ITEM_IDS: Array[String] = [
 ]
 
 # 玩家出生区域（左下角 3x3），不放置危险格子
-const PLAYER_ZONE_COLS: int = 2  # col 0~1
-const PLAYER_ZONE_ROWS_START: int = 5  # row 5~7
+const PLAYER_ZONE_COLS: int = 3  # col 0~2
+const PLAYER_ZONE_ROWS_START: int = 9  # row 9~11（12格棋盘）
 
 ## 生成完整棋盘布局（地形+道具+遭遇+恢复+事件+敌方单位）
 ## 玩家单位由 BFC 单独生成（需要加载 .tres 资源）
@@ -123,6 +123,7 @@ static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dic
 	var enemy_templates: Array[Dictionary] = [
 		{"id": "enemy_grunt_1", "max_hp": 5, "atk": 2, "def": 0, "display_name": "哨兵甲"},
 		{"id": "enemy_grunt_2", "max_hp": 4, "atk": 3, "def": 0, "display_name": "哨兵乙"},
+		{"id": "enemy_grunt_3", "max_hp": 6, "atk": 2, "def": 1, "display_name": "哨兵丙"},
 	]
 	for tmpl in enemy_templates:
 		var cell: Vector2i = _pick_enemy_cell(board_size, used_cells)
@@ -179,9 +180,9 @@ static func _pick_enemy_cell(board_size: Vector2i, used_cells: Dictionary) -> Ve
 
 ## 标记玩家单位初始位置为已占用
 static func _mark_player_spawn_cells(used_cells: Dictionary) -> void:
-	used_cells[Vector2i(0, 6)] = true  # 刀盾狗
-	used_cells[Vector2i(1, 7)] = true  # 灵狐骇客
-	used_cells[Vector2i(0, 5)] = true  # 鸦机术士
+	used_cells[Vector2i(0, 10)] = true  # 刀盾狗
+	used_cells[Vector2i(1, 11)] = true  # 灵狐骇客
+	used_cells[Vector2i(0, 9)] = true  # 鸦机术士
 
 ## 随机选取 count 个不重叠的格子
 ## avoid_player_zone=true 时排除玩家出生区域

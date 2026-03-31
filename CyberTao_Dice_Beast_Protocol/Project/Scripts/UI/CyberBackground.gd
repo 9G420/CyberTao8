@@ -36,7 +36,7 @@ const CORNER_WIDTH := 2.0
 
 # 棋盘区域参数（从 Main.gd 传入）
 var board_origin := Vector2(40, 94)
-var board_size := Vector2(576, 576)  # 8*72=576
+var board_size := Vector2(864, 864)  # 12*72=864（v0.1.62 扩展棋盘）
 
 # 粒子节点
 var _particles: CPUParticles2D = null
