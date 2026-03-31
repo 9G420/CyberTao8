@@ -1,7 +1,7 @@
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
 **更新时间**: 2026-03-31
-**当前版本**: v0.1.60
+**当前版本**: v0.1.67
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要开发分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`

@@ -28,6 +28,8 @@ signal portal_spawned(cell: Vector2i)
 signal hero_warped(unit_id: String, target_cell: Vector2i)
 signal enemy_turn_starting(first_enemy_id: String)
 signal dice_animation_done
+signal move_step_visual(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
+signal move_step_done
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -319,11 +321,14 @@ func _execute_enemy_actions() -> void:
 					if is_battle_over():
 						break
 					dice_manager.pay({"move": 1})
+					var enemy_old_cell: Vector2i = unit_manager.get_unit(uid)["cell"]
 					unit_manager.move_unit(uid, move_cell)
+					emit_signal("move_step_visual", uid, enemy_old_cell, move_cell)
+					await move_step_done
 					# v0.1.65：敌方移动后也发射 move_completed，以便相机跟随
 					emit_signal("move_completed", uid, cell, move_cell)
 					_check_terrain_trap(uid, move_cell)
-					await get_tree().create_timer(0.9).timeout
+					await get_tree().create_timer(0.5).timeout
 					if is_battle_over():
 						break
 					if unit_manager.get_unit(uid).is_empty():
@@ -377,7 +382,8 @@ func get_reachable_cells_for(unit_id: String) -> Array[Vector2i]:
 	var move_range: int = int(unit.get("move_range", 1))
 	return board_manager.get_reachable_cells(cell, move_range)
 
-func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
+## 纯验证：检查玩家单位移动是否合法（不消耗资源）
+func validate_move(unit_id: String, target_cell: Vector2i) -> bool:
 	if is_battle_over():
 		return false
 	var unit: Dictionary = unit_manager.get_unit(unit_id)
@@ -396,9 +402,22 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 	var cost: Dictionary = {"move": 1}
 	if not dice_manager.can_pay(cost):
 		return false
+	return true
+
+func try_move_unit(unit_id: String, target_cell: Vector2i) -> void:
+	if not validate_move(unit_id, target_cell):
+		return
+	var cost: Dictionary = {"move": 1}
 	dice_manager.pay(cost)
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
 	var old_cell: Vector2i = unit["cell"]
-	unit_manager.move_unit(unit_id, target_cell)
+	var move_range: int = int(unit.get("move_range", 1))
+	var path: Array[Vector2i] = board_manager.get_path_to_cell(old_cell, target_cell, move_range)
+	# 逐格移动 + 动画
+	for i in range(1, path.size()):
+		unit_manager.move_unit(unit_id, path[i])
+		emit_signal("move_step_visual", unit_id, path[i - 1], path[i])
+		await move_step_done
 	emit_signal("move_completed", unit_id, old_cell, target_cell)
 	_check_terrain_trap(unit_id, target_cell)
 	if not unit_manager.get_unit(unit_id).is_empty():
@@ -415,7 +434,6 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> bool:
 		_check_encounter(unit_id, target_cell)
 	if not unit_manager.get_unit(unit_id).is_empty():
 		_check_portal(unit_id, target_cell)
-	return true
 
 func get_attackable_cells_for(unit_id: String) -> Array[Vector2i]:
 	var unit: Dictionary = unit_manager.get_unit(unit_id)

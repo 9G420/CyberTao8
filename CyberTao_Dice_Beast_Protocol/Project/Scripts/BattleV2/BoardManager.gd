@@ -125,6 +125,50 @@ func get_reachable_cells(origin: Vector2i, move_range: int) -> Array[Vector2i]:
 			reachable.append(nb)
 	return reachable
 
+## BFS 路径重建：返回从 origin 到 target 的逐格路径（含起点和终点）
+## 若无法到达返回空数组
+func get_path_to_cell(origin: Vector2i, target: Vector2i, move_range: int) -> Array[Vector2i]:
+	if origin == target:
+		var single: Array[Vector2i] = [origin]
+		return single
+	var came_from: Dictionary = {}
+	var visited: Dictionary = {}
+	visited[origin] = 0
+	came_from[origin] = origin
+	var frontier: Array[Vector2i] = [origin]
+	var found: bool = false
+	while frontier.size() > 0:
+		var current: Vector2i = frontier[0]
+		frontier.remove_at(0)
+		if current == target:
+			found = true
+			break
+		var current_dist: int = int(visited[current])
+		var neighbors: Array[Vector2i] = get_neighbors(current)
+		for nb in neighbors:
+			if visited.has(nb):
+				continue
+			if occupied_cells.has(nb) and nb != target:
+				continue
+			var cost: int = get_move_cost(nb)
+			var total: int = current_dist + cost
+			if total > move_range:
+				continue
+			visited[nb] = total
+			came_from[nb] = current
+			frontier.append(nb)
+	if not found and not came_from.has(target):
+		var fallback: Array[Vector2i] = [origin, target]
+		return fallback
+	var path: Array[Vector2i] = []
+	var trace: Vector2i = target
+	while trace != origin:
+		path.append(trace)
+		trace = came_from[trace]
+	path.append(origin)
+	path.reverse()
+	return path
+
 ## 获取指定格子的所有空闲相邻格（在棋盘内、未被占据、不是路径格）
 func get_free_neighbors(cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []

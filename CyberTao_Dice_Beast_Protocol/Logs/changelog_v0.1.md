@@ -1,5 +1,28 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.67 - 2026-03-31
+
+### 新增
+- **移动逐格行走动画**：玩家/敌方单位移动时逐格 Tween 插值（0.15s/格），告别瞬移
+- **BFS 路径重建（BoardManager）**：`get_path_to_cell()` 方法，基于 came_from 回溯完整路径
+- **移动动画信号链**：BFC.move_step_visual → Main → BoardView.play_move_step → move_anim_done → BFC.move_step_done
+- **validate_move 纯验证方法**：不消耗资源的同步移动校验，供 Main 预检
+- **我方回合镜头切回优化**：敌方回合结束后镜头优先切回上一轮操作的我方单位（非固定切主角）
+- **_last_operated_unit_id 追踪**：移动/攻击/召唤操作时记录，用于镜头切回
+
+### 修改
+- BattleFlowController.try_move_unit: 从同步返回 bool 改为 async void，逐格移动+await 动画
+- BattleFlowController._execute_enemy_actions: 敌方移动接入 move_step_visual 动画信号链
+- 敌方移动后等待从 0.9s 降至 0.5s（动画已提供视觉反馈）
+- BoardView._draw_layer_units: 动画中的单位绘制在 from→to 插值位置
+- Main._on_move_requested: 改用 validate_move 同步校验 + fire-and-forget 异步执行
+- Main._on_enemy_turn_ended: 优先切回 _last_operated_unit_id
+- DiceDebugPanel: 版本标记 → v0.1.67
+
+### 备注
+- 中途经过的格子不触发效果（陷阱/遭遇等仅在最终目的地检查），这是设计决定
+- try_move_unit 返回类型变更（bool→void）为架构级改动，需确认无其他调用方依赖返回值
+
 ## v0.1.66 - 2026-03-31
 
 ### 新增

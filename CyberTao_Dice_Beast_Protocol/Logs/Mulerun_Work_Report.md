@@ -1,22 +1,24 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-31
-**版本**: v0.1.66
+**版本**: v0.1.67
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.66：角色形象全面重构（咩咩启示录风格）+ 音效设置面板
+- v0.1.67：移动逐格动画 + 敌方移动动画 + 我方回合镜头切回优化
 
 ---
 
 ## 根因目标
 
 用户反馈：
-1. 当前所有角色形象太丑，需要参考咩咩启示录（Cult of the Lamb）风格重新设计
-2. 设置面板需要新增游戏音乐/音效调节功能（音量滑块+静音开关）
+1. 移动时单位瞬移到目标格，太过生硬，需要逐格行走动画
+2. 我方回合镜头不应固定切回主角，应切回上一轮最后操作的我方单位
+
+服务层：棋盘走位层（核心交互体验优化）
 
 ---
 
@@ -24,84 +26,102 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/UnitRenderer.gd` | 全面重写所有角色绘制方法：玩家英雄+6种敌方迷你角色，咩咩启示录 Q 版风格 |
-| `Scripts/UI/BattleCharRenderer.gd` | 全面重写所有战斗立绘角色：玩家英雄+6种敌方大图立绘，咩咩启示录风格 |
-| `Scripts/UI/SettingsPanel.gd` | 面板扩大至 440x520，标题改为"设置"，新增音效设置区域（BGM/SFX 音量滑块+开关） |
-| `Scripts/System/AudioManager.gd` | 新增 6 个音量控制 API 方法 |
-| `Scripts/Main.gd` | 新增 bind_audio_manager 调用，调整 SettingsPanel 位置 |
-| `Scripts/UI/DiceDebugPanel.gd` | 版本标记更新至 v0.1.66 |
+| `Scripts/BattleV2/BoardManager.gd` | 新增 `get_path_to_cell()` BFS 路径重建方法（含 came_from 追踪） |
+| `Scripts/BattleV2/BattleFlowController.gd` | 新增 `move_step_visual`/`move_step_done` 信号、`validate_move()` 纯验证方法；`try_move_unit()` 改为 async 逐格移动；敌方移动接入动画信号链 |
+| `Scripts/UI/BoardView.gd` | 新增移动动画系统：`play_move_step()` Tween 驱动逐格插值 + `_draw_layer_units` 动画位置覆写 + `move_anim_done` 信号 |
+| `Scripts/Main.gd` | 新增 `_last_operated_unit_id` 追踪；`_on_move_requested` 改用 `validate_move`；新增 `_on_move_step_visual`/`_on_board_move_anim_done` 信号中转；`_on_enemy_turn_ended` 切回上一轮操作单位 |
+| `Scripts/UI/DiceDebugPanel.gd` | 版本标记更新至 v0.1.67 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.66 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.67 条目 |
 | `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+任务优先级 |
 
 ---
 
 ## 实现内容
 
-### 1. 角色形象重构（咩咩启示录风格）
+### 1. 移动逐格动画
 
-设计理念：参考 Cult of the Lamb 的 Q 版萌系角色风格——大圆头（约占身体 40%）、大圆眼、小瞳孔、圆润身体、短粗四肢，但保留赛博朋克配色。
+**BFS 路径重建（BoardManager）**：
+- 新增 `get_path_to_cell(origin, target, move_range)` 方法
+- 基于 BFS 的 `came_from` 字典追踪，从目标回溯到起点重建完整路径
+- 支持地形权重（高台消耗 2 点），路径保证在移动预算内
 
-**棋盘迷你角色（UnitRenderer）**：
-- 玩家英雄：大圆头+双大眼+V 型护目镜+圆身体+短腿+光刃+盾牌+皇冠
-- 哨兵：圆角方形机器人头+单扫描眼+天线+方体+粗短腿
-- 游魂：圆球飘浮体+波浪底边+怒目红眼+尾部拖影
-- 爬虫：圆虫体+6短足+多眼簇+钳夹
-- 猎手：狐耳三角头+独眼+枪+细腿
-- 幽灵：菱形体+数据辐射线+柔光双眼+无腿飘浮
-- Boss：大圆头+三尖金冠+三眼（双金+红第三眼）+宽体+大肩甲
+**逐格移动流程（BattleFlowController）**：
+- `try_move_unit()` 改为 async：获取路径后逐格调用 `unit_manager.move_unit()` + 发射 `move_step_visual` 信号
+- 每一步 await `move_step_done` 信号，等待 BoardView 动画完成后才推进下一步
+- 格子效果（陷阱/道具/遭遇等）仅在最终目的地检查（中途经过不触发）
+- 新增 `validate_move()` 纯验证方法（不消耗资源），Main 用于同步校验
 
-**战斗立绘角色（BattleCharRenderer）**：
-- 相同设计语言的大尺寸版本，增加更多细节（关节、装饰线、层叠光晕等）
+**视觉动画（BoardView）**：
+- `play_move_step(unit_id, from, to, duration=0.15)` Tween 驱动 0→1 插值
+- `_draw_layer_units` 中检测动画状态，将移动中单位绘制在 from→to 之间的插值位置
+- 使用 `_iso_cell_center()` 实时计算位置，确保相机移动时单位跟随正确
+- 动画完成后发射 `move_anim_done` 信号
 
-### 2. 音效设置面板
+**信号链架构**（BFC → Main → BoardView → Main → BFC）：
+```
+BFC.move_step_visual(uid, from, to)
+  → Main._on_move_step_visual: 设相机目标 + 启动 BoardView 动画
+    → BoardView.play_move_step: Tween 插值 0.15s
+      → BoardView.move_anim_done
+        → Main._on_board_move_anim_done: BFC.move_step_done.emit()
+          → BFC 继续下一步
+```
 
-**SettingsPanel 扩展**：
-- 面板从 400x320 扩大至 440x520
-- 标题从"显示设置"改为"设置"
-- 新增"音效设置"分区（带分隔线和区域标题）
-- BGM 音量滑块（0-100，默认 25）
-- SFX 音量滑块（0-100，默认 50）
-- BGM 开关（CheckButton，默认开启）
-- SFX 开关（CheckButton，默认开启）
-- 所有控件实时生效（slider value_changed / toggle toggled 即时更新 AudioManager）
-- 恢复默认按钮同时重置音频设置
+### 2. 敌方移动动画
 
-**AudioManager 新增 API**：
-- `set_bgm_volume(volume: float)` / `set_sfx_volume(volume: float)` — 线性 0.0-1.0 转 dB
-- `get_bgm_volume()` / `get_sfx_volume()` — 读取当前音量
-- `is_sfx_enabled()` / `is_bgm_enabled()` — 暴露开关状态
+- `_execute_enemy_actions` 中敌方移动也接入 `move_step_visual` → `await move_step_done` 信号链
+- 敌方移动后的固定等待从 0.9s 缩短至 0.5s（动画本身已提供视觉反馈）
+
+### 3. 我方回合镜头切回优化
+
+- Main 新增 `_last_operated_unit_id` 变量，在移动/攻击/召唤操作时记录
+- `_on_enemy_turn_ended` 优先将镜头切回上一轮操作的我方单位
+- 若该单位已阵亡或不存在，fallback 到主角（`_update_camera_to_player`）
+- 重新开始时重置 `_last_operated_unit_id`
 
 ---
 
 ## 接口变更
 
-- AudioManager 新增 6 个公开方法：set_bgm_volume, set_sfx_volume, get_bgm_volume, get_sfx_volume, is_sfx_enabled, is_bgm_enabled
-- SettingsPanel 新增 bind_audio_manager(am: Node) 方法
-- UnitRenderer / BattleCharRenderer 接口不变，仅内部绘制逻辑全面重写
+- BoardManager 新增 `get_path_to_cell(origin, target, move_range) -> Array[Vector2i]`
+- BattleFlowController 新增信号 `move_step_visual(unit_id, from_cell, to_cell)` 和 `move_step_done`
+- BattleFlowController 新增 `validate_move(unit_id, target_cell) -> bool`
+- BattleFlowController `try_move_unit()` 返回类型 `bool -> void`（异步协程）
+- BoardView 新增 `play_move_step(unit_id, from_cell, to_cell, duration)` 和信号 `move_anim_done`
 
 ---
 
 ## 测试确认
 
-- 需用户在 Godot 中运行确认角色视觉效果
-- 需确认设置面板中音量滑块和开关功能正常
-- 需确认棋盘迷你角色和战斗立绘风格统一
+- 需用户在 Godot 中运行确认：
+  - 玩家单位移动多格时逐格行走动画
+  - 敌方单位移动时有动画而非瞬移
+  - 我方回合开始时镜头切回上一轮操作的单位
+  - 遭遇/陷阱/道具等格子效果在目的地正确触发
+  - 掷骰/移动/攻击/召唤/敌方回合/胜负重开全部闭环
 
 ---
 
 ## 剩余问题
 
-- UI 布局尚未重新设计（底部卡牌栏、侧面信息面板等）
+- 卡牌出牌仍为点击模式（拖拽出牌为 v0.1.68 计划）
+- 顶部单位头像 HUD 未实现（v0.1.69 计划）
 - CardRewardPanel 暂未使用 CardRenderer 风格
-- 扇形手牌暂无拖拽机制
 - 阵亡单位跨层不复活
+- 多格移动时中途经过的格子效果不触发（设计决定，非 bug）
 
 ---
 
 ## 建议下一步
 
-1. 用户在 Godot 中运行确认角色形象+音效设置效果
-2. UI 布局重新设计（底部卡牌栏、顶部资源条、侧面信息面板）
-3. 更丰富的棋盘内容（更多遭遇类型、NPC、地标等）
-4. 卡牌拖拽使用机制
+1. v0.1.68：卡牌拖拽出牌 + 即时伤害/效果反馈（HP 条每次出牌后刷新 + 伤害飘字）
+2. v0.1.69：顶部单位头像 HUD（各方单位信息 + 点击切换镜头）
+3. 阵亡单位跨层复活机制
+
+---
+
+## Codex 复审标注
+
+- `get_path_to_cell` 的 BFS 不保证加权图最短路径（仅保证在预算内），但对游戏体验无影响（路径合理且在移动范围内）
+- `try_move_unit` 从同步改为异步是架构级变更，Main 调用方式已适配（validate_move 同步校验 + fire-and-forget 异步执行），需确认无其他调用方引用返回值

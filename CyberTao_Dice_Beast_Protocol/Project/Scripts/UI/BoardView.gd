@@ -45,6 +45,14 @@ var _flash_alpha: float = 0.0
 # Hover highlight（v0.1.62）
 var _hover_cell: Vector2i = Vector2i(-1, -1)
 
+# v0.1.67：逐格移动动画
+var _move_anim_unit: String = ""
+var _move_anim_from_cell: Vector2i = Vector2i(-1, -1)
+var _move_anim_to_cell: Vector2i = Vector2i(-1, -1)
+var _move_anim_t: float = 1.0
+var _move_tween: Tween = null
+signal move_anim_done
+
 # Animation pulse (20fps refresh via Timer)
 var _anim_timer: Timer = null
 var _last_redraw_ms: int = 0
@@ -278,6 +286,29 @@ func _filter_summon_cells(raw_summon_cells: Array[Vector2i]) -> Array[Vector2i]:
 			filtered.append(sc)
 	return filtered
 
+# --- v0.1.67：逐格移动动画 ---
+
+func play_move_step(unit_id: String, from_cell: Vector2i, to_cell: Vector2i, duration: float = 0.15) -> void:
+	if _move_tween and _move_tween.is_running():
+		_move_tween.kill()
+	_move_anim_unit = unit_id
+	_move_anim_from_cell = from_cell
+	_move_anim_to_cell = to_cell
+	_move_anim_t = 0.0
+	_move_tween = create_tween()
+	_move_tween.tween_method(_set_move_anim_t, 0.0, 1.0, duration)
+	_move_tween.tween_callback(_on_move_step_finished)
+
+func _set_move_anim_t(t: float) -> void:
+	_move_anim_t = t
+	queue_redraw()
+
+func _on_move_step_finished() -> void:
+	_move_anim_unit = ""
+	_move_anim_t = 1.0
+	queue_redraw()
+	emit_signal("move_anim_done")
+
 # --- 辅助 ---
 
 func _cell_rect(cell: Vector2i, margin: int) -> Rect2:
@@ -385,7 +416,13 @@ func _draw_layer_units(pulse: float, font: Font) -> void:
 		var unit: Dictionary = unit_manager.get_unit(uid)
 		var is_sel: bool = uid == selected_unit_id
 		var idle_y: float = sin(Time.get_ticks_msec() * 0.004) * 2.0 if is_sel else 0.0
-		var center: Vector2 = _iso_cell_center(cell)
+		var center: Vector2
+		if uid == _move_anim_unit and _move_anim_t < 1.0:
+			var from_pos: Vector2 = _iso_cell_center(_move_anim_from_cell)
+			var to_pos: Vector2 = _iso_cell_center(_move_anim_to_cell)
+			center = from_pos.lerp(to_pos, _move_anim_t)
+		else:
+			center = _iso_cell_center(cell)
 		UnitRenderer.draw_full_unit_iso(self, center, unit, is_sel, pulse, idle_y, font)
 		if board_manager:
 			UnitRenderer.draw_affinity_star_iso(self, center, unit, board_manager, cell, font)

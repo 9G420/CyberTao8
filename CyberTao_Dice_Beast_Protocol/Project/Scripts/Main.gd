@@ -29,6 +29,7 @@ var _audio: AudioManager
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
+var _last_operated_unit_id: String = ""
 
 func _ready() -> void:
 	_display_settings = DisplaySettings.new()
@@ -154,6 +155,9 @@ func _wire_debug_views() -> void:
 	_dice_anim.animation_finished.connect(_on_dice_anim_finished_forward)
 	# 移动完成后更新相机（v0.1.60）
 	_battle_flow.move_completed.connect(_on_move_completed_camera)
+	# v0.1.67：逐格移动动画信号链
+	_battle_flow.move_step_visual.connect(_on_move_step_visual)
+	_board_view.move_anim_done.connect(_on_board_move_anim_done)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
@@ -176,19 +180,15 @@ func _wire_debug_views() -> void:
 		_battle_flow.dice_manager.dice_rolled.connect(_on_dice_rolled_sfx)
 
 func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
-	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
-	if success:
-		_audio.play_sfx("click")
-		# 如果是玩家单位移动，更新相机
-		var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
-		if String(unit.get("owner", "")) == "player":
-			_board_view.set_camera_target(target_cell)
-	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
-	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
-	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
-	_board_view.queue_redraw()
+	if not _battle_flow.validate_move(unit_id, target_cell):
+		return
+	_audio.play_sfx("click")
+	_last_operated_unit_id = unit_id
+	# 逐格动画+相机跟随由 move_step_visual 信号链驱动
+	_battle_flow.try_move_unit(unit_id, target_cell)
 
 func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
+	_last_operated_unit_id = unit_id
 	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
 	if success:
 		_board_view.play_attack_feedback(target_cell, _last_attack_damage, _last_attack_killed)
@@ -199,6 +199,7 @@ func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	_board_view.queue_redraw()
 
 func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
+	_last_operated_unit_id = unit_id
 	var success: bool = _battle_flow.try_summon(unit_id, target_cell)
 	if success:
 		_audio.play_sfx("summon")
@@ -272,10 +273,15 @@ func _on_enemy_action_announced(unit_id: String, action_type: String, detail: St
 				_board_view.play_enemy_warning(adjacent[0])
 
 func _on_enemy_turn_ended() -> void:
-	# 敌方回合结束，相机平滑切回玩家（v0.1.65：延迟切回，过渡更柔和）
+	# 敌方回合结束（v0.1.67：切回上一轮操作的我方单位，而非固定切主角）
 	_board_view._drag_offset = Vector2.ZERO
-	# 延迟 0.8 秒后才开始切回，让玩家看清敌方最后的行动
 	await get_tree().create_timer(0.8).timeout
+	if _last_operated_unit_id != "":
+		var last_unit: Dictionary = _battle_flow.unit_manager.get_unit(_last_operated_unit_id)
+		if not last_unit.is_empty() and String(last_unit.get("owner", "")) == "player":
+			_board_view.set_camera_target(last_unit["cell"])
+			_board_view.queue_redraw()
+			return
 	_update_camera_to_player()
 	_board_view.queue_redraw()
 
@@ -416,6 +422,7 @@ func _on_restart_pressed() -> void:
 	_board_view.attack_highlight_cells = []
 	_board_view.summon_highlight_cells = []
 	_floor_clear_pending = false
+	_last_operated_unit_id = ""
 	_card_battle_ctrl.reset_persistent_deck()
 	_battle_flow.restart_battle()
 	_update_camera_to_player()
@@ -438,6 +445,16 @@ func _update_camera_to_player() -> void:
 func _on_move_completed_camera(unit_id: String, _from_cell: Vector2i, to_cell: Vector2i) -> void:
 	_board_view._drag_offset = Vector2.ZERO
 	_board_view.set_camera_target(to_cell)
+
+## v0.1.67：逐格移动动画 — 收到 BFC 的 move_step_visual 后驱动 BoardView 动画
+func _on_move_step_visual(unit_id: String, from_cell: Vector2i, to_cell: Vector2i) -> void:
+	_board_view._drag_offset = Vector2.ZERO
+	_board_view.set_camera_target(to_cell)
+	_board_view.play_move_step(unit_id, from_cell, to_cell, 0.15)
+
+## v0.1.67：BoardView 单步动画完成后通知 BFC 继续下一步
+func _on_board_move_anim_done() -> void:
+	_battle_flow.move_step_done.emit()
 
 ## 敌方回合开始前：将相机移到第一个敌方单位（v0.1.64）
 func _on_enemy_turn_starting(first_enemy_id: String) -> void:
