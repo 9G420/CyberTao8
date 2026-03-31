@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.68
+**当前版本**: v0.1.69
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -132,6 +132,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 角色形象重构（咩咩启示录风格）+音效设置面板 | v0.1.66 | 稳定 |
 | 移动逐格行走动画+敌方移动动画+我方回合镜头切回优化 | v0.1.67 | 稳定 |
 | 卡牌拖拽出牌+即时伤害反馈 | v0.1.68 | 稳定 |
+| 顶部单位头像 HUD | v0.1.69 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -231,6 +232,7 @@ UI层
 ├── TransitionOverlay    — 宝可梦式百叶窗过渡（CanvasLayer 10） ~110行 ✅ v0.1.53 新增
 ├── BattleCharRenderer  — 战斗角色立绘渲染（class_name注册）   ~180行 ✅ v0.1.54 新增
 ├── UITransitions       — UI过渡动画工具类（class_name注册）    ~60行 ✅ v0.1.55 新增
+├── UnitPortraitHUD    — 顶部单位头像 HUD（class_name注册）    ~130行 ✅ v0.1.69 新增
 └── SettingsPanel        — 显示设置
 
 System/
@@ -343,7 +345,6 @@ Main：                Scripts/Main.gd
 
 | 任务 | 说明 |
 |------|------|
-| **顶部单位头像 HUD** | 各方单位头像横排+点击切换镜头 |
 | **商店格扩展** | 多选商品 + 独立 UI 面板 |
 
 ### 🟡 中优先级
@@ -370,6 +371,7 @@ Main：                Scripts/Main.gd
 | 角色形象重构（咩咩启示录风格）+音效设置面板 | v0.1.66 |
 | 移动逐格行走动画+敌方移动动画+我方回合镜头切回优化 | v0.1.67 |
 | 卡牌拖拽出牌+即时伤害反馈 | v0.1.68 |
+| 顶部单位头像 HUD | v0.1.69 |
 | 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 |
 | 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 |
 | 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 |

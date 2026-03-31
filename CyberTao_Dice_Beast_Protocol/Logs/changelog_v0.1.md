@@ -1,5 +1,26 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.69 - 2026-03-31
+
+### 新增
+- **顶部单位头像 HUD**：屏幕顶部横排显示各方单位头像 + HP 条 + 名称
+- **UnitPortraitHUD.gd**：新文件，`class_name UnitPortraitHUD`，`_draw` 渲染所有单位肖像
+- **玩家单位左排、敌方右排**：自动按阵营分组布局
+- **点击头像切换镜头**：点击玩家头像 → 选中单位 + 镜头跟随；点击敌方头像 → 仅镜头跟随
+- **选中高亮 + 悬停反馈**：当前选中单位边框高亮，悬停时背景变亮
+- **卡牌战斗时自动隐藏**：进入遭遇时隐藏 HUD，返回棋盘时显示
+- **与 BoardView 选中同步**：BoardView 的 unit_selected/unit_deselected 信号联动 HUD 高亮
+
+### 修改
+- Main.gd: 新增 `_portrait_hud` 实例化 + 信号连接 + `_on_portrait_clicked` 回调
+- Main.gd: 卡牌战斗进出时切换 `_portrait_hud.visible`
+- DiceDebugPanel: 版本标记 → v0.1.69
+
+### 备注
+- UnitRenderer._draw_player_char / _draw_enemy_char 以 0.45 缩放绘制迷你头像
+- HUD 通过 units_changed 信号自动重建，单位阵亡/新增时自动更新
+- 起始 X=90px 避开左上角设置按钮
+
 ## v0.1.68 - 2026-03-31
 
 ### 新增

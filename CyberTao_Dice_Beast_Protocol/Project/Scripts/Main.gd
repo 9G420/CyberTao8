@@ -11,6 +11,7 @@ const CardRewardPanel = preload("res://Scripts/UI/CardRewardPanel.gd")
 const DeckViewPanel = preload("res://Scripts/UI/DeckViewPanel.gd")
 const CyberBackground = preload("res://Scripts/UI/CyberBackground.gd")
 const TransitionOverlay = preload("res://Scripts/UI/TransitionOverlay.gd")
+const UnitPortraitHUD = preload("res://Scripts/UI/UnitPortraitHUD.gd")
 
 var _battle_flow: BattleFlowController
 var _card_battle_ctrl: CardBattleController
@@ -26,6 +27,7 @@ var _restart_btn: Button
 var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
 var _audio: AudioManager
+var _portrait_hud: UnitPortraitHUD
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
@@ -59,6 +61,10 @@ func _build_debug_view() -> void:
 	_board_view = BoardView.new()
 	_board_view.position = Vector2(0, 0)
 	add_child(_board_view)
+
+	# 顶部单位头像 HUD（v0.1.69）
+	_portrait_hud = UnitPortraitHUD.new()
+	add_child(_portrait_hud)
 
 	# 底部右侧操作面板（v0.1.63 紧凑HUD）
 	_dice_panel = DiceDebugPanel.new()
@@ -175,6 +181,11 @@ func _wire_debug_views() -> void:
 	_dice_panel.set_dice_animation(_dice_anim)
 	_dice_panel.test_card_battle_requested.connect(_on_test_card_battle_requested)
 	_dice_panel.deck_view_requested.connect(_on_deck_view_requested)
+	# v0.1.69：顶部单位头像 HUD
+	_portrait_hud.bind_unit_manager(_battle_flow.unit_manager)
+	_portrait_hud.portrait_clicked.connect(_on_portrait_clicked)
+	_board_view.unit_selected.connect(func(uid: String): _portrait_hud.set_selected(uid))
+	_board_view.unit_deselected.connect(func(): _portrait_hud.set_selected(""))
 	# 掷骰音效
 	if _battle_flow.dice_manager and _battle_flow.dice_manager.has_signal("dice_rolled"):
 		_battle_flow.dice_manager.dice_rolled.connect(_on_dice_rolled_sfx)
@@ -299,6 +310,7 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 	await _transition.transition_to_battle(enemy_display, is_boss)
 	# 百叶窗合拢后：显示全屏卡牌战斗面板 + 启动战斗
 	_card_battle_panel.visible = true
+	_portrait_hud.visible = false
 	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp, _battle_flow.current_floor)
 	# 切换为战斗 BGM
 	if is_boss:
@@ -371,6 +383,7 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 	await _transition.transition_to_board()
 	# 百叶窗合拢后：隐藏卡牌战斗面板
 	_card_battle_panel.visible = false
+	_portrait_hud.visible = true
 	# 结算遭遇
 	_battle_flow.resolve_encounter(victory, player_hp_remaining)
 	# 反馈飘字
@@ -481,6 +494,7 @@ func _on_test_card_battle_requested() -> void:
 	# 调试也走宝可梦式过渡
 	await _transition.transition_to_battle("异常哨兵", false)
 	_card_battle_panel.visible = true
+	_portrait_hud.visible = false
 	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp, _battle_flow.current_floor)
 	await _transition.reveal()
 
@@ -489,6 +503,24 @@ func _on_deck_view_requested() -> void:
 		_deck_view_panel.close()
 	else:
 		_deck_view_panel.open()
+
+## v0.1.69：顶部头像 HUD 点击切换镜头
+func _on_portrait_clicked(unit_id: String) -> void:
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return
+	_audio.play_sfx("click")
+	var cell: Vector2i = unit["cell"]
+	_board_view._drag_offset = Vector2.ZERO
+	_board_view.set_camera_target(cell)
+	# 如果是玩家单位，选中它
+	if String(unit.get("owner", "")) == "player":
+		_board_view.selected_unit_id = unit_id
+		_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+		_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+		_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
+	_portrait_hud.set_selected(unit_id)
+	_board_view.queue_redraw()
 
 ## 掷骰音效回调
 func _on_dice_rolled_sfx(_results: Array[String], _crest_pool: Dictionary) -> void:
