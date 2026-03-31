@@ -53,6 +53,9 @@ var _move_anim_t: float = 1.0
 var _move_tween: Tween = null
 signal move_anim_done
 
+# v0.1.70：精灵动画
+var _sprite_animator = null  # PlayerSpriteAnimator
+
 # Animation pulse (20fps refresh via Timer)
 var _anim_timer: Timer = null
 var _last_redraw_ms: int = 0
@@ -77,8 +80,13 @@ func _ready() -> void:
 	_anim_timer.autostart = true
 	_anim_timer.timeout.connect(_on_anim_tick)
 	add_child(_anim_timer)
+	# v0.1.70：初始化精灵动画器
+	_sprite_animator = PlayerSpriteAnimator.new()
 
 func _on_anim_tick() -> void:
+	# v0.1.70：精灵动画帧推进
+	if _sprite_animator:
+		_sprite_animator.tick()
 	# 平滑插值相机位置（v0.1.62）
 	if not _drag_active:
 		var target: Vector2 = _iso_origin_target + _drag_offset
@@ -295,6 +303,10 @@ func play_move_step(unit_id: String, from_cell: Vector2i, to_cell: Vector2i, dur
 	_move_anim_from_cell = from_cell
 	_move_anim_to_cell = to_cell
 	_move_anim_t = 0.0
+	# v0.1.70：精灵动画方向 + 开始播放
+	if _sprite_animator and _sprite_animator.is_loaded():
+		_sprite_animator.set_direction(PlayerSpriteAnimator.direction_from_cells(from_cell, to_cell))
+		_sprite_animator.set_animating(true)
 	_move_tween = create_tween()
 	_move_tween.tween_method(_set_move_anim_t, 0.0, 1.0, duration)
 	_move_tween.tween_callback(_on_move_step_finished)
@@ -306,6 +318,9 @@ func _set_move_anim_t(t: float) -> void:
 func _on_move_step_finished() -> void:
 	_move_anim_unit = ""
 	_move_anim_t = 1.0
+	# v0.1.70：停止精灵动画
+	if _sprite_animator:
+		_sprite_animator.set_animating(false)
 	queue_redraw()
 	emit_signal("move_anim_done")
 
@@ -423,9 +438,38 @@ func _draw_layer_units(pulse: float, font: Font) -> void:
 			center = from_pos.lerp(to_pos, _move_anim_t)
 		else:
 			center = _iso_cell_center(cell)
-		UnitRenderer.draw_full_unit_iso(self, center, unit, is_sel, pulse, idle_y, font)
+		# v0.1.70：玩家单位使用精灵渲染
+		var is_player: bool = String(unit.get("owner", "")) == "player"
+		if is_player and _sprite_animator and _sprite_animator.is_loaded():
+			_draw_player_sprite(center, unit, is_sel, pulse, idle_y)
+		else:
+			UnitRenderer.draw_full_unit_iso(self, center, unit, is_sel, pulse, idle_y, font)
 		if board_manager:
 			UnitRenderer.draw_affinity_star_iso(self, center, unit, board_manager, cell, font)
+
+# v0.1.70：精灵渲染玩家角色（替代程序化绘制）
+func _draw_player_sprite(center: Vector2, unit: Dictionary, is_selected: bool, pulse: float, idle_y: float) -> void:
+	var tex: Texture2D = _sprite_animator.get_texture()
+	if tex == null:
+		return
+	var src_rect: Rect2 = _sprite_animator.get_source_rect()
+	# 渲染大小：约 80px 高（缩放前），与程序化单位大小匹配
+	var render_h: float = 80.0 * _zoom
+	var aspect: float = src_rect.size.x / src_rect.size.y if src_rect.size.y > 0.0 else 1.0
+	var render_w: float = render_h * aspect
+	var cy: float = center.y - 20.0 + idle_y
+	var dest_rect: Rect2 = Rect2(center.x - render_w * 0.5, cy - render_h * 0.5, render_w, render_h)
+	draw_texture_rect_region(tex, dest_rect, src_rect)
+	# HP 条
+	var hp: int = int(unit.get("hp", 1))
+	var max_hp: int = int(unit.get("max_hp", 1))
+	var hp_ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
+	UnitRenderer._draw_hp_bar(self, Vector2(center.x - 36.0, center.y + 16.0), 72.0, hp_ratio, true)
+	# 选中效果
+	if is_selected:
+		var col: Color = CyberStyle.NEON_GOLD
+		var a: float = 0.5 + pulse * 0.4
+		draw_arc(Vector2(center.x, cy), 30.0, 0, TAU, 16, Color(col.r, col.g, col.b, a), 2.5)
 
 # Layer 5: 攻击闪光（菱形）
 func _draw_attack_flash() -> void:

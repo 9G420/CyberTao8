@@ -1,24 +1,22 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-31
-**版本**: v0.1.69
+**版本**: v0.1.70
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.69：顶部单位头像 HUD
+- v0.1.70：玩家角色精灵动画（4方向行走 spritesheet 集成）
 
 ---
 
 ## 根因目标
 
-用户反馈：
-1. 棋盘上单位分散，切换查看不同单位需要手动拖拽相机寻找
-2. 需要一个顶部 UI 快速总览各方单位状态并切换镜头
+用户提供了刀盾角色 4 方向行走 spritesheet（由 AI 生成 + 手动整理），需要集成到棋盘渲染层替代程序化绘制。
 
-服务层：棋盘走位层（UI 信息展示优化）
+服务层：棋盘走位层（角色视觉升级）
 
 ---
 
@@ -26,75 +24,70 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/UnitPortraitHUD.gd` | **新文件**：顶部单位头像 HUD，`_draw` 渲染各方单位头像 + HP 条 + 名称，点击切换镜头 |
-| `Scripts/Main.gd` | 新增 `_portrait_hud` 实例化 + 信号连接 + `_on_portrait_clicked` 回调 + 卡牌战斗时隐藏/显示 |
-| `Scripts/UI/DiceDebugPanel.gd` | 版本标记更新至 v0.1.69 |
+| `Scripts/UI/PlayerSpriteAnimator.gd` | **新文件**：精灵动画管理器，加载 4 张 spritesheet + 帧切换 + 方向检测 |
+| `Scripts/UI/BoardView.gd` | 新增 `_sprite_animator` + `_draw_player_sprite()` + 移动时启动/停止动画 + tick 推进帧 |
+| `Scripts/UI/DiceDebugPanel.gd` | 版本标记更新至 v0.1.70 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.69 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.70 条目 |
 | `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+任务优先级+架构图 |
 
 ---
 
 ## 实现内容
 
-### 顶部单位头像 HUD
+### 精灵动画系统
 
-**布局设计**：
-- 屏幕顶部全宽横条（1280 x 56px），半透明深色背景
-- 玩家单位从左侧排列（起始 X=90px，避开设置按钮）
-- 敌方单位从右侧排列
-- 每个头像占 56x52px，间距 6px
+**PlayerSpriteAnimator（新文件）**：
+- `class_name PlayerSpriteAnimator`，extends RefCounted
+- 加载 4 张 spritesheet：`Assets/Tiles/刀盾向{上/下/左/右}走.png`
+- 每张 4x4 网格，共 15 帧（最后一格为空）
+- `tick()` 方法每 2 次调用切一帧（10fps 动画）
+- `direction_from_cells(from, to)` 静态方法根据移动方向返回 "up"/"down"/"left"/"right"
 
-**头像内容**：
-- 迷你单位角色绘制（UnitRenderer._draw_player_char / _draw_enemy_char，缩放 0.45）
-- HP 条（4px 高，颜色随比例变化：绿>60%，黄30-60%，红<30%）
-- 名称缩写（最多 4 字符，8pt 字号）
+**BoardView 集成**：
+- `_ready()` 中创建 `PlayerSpriteAnimator.new()`
+- `_on_anim_tick()` 中调用 `_sprite_animator.tick()` 推进帧
+- `play_move_step()` 中设置方向 + 开始动画
+- `_on_move_step_finished()` 中停止动画
+- `_draw_layer_units()` 中判断玩家单位 → 调用 `_draw_player_sprite()` 替代 `UnitRenderer.draw_full_unit_iso()`
+- `_draw_player_sprite()` 使用 `draw_texture_rect_region()` 从 spritesheet 提取当前帧，渲染到 80px 高度（随缩放）
 
-**交互功能**：
-- 点击玩家头像 → 选中该单位（BoardView.selected_unit_id 同步）+ 镜头跟随 + 高亮可移动/攻击/召唤范围
-- 点击敌方头像 → 仅镜头跟随（不选中）
-- 悬停时背景变亮（视觉反馈）
-- 当前选中单位边框高亮（与 BoardView 选中同步）
-
-**信号联动**：
-- `units_changed` → 自动重建头像列表（单位阵亡/新增时自动更新）
-- `unit_selected` / `unit_deselected` → 同步选中高亮
-- `portrait_clicked` → Main 处理镜头切换 + 单位选中
-
-**卡牌战斗适配**：
-- 进入遭遇战时 `_portrait_hud.visible = false`
-- 返回棋盘时 `_portrait_hud.visible = true`
+**保留的程序化绘制**：
+- 敌方单位仍用 UnitRenderer（各种不同造型）
+- UnitPortraitHUD 仍用 UnitRenderer._draw_player_char（迷你头像）
+- BattleCharRenderer 卡牌战斗立绘不受影响
 
 ---
 
 ## 接口变更
 
-- 新增文件 `Scripts/UI/UnitPortraitHUD.gd`（`class_name UnitPortraitHUD`）
-- UnitPortraitHUD 信号：`portrait_clicked(unit_id: String)`
-- UnitPortraitHUD 方法：`bind_unit_manager(um)`, `set_selected(unit_id)`, `rebuild()`
-- Main.gd 新增方法：`_on_portrait_clicked(unit_id: String)`
+- 新增文件 `Scripts/UI/PlayerSpriteAnimator.gd`（`class_name PlayerSpriteAnimator`）
+- PlayerSpriteAnimator 方法：`is_loaded()`, `set_direction(dir)`, `set_animating(val)`, `tick()`, `get_texture()`, `get_source_rect()`
+- PlayerSpriteAnimator 静态方法：`direction_from_cells(from_cell, to_cell) -> String`
+- BoardView 新增方法：`_draw_player_sprite(center, unit, is_selected, pulse, idle_y)`
 
 ---
 
 ## 测试确认
 
 - 需用户在 Godot 中运行确认：
-  - 顶部横条显示所有存活单位头像
-  - 玩家单位在左侧，敌方在右侧
-  - 点击玩家头像切换镜头并选中
-  - 点击敌方头像仅切换镜头
-  - 单位阵亡后头像自动消失
-  - 召唤新单位后头像自动新增
-  - 进入卡牌战斗时 HUD 隐藏，返回时显示
-  - 全部闭环正常
+  - 玩家角色在棋盘上显示为精灵图片（而非程序化图形）
+  - 移动时播放对应方向的行走动画
+  - 停止移动时回到第一帧
+  - 向上/下/左/右移动分别使用对应 spritesheet
+  - HP 条和选中效果正常叠加在精灵上
+  - 敌方单位渲染不受影响
+  - 如果精灵有白底（非透明），需要用户预处理去白底
 
 ---
 
 ## 剩余问题
 
+- spritesheet 背景透明度需实际运行确认（如果有白底需要预处理）
+- 精灵渲染大小（80px）可能需要微调以匹配棋盘格大小
+- HUD 头像和卡牌战斗立绘仍为程序化绘制，风格不统一
 - CardRewardPanel 暂未使用 CardRenderer 风格
 - 阵亡单位跨层不复活
-- 电弧牌 ATK-1 效果仅单场生效
 
 ---
 
@@ -108,6 +101,7 @@
 
 ## Codex 复审标注
 
-- UnitPortraitHUD 直接调用 UnitRenderer 的 `_` 前缀静态方法（`_draw_player_char` / `_draw_enemy_char`），GDScript 中这只是命名约定不是访问控制，但如果 UnitRenderer 重构为非静态则需要适配
-- 头像缩放使用固定 0.45，与 UnitRenderer 基准 72px 格子大小相关，如果角色绘制方法修改了基准尺寸，HUD 头像大小需要同步调整
-- `_portraits` 数组在每次 `units_changed` 时全量重建，当前单位数量少（<10）性能无问题，大量单位时可考虑增量更新
+- PlayerSpriteAnimator 使用 `load()` 在 `_init()` 中加载 4 张大纹理（最大 3840x3840），如果内存敏感可考虑懒加载
+- 帧率硬编码为 10fps（TICKS_PER_FRAME=2），如需调整可改为参数
+- 所有玩家单位（主角+伙伴）都使用同一套精灵，未来伙伴需要独立素材时需要扩展
+- 方向检测基于网格坐标（非屏幕坐标），等距视图下的视觉方向可能与网格方向不完全一致，需实测确认

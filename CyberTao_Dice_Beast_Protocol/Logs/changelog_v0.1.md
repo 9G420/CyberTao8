@@ -1,5 +1,26 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.70 - 2026-03-31
+
+### 新增
+- **玩家角色精灵动画**：替代程序化绘制，使用 spritesheet 渲染玩家单位
+- **PlayerSpriteAnimator.gd**：新文件，`class_name PlayerSpriteAnimator`，管理 4 方向行走 spritesheet 帧切换
+- **4方向行走动画**：上/下/左/右各一张 4x4 网格 spritesheet（15帧），移动时自动播放对应方向
+- **方向自动检测**：根据移动起终格计算朝向（dx/dy 比较）
+- **静止时显示第一帧**：未移动时显示当前朝向的第一帧（默认向下）
+
+### 修改
+- BoardView.gd: 新增 `_sprite_animator` + `_draw_player_sprite()` 方法，移动时启动/停止动画
+- BoardView.gd: `_on_anim_tick()` 中推进精灵帧，`play_move_step()` 中设置方向
+- DiceDebugPanel: 版本标记 → v0.1.70
+
+### 备注
+- 4 张 spritesheet 尺寸不同（向上 3032x2596，向下 3532x2888，向左/右 3840x3840），渲染时统一缩放至 80px 高
+- 敌方单位仍使用程序化绘制（UnitRenderer）
+- HUD 头像仍使用程序化绘制（UnitRenderer._draw_player_char）
+- 如果 spritesheet 背景不透明（非 RGBA alpha），需要用户预处理去白底
+- 帧率：10fps（每 100ms 切帧），15 帧一个完整循环
+
 ## v0.1.69 - 2026-03-31
 
 ### 新增
