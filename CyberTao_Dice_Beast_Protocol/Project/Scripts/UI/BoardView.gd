@@ -248,6 +248,13 @@ func _select_unit(unit_id: String) -> void:
 		highlight_cells = []
 		attack_highlight_cells = []
 		summon_highlight_cells = []
+	# v0.1.64：选中单位时立即将相机居中到该单位
+	if unit_manager:
+		var unit: Dictionary = unit_manager.get_unit(unit_id)
+		if not unit.is_empty():
+			var cell: Vector2i = unit["cell"]
+			_drag_offset = Vector2.ZERO
+			set_camera_target(cell)
 	emit_signal("unit_selected", unit_id)
 	queue_redraw()
 

@@ -1,5 +1,20 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.64 - 2026-03-31
+
+### 新增
+- **选中单位即居中相机**：点击可控制单位时相机立即移到该单位位置
+- **敌方回合预告镜头**：敌方掷骰前先将相机移到即将行动的敌方单位
+- **掷骰动画增强**：骰子放大65%（34→56），总动画时长约4秒，新增落地阴影、中心光晕、减速翻滚效果
+- **enemy_turn_starting 信号**：敌方回合开始前通知 UI 层
+
+### 修改
+- BoardView._select_unit: 选中时调用 set_camera_target + 重置 _drag_offset
+- BattleFlowController._start_enemy_turn: 掷骰前 emit enemy_turn_starting，等待 0.5 秒
+- Main.gd: 所有自动相机跟随回调重置 _drag_offset，新增 _on_enemy_turn_starting
+- DiceRollAnimation: 全面重写——更大骰子、更长动画、多层辉光、阴影、减速翻滚、旋转效果
+- DiceDebugPanel: 版本标记 → v0.1.64
+
 ## v0.1.63 - 2026-03-31
 
 ### 新增

@@ -26,6 +26,7 @@ signal game_won
 signal boss_unlocked(cell: Vector2i)
 signal portal_spawned(cell: Vector2i)
 signal hero_warped(unit_id: String, target_cell: Vector2i)
+signal enemy_turn_starting(first_enemy_id: String)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -248,12 +249,15 @@ func try_use_trick_crest() -> bool:
 		emit_signal("trick_crest_used", String(r["gained_crest"]))
 	return bool(r["ok"])
 
-## 启动敌方回合：掷骰 -> 延迟 -> 执行敌方行动
+## 启动敌方回合：通知相机 → 掷骰 -> 延迟 -> 执行敌方行动
 func _start_enemy_turn() -> void:
 	var enemy_units: Array[String] = battle_ai.get_enemy_units()
 	if enemy_units.is_empty():
 		_advance_to_next_player_round()
 		return
+	# v0.1.64：在掷骰前先通知 UI 将相机移到第一个敌方单位
+	emit_signal("enemy_turn_starting", enemy_units[0])
+	await get_tree().create_timer(0.5).timeout
 	current_phase = BattlePhase.ENEMY_ROLL
 	emit_signal("phase_changed", _phase_name(current_phase))
 	dice_manager.roll_turn_dice()

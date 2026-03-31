@@ -147,6 +147,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.boss_unlocked.connect(_on_boss_unlocked)
 	_battle_flow.portal_spawned.connect(_on_portal_spawned)
 	_battle_flow.hero_warped.connect(_on_hero_warped)
+	# v0.1.64：敌方回合开始前将相机给到敌方单位
+	_battle_flow.enemy_turn_starting.connect(_on_enemy_turn_starting)
 	# 移动完成后更新相机（v0.1.60）
 	_battle_flow.move_completed.connect(_on_move_completed_camera)
 	# 卡牌战斗控制器信号
@@ -267,7 +269,8 @@ func _on_enemy_action_announced(unit_id: String, action_type: String, detail: St
 				_board_view.play_enemy_warning(adjacent[0])
 
 func _on_enemy_turn_ended() -> void:
-	# 敌方回合结束，相机切回玩家（v0.1.63）
+	# 敌方回合结束，相机切回玩家（v0.1.64：重置拖拽偏移）
+	_board_view._drag_offset = Vector2.ZERO
 	_update_camera_to_player()
 	_board_view.queue_redraw()
 
@@ -426,9 +429,18 @@ func _update_camera_to_player() -> void:
 	var cell: Vector2i = unit["cell"]
 	_board_view.set_camera_target(cell)
 
-## move_completed 相机跟随回调（v0.1.63：敌方移动时也跟随）
+## move_completed 相机跟随回调（v0.1.64：仅跟随当前阶段活动单位）
 func _on_move_completed_camera(unit_id: String, _from_cell: Vector2i, to_cell: Vector2i) -> void:
+	_board_view._drag_offset = Vector2.ZERO
 	_board_view.set_camera_target(to_cell)
+
+## 敌方回合开始前：将相机移到第一个敌方单位（v0.1.64）
+func _on_enemy_turn_starting(first_enemy_id: String) -> void:
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(first_enemy_id)
+	if not unit.is_empty():
+		var cell: Vector2i = unit["cell"]
+		_board_view._drag_offset = Vector2.ZERO
+		_board_view.set_camera_target(cell)
 
 func _on_settings_pressed() -> void:
 	_audio.play_sfx("click")
