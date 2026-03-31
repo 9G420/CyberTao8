@@ -41,6 +41,8 @@ func _ready() -> void:
 	add_child(_card_battle_ctrl)
 	_build_debug_view()
 	_wire_debug_views()
+	# 初始相机跟随玩家位置
+	_update_camera_to_player()
 	# 启动棋盘 BGM
 	_audio.play_bgm("bgm_map")
 
@@ -56,7 +58,7 @@ func _build_debug_view() -> void:
 
 	# 右侧操作面板（半透明叠加在棋盘上方）
 	_dice_panel = DiceDebugPanel.new()
-	_dice_panel.position = Vector2(1040, 8)
+	_dice_panel.position = Vector2(1052, 8)
 	add_child(_dice_panel)
 
 	var settings_btn := Button.new()
@@ -142,6 +144,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.boss_unlocked.connect(_on_boss_unlocked)
 	_battle_flow.portal_spawned.connect(_on_portal_spawned)
 	_battle_flow.hero_warped.connect(_on_hero_warped)
+	# 移动完成后更新相机（v0.1.60）
+	_battle_flow.move_completed.connect(_on_move_completed_camera)
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
@@ -167,6 +171,10 @@ func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
 	if success:
 		_audio.play_sfx("click")
+		# 如果是玩家单位移动，更新相机
+		var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+		if String(unit.get("owner", "")) == "player":
+			_board_view.set_camera_target(target_cell)
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
@@ -332,6 +340,7 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 		_board_view.attack_highlight_cells = []
 		_board_view.summon_highlight_cells = []
 		_battle_flow.advance_to_next_floor()
+		_update_camera_to_player()
 		_board_view.queue_redraw()
 		return
 	# 卡牌战斗结束：先等待结果展示
@@ -378,6 +387,7 @@ func _on_boss_unlocked(cell: Vector2i) -> void:
 	_board_view.queue_redraw()
 
 func _on_hero_warped(unit_id: String, target_cell: Vector2i) -> void:
+	_board_view.set_camera_target(target_cell)
 	_board_view.play_pickup_feedback(target_cell, "传送至 Boss！")
 	_board_view.queue_redraw()
 
@@ -393,7 +403,27 @@ func _on_restart_pressed() -> void:
 	_floor_clear_pending = false
 	_card_battle_ctrl.reset_persistent_deck()
 	_battle_flow.restart_battle()
+	_update_camera_to_player()
 	_board_view.queue_redraw()
+
+## 相机跟随：找到第一个玩家单位位置并更新相机目标（v0.1.60）
+func _update_camera_to_player() -> void:
+	if _battle_flow == null or _battle_flow.unit_manager == null:
+		return
+	var player_ids: Array[String] = _battle_flow.unit_manager.get_player_units()
+	if player_ids.is_empty():
+		return
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(player_ids[0])
+	if unit.is_empty():
+		return
+	var cell: Vector2i = unit["cell"]
+	_board_view.set_camera_target(cell)
+
+## move_completed 相机跟随回调（v0.1.60）
+func _on_move_completed_camera(unit_id: String, _from_cell: Vector2i, to_cell: Vector2i) -> void:
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+	if String(unit.get("owner", "")) == "player":
+		_board_view.set_camera_target(to_cell)
 
 func _on_settings_pressed() -> void:
 	_audio.play_sfx("click")

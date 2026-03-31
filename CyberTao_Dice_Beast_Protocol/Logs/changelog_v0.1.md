@@ -1,5 +1,29 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.60 - 2026-03-31
+
+### 新增
+- **相机跟随玩家角色 + 全新素材 + UI优化**
+- IsoTileRenderer.calc_origin_for_cell()：反推 iso_origin 使指定格子映射到屏幕中心
+- BoardView.camera_cell + set_camera_target()：相机跟随系统
+- BoardView._draw_edge_vignette()：四边 80px 渐暗带柔化棋盘边界
+- Main._update_camera_to_player() / _on_move_completed_camera()：移动/重开/传送/层切换时更新相机
+- 11 张全新 AI 生成赛博朋克等距方块贴图（Nano Banana Pro，统一英文命名）
+
+### 修改
+- IsoTileRenderer 等距参数再次放大：TILE_W 144→192, TILE_H_HALF 36→48, TILE_FULL_H 144→192, TILE_ELEVATED_H 192→256, ELEVATION_OFFSET 48→64
+- BoardView iso_origin 从固定 (640,72) 改为动态计算（相机跟随）
+- BoardView 启用 clip_contents=true 裁剪溢出视口的棋盘
+- UnitRenderer 等距角色放大：scale 0.9→1.1，HP条宽 60→72，选中环半径 24→30，Y偏移 -16→-20
+- DiceDebugPanel 面板宽度 232→220，圆角 6→8，alpha 0.75→0.80，版本 v0.1.59→v0.1.60
+- DiceDebugPanel 位置 (1040,8)→(1052,8)
+- CyberBackground 移除棋盘发光边框和角标绘制（相机跟随下棋盘超出视口）
+- 删除所有旧 PNG 素材文件（含中文命名和 v0.1.59 elevated 版本）
+
+### 备注
+- 相机跟随暂为瞬间跳转，后续可加 Tween 平滑过渡
+- TILE_W=192 使 8 格棋盘宽度 1536px，溢出 1280px 视口约 128px/侧
+
 ## v0.1.59 - 2026-03-31
 
 ### 新增

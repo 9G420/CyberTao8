@@ -15,8 +15,10 @@ var board_manager: Node = null
 var unit_manager: Node = null
 var battle_flow: Node = null
 
-# --- 等距棋盘原点（v0.1.59 全屏居中）---
-var iso_origin: Vector2 = Vector2(640.0, 72.0)
+# --- 相机跟随（v0.1.60）---
+var camera_cell: Vector2i = Vector2i(0, 0)
+var iso_origin: Vector2 = Vector2(640.0, 360.0)
+const SCREEN_CENTER: Vector2 = Vector2(640.0, 360.0)
 
 # Selection state
 var selected_unit_id: String = ""
@@ -41,7 +43,10 @@ var _item_names: Dictionary = {
 
 func _ready() -> void:
 	size = Vector2(1280, 720)
+	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# 初始相机位置
+	iso_origin = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
 	# 动画刷新定时器（50ms=20fps，驱动呼吸/脉冲效果）
 	_anim_timer = Timer.new()
 	_anim_timer.wait_time = 0.05
@@ -50,6 +55,12 @@ func _ready() -> void:
 	add_child(_anim_timer)
 
 func _on_anim_tick() -> void:
+	queue_redraw()
+
+## 设置相机跟随目标格子（v0.1.60）
+func set_camera_target(cell: Vector2i) -> void:
+	camera_cell = cell
+	iso_origin = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
 	queue_redraw()
 
 func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
@@ -198,6 +209,7 @@ func _draw() -> void:
 	_draw_layer_highlights(pulse)
 	_draw_layer_units(pulse, font)
 	_draw_attack_flash()
+	_draw_edge_vignette()
 
 # Layer 1: 等距贴图基础网格
 func _draw_layer_grid(_pulse: float) -> void:
@@ -440,3 +452,23 @@ func play_chest_feedback(cell: Vector2i, text: String) -> void:
 	tw5.tween_property(lbl, "modulate:a", 0.0, 0.8)
 	tw5.set_parallel(false)
 	tw5.tween_callback(lbl.queue_free)
+
+# --- 边缘渐暗（v0.1.60：柔化棋盘边界）---
+func _draw_edge_vignette() -> void:
+	var w: float = 1280.0
+	var h: float = 720.0
+	var band: float = 80.0
+	var steps: int = 8
+	for i in range(steps):
+		var ratio: float = float(i) / float(steps)
+		var a: float = 0.55 * (1.0 - ratio)
+		var col: Color = Color(0.01, 0.01, 0.03, a)
+		var t: float = band * ratio
+		# 上
+		draw_rect(Rect2(0, t, w, band / float(steps)), col, true)
+		# 下
+		draw_rect(Rect2(0, h - t - band / float(steps), w, band / float(steps)), col, true)
+		# 左
+		draw_rect(Rect2(t, 0, band / float(steps), h), col, true)
+		# 右
+		draw_rect(Rect2(w - t - band / float(steps), 0, band / float(steps), h), col, true)
