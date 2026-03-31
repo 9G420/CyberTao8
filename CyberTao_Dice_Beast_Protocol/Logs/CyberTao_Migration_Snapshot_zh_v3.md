@@ -1,7 +1,7 @@
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
 **更新时间**: 2026-03-31
-**当前版本**: v0.1.54
+**当前版本**: v0.1.60
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要开发分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
@@ -18,7 +18,7 @@
 2. **`Logs/Handoff_Package_latest.md`** — 最新交接包（如存在，优先级高于本文件）
 3. **本文件**（`Logs/CyberTao_Migration_Snapshot_zh_v3.md`）— 项目全貌、架构、数据结构、当前状态
 4. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告
-5. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.54）
+5. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.60）
 
 **关键规则：**
 - **只在 `CyberTao_Dice_Beast_Protocol/Project/` 目录下开发**，不要修改旧项目 `CyberTao8` 根目录
@@ -26,7 +26,7 @@
 - 每轮任务完成后必须更新三件套：`Mulerun_Work_Report.md` + `changelog_v0.1.md` + `AI_Employee_Guide_v3.md`
 - 每次任务前确认：服务于棋盘走位层 or 卡牌战斗层，两者都不是则不优先做
 
-**当前阶段状态：双层玩法结构完整闭环，卡牌战斗层第一版完成并持续深化，美化 Phase 1~4.1 已完成，全屏独立卡牌战斗界面+角色立绘+扇形手牌已实现。下一阶段聚焦 UI 过渡动画和音效系统。**
+**当前阶段状态：双层玩法结构完整闭环，卡牌战斗层第一版完成并持续深化，美化 Phase 1~6 全部完成，等距贴图棋盘+相机跟随+全新AI素材+音效系统+UI过渡动画已实现，层间难度递增已接入。下一阶段聚焦相机平滑过渡和商店格扩展。**
 
 ---
 
@@ -52,7 +52,7 @@
 
 ---
 
-## 2. 当前已完成内容（v0.1.0 → v0.1.54）
+## 2. 当前已完成内容（v0.1.0 → v0.1.60）
 
 ### 棋盘走位层（外层 — 全部稳定）
 
@@ -88,6 +88,12 @@
 | 单位精简（1主角+伙伴槽系统）+ 英雄存活制胜负判定 | v0.1.52 | 稳定 |
 | Boss解锁自动传送 + 宝可梦式卡牌战斗过渡 | v0.1.53 | 稳定 |
 | 全屏独立卡牌战斗界面+角色立绘+扇形手牌+棋盘单位美化 | v0.1.54 | 稳定 |
+| 美化 Phase 4.2（UITransitions+面板缓动动画+召唤展开演出） | v0.1.55 | 稳定 |
+| 美化 Phase 5（AudioManager+SFXGenerator+全局音效接入+BGM切换） | v0.1.56 | 稳定 |
+| 层间难度递增（current_floor缩放敌方HP/ATK） | v0.1.57 | 稳定 |
+| 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 | 稳定 |
+| 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 | 稳定 |
+| 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 | 稳定 |
 
 ### 卡牌战斗层（内层 — 第一版完成，持续深化）
 
@@ -124,8 +130,11 @@
 | CyberBackground 背景氛围（渐变+网格+粒子+扫描线） | v0.1.48 | 稳定 |
 | TransitionOverlay 宝可梦式百叶窗过渡 | v0.1.53 | 稳定 |
 | BattleCharRenderer 战斗角色立绘（玩家+6种敌方） | v0.1.54 | 稳定 |
+| UITransitions UI过渡动画工具类 | v0.1.55 | 稳定 |
+| AudioManager+SFXGenerator 程序化音效系统（28种SFX+4种BGM） | v0.1.56 | 稳定 |
+| IsoTileRenderer 等距贴图渲染器（TILE_W=192） | v0.1.58/60 | 稳定 |
 
-### 双层闭环完整流程（v0.1.54）
+### 双层闭环完整流程（v0.1.60）
 
 ```
 棋盘走位层                              卡牌战斗层
@@ -232,10 +241,11 @@ CardBattleController（卡牌层独立状态机）         ~540行
 ### UI 层
 
 ```
-Main.gd（场景组合+信号中转）                          ~356行
-├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~423行（Phase 1 瘦身）
-├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行 ✅ Phase 1 新增
-├── UnitRenderer         — 单位渲染（v0.1.54 迷你角色剪影）  ~230行
+Main.gd（场景组合+信号中转+音效触发+相机跟随）                 ~500行
+├── BoardView            — 棋盘渲染+点击交互+反馈动画+相机跟随    ~475行（v0.1.60 相机跟随+边缘渐暗）
+├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行（Phase 6 后仅供参考）
+├── UnitRenderer         — 单位渲染（v0.1.60 scale=1.1+等距适配）  ~270行
+├── IsoTileRenderer      — 等距贴图渲染器（class_name）   ~175行 ✅ v0.1.58/60 相机跟随+TILE_W=192
 ├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~252行 ✅ v0.1.49 重写
 ├── BattleEffects        — 战斗特效静态类（class_name）   ~103行 ✅ Phase 2 新增
 ├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~540行
@@ -247,7 +257,12 @@ Main.gd（场景组合+信号中转）                          ~356行
 ├── CyberBackground      — 背景氛围系统（class_name注册）  ~155行 ✅ Phase 4.1 新增
 ├── TransitionOverlay    — 宝可梦式百叶窗过渡（CanvasLayer 10） ~110行 ✅ v0.1.53 新增
 ├── BattleCharRenderer   — 战斗角色立绘渲染（class_name注册）   ~180行 ✅ v0.1.54 新增
+├── UITransitions        — UI过渡动画工具类（class_name注册）    ~60行 ✅ v0.1.55 新增
 └── SettingsPanel        — 显示设置
+
+System/
+├── AudioManager         — 音效管理器（class_name注册，多通道SFX+BGM）  ~120行 ✅ v0.1.56 新增
+└── SFXGenerator         — 程序化音频引擎（28种音效+4种BGM循环）       ~1100行 ✅ v0.1.56 迁入
 ```
 
 ### 信号体系
@@ -338,7 +353,7 @@ CardBattleController:
 | BattleFlowController 693行（多层地图后增长） | 中 | 否 | 下次大功能前考虑瘦身 |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 | 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
-| 多层地图难度暂不递增（各层敌方数值相同） | 低 | 否 | 层间难度调优时 |
+| 多层地图难度暂不递增（各层敌方数值相同） | ~~低~~ | ~~否~~ | ✅ v0.1.57 已实现层间难度缩放 |
 | 阵亡单位跨层不复活（可能导致后续层过难） | 低 | 否 | 数值调优轮次 |
 | CardRewardPanel 未使用 CardRenderer 风格 | 低 | 否 | UI 统一轮次 |
 | 扇形手牌无拖拽（仅点击出牌） | 低 | 否 | 交互体验优化时 |
@@ -347,27 +362,27 @@ CardBattleController:
 
 ## 5. 下一阶段推进建议
 
-### 当前阶段核心方向：美术美化收尾 + 体验打磨
+### 当前阶段核心方向：体验打磨 + 功能扩展
 
-v0.1.31~v0.1.54 完成了卡牌深化（构筑/升级/Boss/6种敌方）和全面美化（Phase 1~4.1 + 全屏战斗界面+角色立绘+扇形手牌+百叶窗过渡）。
+v0.1.31~v0.1.60 完成了卡牌深化（构筑/升级/Boss/6种敌方）和全面美化（Phase 1~6 + 等距贴图棋盘+相机跟随+全新AI素材+音效系统+UI过渡动画+层间难度递增）。
 
 ### 🔴 高优先级
 
-1. **美化 Phase 4.2：UI 过渡动画** — 面板弹出/关闭缓动动画 + 召唤展开演出
+1. **相机跟随平滑过渡** — Tween 插值 iso_origin，而非瞬间跳转
+2. **商店格扩展** — 多选商品 + 独立 UI 面板
 
 ### 🟡 中优先级
 
-2. **美化 Phase 5：音效系统** — AudioManager + 基础音效接入（掷骰/攻击/出牌/胜利/失败）
+3. **阵亡单位跨层复活机制** — 防止后续层无伙伴可用
 
 ### 🟢 中低优先级
 
-3. **层间难度递增** — 根据 current_floor 调整敌方 HP/ATK 或数量
-4. **商店格扩展** — 多选商品 + 独立 UI 面板
-5. **Crest 蓄力池 + 骰子操控机制**
+4. **SettingsPanel 音量控件** — 添加音量滑块 + SFX/BGM 开关
 
 ### 🔵 长期方向
 
-6. **美化 Phase 6：2.5D 棋盘** — 等距视角（需 Codex 复审）
+5. **等距角色专属贴图** — 替代程序化剪影
+6. **Crest 蓄力池 + 骰子操控机制**
 7. **存档系统** — 最小存档/读档
 
 ---
@@ -391,9 +406,10 @@ v0.1.31~v0.1.54 完成了卡牌深化（构筑/升级/Boss/6种敌方）和全�
 | `BattleV2/VictoryRuleHelper.gd` | 胜负判定（has_hero_unit+has_grunt_units） | ~30 行 |
 | `BattleV2/CrestActionHandler.gd` | Crest 消耗操作（从 BFC 剥离） | ~66 行 |
 | `BattleV2/CellEffectHandler.gd` | 格子效果处理（从 BFC 剥离） | ~205 行 |
-| `UI/BoardView.gd` | 棋盘渲染 + 点击交互 + 反馈动画 | ~423 行 |
-| `UI/BoardCellRenderer.gd` | 格子渲染静态类（9种格子+Boss锁定+传送门） | ~210 行 |
-| `UI/UnitRenderer.gd` | 单位渲染（迷你角色剪影） | ~230 行 |
+| `UI/BoardView.gd` | 棋盘渲染 + 点击交互 + 反馈动画 + 相机跟随 | ~475 行 |
+| `UI/BoardCellRenderer.gd` | 格子渲染静态类（Phase 6 后仅供参考） | ~210 行 |
+| `UI/UnitRenderer.gd` | 单位渲染（v0.1.60 scale=1.1+等距适配） | ~270 行 |
+| `UI/IsoTileRenderer.gd` | 等距贴图渲染器（TILE_W=192+相机跟随） | ~175 行 |
 | `UI/DiceRollAnimation.gd` | 掷骰演出（伪3D等距骰子） | ~252 行 |
 | `UI/BattleEffects.gd` | 战斗特效静态类 | ~103 行 |
 | `UI/DiceDebugPanel.gd` | 棋盘层 HUD（crest 池/阶段/层数/部署提示） | ~540 行 |
@@ -405,8 +421,11 @@ v0.1.31~v0.1.54 完成了卡牌深化（构筑/升级/Boss/6种敌方）和全�
 | `UI/CyberBackground.gd` | 背景氛围系统（渐变+网格+粒子+扫描线） | ~155 行 |
 | `UI/TransitionOverlay.gd` | 宝可梦式百叶窗过渡（CanvasLayer 10） | ~110 行 |
 | `UI/BattleCharRenderer.gd` | 战斗角色立绘渲染（玩家+6种敌方） | ~180 行 |
+| `UI/UITransitions.gd` | UI过渡动画工具类（popup/close缓动） | ~60 行 |
 | `UI/SettingsPanel.gd` | 显示设置面板 | ~100 行 |
-| `Main.gd` | 场景组合 + 信号中转 + 过渡管理 | ~356 行 |
+| `System/AudioManager.gd` | 音效管理器（多通道SFX+BGM） | ~120 行 |
+| `System/SFXGenerator.gd` | 程序化音频引擎（28种SFX+4种BGM） | ~1100 行 |
+| `Main.gd` | 场景组合 + 信号中转 + 音效触发 + 相机跟随 | ~500 行 |
 
 ### 日志文件（`Logs/` 下）
 
@@ -439,9 +458,10 @@ v0.1.31~v0.1.54 完成了卡牌深化（构筑/升级/Boss/6种敌方）和全�
 | v0.1.39~v0.1.43 | 系统完善（BuffManager接入/BFC瘦身/9种格子/多层地图/BUG-001修复） |
 | v0.1.45~v0.1.49 | 美化 Phase 1~4.1（格子/单位/骰子/卡牌/背景 视觉升级） |
 | v0.1.50~v0.1.54 | Boss机制+单位精简+全屏卡牌战斗界面+角色立绘+百叶窗过渡 |
+| v0.1.55~v0.1.60 | UI过渡动画+音效系统+层间难度递增+等距贴图棋盘+相机跟随+全新AI素材 |
 
 ---
 
 ## 8. 一句话状态
 
-**v0.1.54 双层玩法完整闭环+卡牌深化第一版完成。棋盘走位层（9种格子+随机生成+3层推进+Boss锁定传送门+单位精简）和卡牌战斗层（14种牌+升级+6种敌方+Boss+能量成长+持久牌组+奖励选牌）全部稳定。全屏独立卡牌战斗界面+角色立绘+扇形手牌+宝可梦式百叶窗过渡+赛博朋克全面美化（Phase 1~4.1）已完成。下一步：UI 过渡动画 + 音效系统。**
+**v0.1.60 双层玩法完整闭环+卡牌深化第一版完成。棋盘走位层（9种格子+随机生成+3层推进+Boss锁定传送门+单位精简+层间难度缩放）和卡牌战斗层（14种牌+升级+6种敌方+Boss+能量成长+持久牌组+奖励选牌）全部稳定。等距贴图棋盘（IsoTileRenderer TILE_W=192）+相机跟随玩家角色+全新AI赛博朋克素材+音效系统（AudioManager+SFXGenerator 28种SFX+4种BGM）+UI过渡动画+全屏独立卡牌战斗界面+角色立绘+扇形手牌+宝可梦式百叶窗过渡+赛博朋克全面美化（Phase 1~6）已完成。下一步：相机平滑过渡 + 商店格扩展。**
