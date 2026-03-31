@@ -1,72 +1,27 @@
 extends RefCounted
 class_name IsoTileRenderer
 
-## 等距棋盘贴图渲染器（v0.1.60 相机跟随 + 全新素材）
-## 负责：贴图加载/缓存、格坐标↔屏幕坐标转换、等距贴图绘制
+## 等距棋盘程序化渲染器（v0.1.61 回退至程序化渲染）
+## 负责：格坐标↔屏幕坐标转换、等距菱形格子程序化绘制
 ## class_name 全局注册，BoardView 直接调用静态方法
 
-# --- 等距参数（v0.1.60：放大至超出视口，配合相机跟随）---
+# --- 等距参数（保持 v0.1.60 相机跟随体系）---
 const TILE_W: int = 192			# 菱形宽度（像素）
 const TILE_H_DIAMOND: int = 96	# 菱形高度 = TILE_W / 2
-const TILE_H_HALF: int = 48	# 菱形半高 = 格子行步进
-const TILE_FULL_H: int = 192	# 普通贴图显示完整高度（含方块体）
-const TILE_ELEVATED_H: int = 256	# 高起贴图显示高度（含突起方块）
-const ELEVATION_OFFSET: int = 64	# 高起贴图额外向上偏移
+const TILE_H_HALF: int = 48		# 菱形半高 = 格子行步进
 const GRID_SIZE: int = 8
-
-# --- 需要高起渲染的 tile key 集合 ---
-const ELEVATED_KEYS: Array[String] = [
-	"high_ground", "encounter", "heal", "shop", "chest", "item", "event", "portal"
-]
-
-# --- 贴图缓存 ---
-static var _textures: Dictionary = {}
-static var _loaded: bool = false
-
-# --- 贴图路径映射（v0.1.60：全新 AI 生成素材）---
-const TILE_PATHS: Dictionary = {
-	"normal_light": "res://Assets/Tiles/normal_light.png",
-	"normal_dark": "res://Assets/Tiles/normal_dark.png",
-	"high_ground": "res://Assets/Tiles/high_ground.png",
-	"trap": "res://Assets/Tiles/trap.png",
-	"encounter": "res://Assets/Tiles/encounter.png",
-	"heal": "res://Assets/Tiles/heal.png",
-	"item": "res://Assets/Tiles/item.png",
-	"shop": "res://Assets/Tiles/shop.png",
-	"chest": "res://Assets/Tiles/chest.png",
-	"event": "res://Assets/Tiles/event.png",
-	"portal": "res://Assets/Tiles/portal.png",
-}
-
-static func _ensure_loaded() -> void:
-	if _loaded:
-		return
-	for key in TILE_PATHS.keys():
-		var path: String = String(TILE_PATHS[key])
-		var tex: Texture2D = load(path) as Texture2D
-		if tex != null:
-			_textures[String(key)] = tex
-	_loaded = true
-
-## 判断 tile_key 是否为高起贴图
-static func is_elevated(tile_key: String) -> bool:
-	for k in ELEVATED_KEYS:
-		if k == tile_key:
-			return true
-	return false
 
 # --- 相机跟随：根据目标格子计算 iso_origin ---
 
 ## 计算使指定格子处于屏幕中心的 iso_origin
 static func calc_origin_for_cell(cell: Vector2i, screen_center: Vector2) -> Vector2:
-	# 反推 origin 使 grid_to_screen(cell.x, cell.y, origin) == screen_center
 	var ox: float = screen_center.x - float(cell.x - cell.y) * float(TILE_W) * 0.5
 	var oy: float = screen_center.y - float(cell.x + cell.y) * float(TILE_H_HALF)
 	return Vector2(ox, oy)
 
 # --- 坐标转换 ---
 
-## 格坐标 → 屏幕坐标（菱形顶面中心点）
+## 格坐标 → 屏幕坐标（菱形中心点）
 static func grid_to_screen(gx: int, gy: int, origin: Vector2) -> Vector2:
 	var sx: float = origin.x + float(gx - gy) * float(TILE_W) * 0.5
 	var sy: float = origin.y + float(gx + gy) * float(TILE_H_HALF)
@@ -91,42 +46,196 @@ static func diamond_points(center: Vector2, shrink: float = 0.0) -> PackedVector
 		Vector2(center.x - hw, center.y),		# 左
 	])
 
-# --- 贴图绘制 ---
+# --- 程序化绘制 ---
 
-## 按 painter's algorithm 顺序绘制整张棋盘基础贴图
-static func draw_board(canvas: CanvasItem, origin: Vector2, board_mgr: Node) -> void:
-	_ensure_loaded()
+## 按 painter's algorithm 顺序绘制整张棋盘
+static func draw_board(canvas: CanvasItem, origin: Vector2, board_mgr: Node, pulse: float = 0.5) -> void:
 	for depth in range(GRID_SIZE * 2 - 1):
 		var gx_min: int = max(0, depth - GRID_SIZE + 1)
 		var gx_max: int = min(GRID_SIZE - 1, depth)
 		for gx in range(gx_min, gx_max + 1):
 			var gy: int = depth - gx
 			var tile_key: String = _get_tile_key(gx, gy, board_mgr)
-			_draw_single_tile(canvas, gx, gy, tile_key, origin)
+			_draw_tile_procedural(canvas, gx, gy, tile_key, origin, pulse)
 
-## 绘制单个贴图（含高起堆叠）
-static func _draw_single_tile(canvas: CanvasItem, gx: int, gy: int, tile_key: String, origin: Vector2) -> void:
-	var tex: Texture2D = _textures.get(tile_key, null) as Texture2D
-	if tex == null:
-		tex = _textures.get("normal_dark", null) as Texture2D
-	if tex == null:
-		return
+## 程序化绘制单个菱形格子
+static func _draw_tile_procedural(canvas: CanvasItem, gx: int, gy: int, tile_key: String, origin: Vector2, pulse: float) -> void:
 	var center: Vector2 = grid_to_screen(gx, gy, origin)
-	var elevated: bool = is_elevated(tile_key)
-	if elevated:
-		var draw_pos: Vector2 = Vector2(
-			center.x - float(TILE_W) * 0.5,
-			center.y - float(TILE_H_HALF) - float(ELEVATION_OFFSET)
-		)
-		canvas.draw_texture_rect(tex, Rect2(draw_pos, Vector2(TILE_W, TILE_ELEVATED_H)), false)
-	else:
-		var draw_pos: Vector2 = Vector2(
-			center.x - float(TILE_W) * 0.5,
-			center.y - float(TILE_H_HALF)
-		)
-		canvas.draw_texture_rect(tex, Rect2(draw_pos, Vector2(TILE_W, TILE_FULL_H)), false)
+	var pts: PackedVector2Array = diamond_points(center, 1.0)
 
-## 根据格子状态决定贴图 key
+	# 基础填充
+	var fill_color: Color = _get_fill_color(tile_key, pulse)
+	canvas.draw_colored_polygon(pts, fill_color)
+
+	# 内部微亮区域（模拟径向渐变，缩小菱形）
+	var inner_pts: PackedVector2Array = diamond_points(center, 20.0)
+	var inner_color: Color = Color(fill_color.r + 0.04, fill_color.g + 0.06, fill_color.b + 0.1, 0.35)
+	canvas.draw_colored_polygon(inner_pts, inner_color)
+
+	# 网格边框线
+	var border_color: Color = _get_border_color(tile_key, pulse)
+	for i in range(4):
+		canvas.draw_line(pts[i], pts[(i + 1) % 4], border_color, 1.0)
+
+	# 类型特殊装饰
+	_draw_tile_decoration(canvas, center, tile_key, pulse)
+
+## 获取格子填充色
+static func _get_fill_color(tile_key: String, _pulse: float) -> Color:
+	match tile_key:
+		"normal_dark":
+			return CyberStyle.BOARD_CELL_DARK
+		"normal_light":
+			return CyberStyle.BOARD_CELL_LIGHT
+		"high_ground":
+			return Color(CyberStyle.NEON_GOLD.r, CyberStyle.NEON_GOLD.g, CyberStyle.NEON_GOLD.b, 0.18 + _pulse * 0.08)
+		"trap":
+			return Color(CyberStyle.NEON_RED.r, CyberStyle.NEON_RED.g, CyberStyle.NEON_RED.b, 0.18 + _pulse * 0.1)
+		"encounter":
+			return Color(CyberStyle.ACCENT_ORANGE.r, CyberStyle.ACCENT_ORANGE.g, CyberStyle.ACCENT_ORANGE.b, 0.2 + _pulse * 0.1)
+		"heal":
+			return Color(CyberStyle.NEON_BLUE.r, CyberStyle.NEON_BLUE.g, CyberStyle.NEON_BLUE.b, 0.18 + _pulse * 0.08)
+		"shop":
+			return Color(CyberStyle.NEON_TEAL.r, CyberStyle.NEON_TEAL.g, CyberStyle.NEON_TEAL.b, 0.18 + _pulse * 0.06)
+		"chest":
+			return Color(CyberStyle.NEON_GOLD.r, CyberStyle.NEON_GOLD.g, CyberStyle.NEON_GOLD.b, 0.2 + _pulse * 0.08)
+		"item":
+			return Color(CyberStyle.NEON_GREEN.r, CyberStyle.NEON_GREEN.g, CyberStyle.NEON_GREEN.b, 0.16 + _pulse * 0.06)
+		"event":
+			return Color(CyberStyle.NEON_PURPLE.r, CyberStyle.NEON_PURPLE.g, CyberStyle.NEON_PURPLE.b, 0.18 + _pulse * 0.08)
+		"portal":
+			return Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.2 + _pulse * 0.1)
+	return CyberStyle.BOARD_CELL_DARK
+
+## 获取格子边框色
+static func _get_border_color(tile_key: String, pulse: float) -> Color:
+	match tile_key:
+		"normal_dark", "normal_light":
+			return CyberStyle.BOARD_GRID_LINE
+		"high_ground":
+			return Color(CyberStyle.NEON_GOLD.r, CyberStyle.NEON_GOLD.g, CyberStyle.NEON_GOLD.b, 0.3 + pulse * 0.15)
+		"trap":
+			return Color(CyberStyle.NEON_RED.r, CyberStyle.NEON_RED.g, CyberStyle.NEON_RED.b, 0.35 + pulse * 0.2)
+		"encounter":
+			return Color(CyberStyle.ACCENT_ORANGE.r, CyberStyle.ACCENT_ORANGE.g, CyberStyle.ACCENT_ORANGE.b, 0.4 + pulse * 0.2)
+		"heal":
+			return Color(CyberStyle.NEON_BLUE.r, CyberStyle.NEON_BLUE.g, CyberStyle.NEON_BLUE.b, 0.3 + pulse * 0.15)
+		"shop":
+			return Color(CyberStyle.NEON_TEAL.r, CyberStyle.NEON_TEAL.g, CyberStyle.NEON_TEAL.b, 0.3 + pulse * 0.15)
+		"chest":
+			return Color(CyberStyle.NEON_GOLD.r, CyberStyle.NEON_GOLD.g, CyberStyle.NEON_GOLD.b, 0.35 + pulse * 0.15)
+		"item":
+			return Color(CyberStyle.NEON_GREEN.r, CyberStyle.NEON_GREEN.g, CyberStyle.NEON_GREEN.b, 0.3 + pulse * 0.12)
+		"event":
+			return Color(CyberStyle.NEON_PURPLE.r, CyberStyle.NEON_PURPLE.g, CyberStyle.NEON_PURPLE.b, 0.3 + pulse * 0.15)
+		"portal":
+			return Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.4 + pulse * 0.2)
+	return CyberStyle.BOARD_GRID_LINE
+
+## 绘制格子类型装饰符号
+static func _draw_tile_decoration(canvas: CanvasItem, center: Vector2, tile_key: String, pulse: float) -> void:
+	match tile_key:
+		"high_ground":
+			_deco_high_ground(canvas, center, pulse)
+		"trap":
+			_deco_trap(canvas, center, pulse)
+		"encounter":
+			_deco_encounter(canvas, center, pulse)
+		"heal":
+			_deco_heal(canvas, center, pulse)
+		"shop":
+			_deco_shop(canvas, center, pulse)
+		"chest":
+			_deco_chest(canvas, center, pulse)
+		"item":
+			_deco_item(canvas, center, pulse)
+		"event":
+			_deco_event(canvas, center, pulse)
+		"portal":
+			_deco_portal(canvas, center, pulse)
+
+# --- 装饰符号 ---
+
+static func _deco_high_ground(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.NEON_GOLD.r, CyberStyle.NEON_GOLD.g, CyberStyle.NEON_GOLD.b, 0.6 + pulse * 0.25)
+	var s: float = 14.0
+	var cy_off: float = -4.0
+	var pts: PackedVector2Array = PackedVector2Array([
+		Vector2(center.x, center.y + cy_off - s),
+		Vector2(center.x - s * 0.85, center.y + cy_off + s * 0.5),
+		Vector2(center.x + s * 0.85, center.y + cy_off + s * 0.5)])
+	c.draw_colored_polygon(pts, col)
+
+static func _deco_trap(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.NEON_RED.r, CyberStyle.NEON_RED.g, CyberStyle.NEON_RED.b, 0.65 + pulse * 0.25)
+	var s: float = 12.0
+	c.draw_line(Vector2(center.x - s, center.y - s), Vector2(center.x + s, center.y + s), col, 2.5)
+	c.draw_line(Vector2(center.x + s, center.y - s), Vector2(center.x - s, center.y + s), col, 2.5)
+
+static func _deco_encounter(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.ACCENT_ORANGE.r, CyberStyle.ACCENT_ORANGE.g, CyberStyle.ACCENT_ORANGE.b, 0.7 + pulse * 0.2)
+	# 闪电符号
+	var cy_off: float = -2.0
+	var pts: PackedVector2Array = PackedVector2Array([
+		Vector2(center.x + 3, center.y + cy_off - 14),
+		Vector2(center.x - 6, center.y + cy_off),
+		Vector2(center.x + 2, center.y + cy_off + 1),
+		Vector2(center.x - 7, center.y + cy_off + 16)])
+	for i in range(pts.size() - 1):
+		c.draw_line(pts[i], pts[i + 1], col, 3.0)
+
+static func _deco_heal(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.NEON_BLUE.r, CyberStyle.NEON_BLUE.g, CyberStyle.NEON_BLUE.b, 0.65 + pulse * 0.2)
+	var s: float = 11.0
+	c.draw_line(Vector2(center.x - s, center.y), Vector2(center.x + s, center.y), col, 3.0)
+	c.draw_line(Vector2(center.x, center.y - s), Vector2(center.x, center.y + s), col, 3.0)
+
+static func _deco_shop(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.NEON_TEAL.r, CyberStyle.NEON_TEAL.g, CyberStyle.NEON_TEAL.b, 0.6 + pulse * 0.2)
+	var s: float = 10.0
+	var pts: PackedVector2Array = PackedVector2Array([
+		Vector2(center.x, center.y - s),
+		Vector2(center.x + s, center.y),
+		Vector2(center.x, center.y + s),
+		Vector2(center.x - s, center.y)])
+	c.draw_colored_polygon(pts, col)
+
+static func _deco_chest(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.NEON_GOLD.r, CyberStyle.NEON_GOLD.g, CyberStyle.NEON_GOLD.b, 0.55 + pulse * 0.25)
+	var r: float = 12.0
+	var pts: PackedVector2Array = PackedVector2Array()
+	for i in range(6):
+		var angle: float = PI / 6.0 + float(i) * PI / 3.0
+		pts.append(Vector2(center.x + cos(angle) * r, center.y + sin(angle) * r))
+	c.draw_colored_polygon(pts, col)
+
+static func _deco_item(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.NEON_GREEN.r, CyberStyle.NEON_GREEN.g, CyberStyle.NEON_GREEN.b, 0.55 + pulse * 0.2)
+	var s: float = 8.0
+	var pts: PackedVector2Array = PackedVector2Array([
+		Vector2(center.x, center.y - s),
+		Vector2(center.x + s, center.y),
+		Vector2(center.x, center.y + s),
+		Vector2(center.x - s, center.y)])
+	c.draw_colored_polygon(pts, col)
+
+static func _deco_event(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.NEON_PURPLE.r, CyberStyle.NEON_PURPLE.g, CyberStyle.NEON_PURPLE.b, 0.75 + pulse * 0.2)
+	var font: Font = ThemeDB.fallback_font
+	var text_w: float = font.get_string_size("?", HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+	canvas_draw_string_static(c, font, Vector2(center.x - text_w * 0.5, center.y + 8.0), "?", 22, col)
+
+static func _deco_portal(c: CanvasItem, center: Vector2, pulse: float) -> void:
+	var col: Color = Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.5 + pulse * 0.3)
+	c.draw_arc(Vector2(center.x, center.y), 16.0, 0.0, TAU, 20, Color(col.r, col.g, col.b, col.a * 0.5), 1.5)
+	c.draw_arc(Vector2(center.x, center.y), 10.0, 0.0, TAU, 16, Color(col.r, col.g, col.b, col.a * 0.7), 2.0)
+	c.draw_arc(Vector2(center.x, center.y), 4.0, 0.0, TAU, 12, col, 2.5)
+
+## draw_string 辅助（静态方法中无法用 canvas.draw_string 的 Font 默认参数）
+static func canvas_draw_string_static(c: CanvasItem, font: Font, pos: Vector2, text: String, font_size: int, col: Color) -> void:
+	c.draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
+
+## 根据格子状态决定 tile key
 static func _get_tile_key(gx: int, gy: int, board_mgr: Node) -> String:
 	var cell: Vector2i = Vector2i(gx, gy)
 	if board_mgr == null:

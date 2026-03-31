@@ -211,9 +211,9 @@ func _draw() -> void:
 	_draw_attack_flash()
 	_draw_edge_vignette()
 
-# Layer 1: 等距贴图基础网格
-func _draw_layer_grid(_pulse: float) -> void:
-	IsoTileRenderer.draw_board(self, iso_origin, board_manager)
+# Layer 1: 等距程序化菱形网格
+func _draw_layer_grid(pulse: float) -> void:
+	IsoTileRenderer.draw_board(self, iso_origin, board_manager, pulse)
 
 # Layer 2: 叠层符号（高起贴图已区分格类型，此层仅补充文字/特殊标记）
 func _draw_layer_overlays(pulse: float, font: Font) -> void:

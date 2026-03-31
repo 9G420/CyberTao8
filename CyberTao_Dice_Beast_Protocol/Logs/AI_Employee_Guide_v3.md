@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.60
+**当前版本**: v0.1.61
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -124,6 +124,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 | 稳定 |
 | 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 | 稳定 |
 | 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 | 稳定 |
+| 棋盘渲染回退至程序化（移除AI贴图+程序化菱形绘制） | v0.1.61 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -210,7 +211,7 @@ UI层
 ├── BoardView            — 棋盘渲染+点击交互+反馈动画+相机跟随    ~475行（v0.1.60 相机跟随+边缘渐暗）
 ├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行（Phase 6 后仅供参考）
 ├── UnitRenderer         — 单位渲染（v0.1.60 scale=1.1+等距适配）  ~270行
-├── IsoTileRenderer      — 等距贴图渲染器（class_name）   ~175行 ✅ v0.1.60 相机跟随+TILE_W=192
+├── IsoTileRenderer      — 等距程序化渲染器（class_name）   ~200行 ✅ v0.1.61 程序化重写
 ├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~252行 ✅ v0.1.49 重写
 ├── BattleEffects        — 战斗特效静态类（class_name）   ~103行 ✅ Phase 2 新增
 ├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~540行
@@ -354,6 +355,7 @@ Main：                Scripts/Main.gd
 
 | 任务 | 版本 |
 |------|------|
+| 棋盘渲染回退至程序化（移除AI贴图） | v0.1.61 |
 | 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 |
 | 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 |
 | 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 |

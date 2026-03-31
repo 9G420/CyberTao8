@@ -1,26 +1,22 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-31
-**版本**: v0.1.60
+**版本**: v0.1.61
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.60：相机跟随玩家角色 + 全新素材重生成 + UI 界面优化
+- v0.1.61：棋盘渲染回退至程序化（移除 AI 贴图 + 程序化菱形绘制）
 
 ---
 
 ## 根因目标
 
-用户反馈 v0.1.59 界面仍然不够好看，核心问题是 8x8 棋盘格在全屏下仍然能看到明显的边界（TILE_W=144 只覆盖 1152px，不足 1280px 视口宽度）。用户明确要求：
-1. 以玩家控制角色为中心，画面铺满整个屏幕看不到棋盘边界
-2. 删除所有旧素材，重新设计生成
-3. UI 界面重新设计
-4. 参考 Mythmatic 风格的游戏界面
+用户截图反馈 v0.1.60 运行效果严重异常：AI 生成的等距贴图为高耸 3D 方块图（TILE_FULL_H=192 / TILE_ELEVATED_H=256），渲染后整个棋盘看起来像积木墙而非游戏地图。画面大量黑色空白，底部方块严重堆叠遮挡，特殊格与普通格视觉割裂。
 
-本轮目标：实现相机跟随系统（动态 iso_origin）、TILE_W 放大至 192px（棋盘溢出视口）、全新 AI 素材、UI 面板优化。
+用户明确要求：回退到程序化渲染，删除所有 AI 贴图文件。
 
 ---
 
@@ -28,122 +24,90 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI/IsoTileRenderer.gd` | 全面重写：TILE_W=192 + 新常量体系 + calc_origin_for_cell() 相机跟随 + 11 张新素材路径（英文命名）|
-| `Scripts/UI/BoardView.gd` | 新增 camera_cell + set_camera_target() + 动态 iso_origin + clip_contents + 边缘渐暗渲染 |
-| `Scripts/Main.gd` | 新增 _update_camera_to_player() + _on_move_completed_camera() + 重开/传送/层切换时更新相机 |
-| `Scripts/UI/UnitRenderer.gd` | 等距 scale 0.9→1.1 + HP条宽 60→72 + 选中环半径 24→30 + Y偏移 -16→-20 |
-| `Scripts/UI/DiceDebugPanel.gd` | 面板宽度 232→220 + 圆角 6→8 + alpha 0.75→0.80 + 版本标记 v0.1.60 |
-| `Scripts/UI/CyberBackground.gd` | 移除棋盘发光边框和角标绘制（相机跟随模式下棋盘超出视口） |
-| `Assets/Tiles/*.png` | 删除所有旧素材（含中文命名+v0.1.59 elevated 文件），重新生成 11 张全新贴图（Nano Banana Pro） |
+| `Scripts/UI/IsoTileRenderer.gd` | 全面重写：移除贴图加载体系，改为程序化菱形绘制（填充+渐变+边框+9种类型装饰符号） |
+| `Scripts/UI/BoardView.gd` | _draw_layer_grid 传入 pulse 参数适配新 API |
+| `Assets/Tiles/*.png` | 删除全部 11 张 AI 生成贴图 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.60 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+架构+任务优先级 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.61 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表 |
+| `Logs/Handoff_Package_latest.md` | 同步至 v0.1.60 状态（本轮同时完成文档补齐） |
+| `Logs/CyberTao_Migration_Snapshot_zh_v3.md` | 同步至 v0.1.60 状态（本轮同时完成文档补齐） |
 
 ---
 
 ## 实现内容
 
-### 相机跟随系统
+### IsoTileRenderer 程序化重写
 
-- IsoTileRenderer 新增 `calc_origin_for_cell(cell, screen_center)` 静态方法：反推 iso_origin 使指定格子映射到屏幕中心
-- BoardView 新增 `camera_cell: Vector2i` 和 `set_camera_target(cell)` 方法
-- iso_origin 从固定值 (640,72) 变为动态计算：`IsoTileRenderer.calc_origin_for_cell(camera_cell, Vector2(640,360))`
-- Main.gd 在以下时机更新相机目标：
-  - 游戏启动 (`_ready`)
-  - 玩家单位移动 (`_on_move_requested` + `_on_move_completed_camera`)
-  - 传送 (`_on_hero_warped`)
-  - 重新开始 (`_on_restart_pressed`)
-  - 层间切换 (`_on_card_battle_ended` 中 floor_clear_pending 分支)
+- 移除的内容：
+  - TILE_FULL_H / TILE_ELEVATED_H / ELEVATION_OFFSET 常量（导致方块高耸的根因）
+  - TILE_PATHS / _textures / _loaded / _ensure_loaded（贴图加载体系）
+  - _draw_single_tile 中的 draw_texture_rect 调用
+  - ELEVATED_KEYS / is_elevated（高起判断）
 
-### 棋盘溢出视口
+- 新增的内容：
+  - `_draw_tile_procedural()`：程序化绘制菱形格子
+    - 基础菱形填充（CyberStyle 配色，深浅交替）
+    - 内部缩小菱形模拟径向渐变
+    - 网格边框线（类型格子有独立边框色 + 脉冲呼吸）
+    - 9种类型装饰符号（高台▲/陷阱✖/遭遇⚡/回复✚/商店◆/宝箱⬡/道具◇/事件?/传送门旋涡圆环）
+  - `draw_board()` 新增 pulse 参数
+  - `_get_fill_color()` / `_get_border_color()` / `_draw_tile_decoration()` 分离渲染逻辑
 
-- TILE_W 从 144 放大至 192（8格宽 = 1536px，溢出 1280px 视口约 128px/侧）
-- TILE_H_HALF=48，格子行步进 48px（8格高 = 768px，溢出 720px 视口约 24px/侧）
-- 玩家角色始终在屏幕中心，棋盘边缘自然延伸至屏幕外
-- BoardView 启用 clip_contents=true 裁剪溢出部分
+- 完全保留的内容：
+  - TILE_W=192 / TILE_H_DIAMOND / TILE_H_HALF / GRID_SIZE
+  - grid_to_screen / screen_to_grid / calc_origin_for_cell（坐标转换+相机跟随）
+  - diamond_points / draw_diamond_highlight / draw_diamond_corners（叠层辅助）
+  - _get_tile_key（格子类型判定）
 
-### 边缘渐暗
+### 文档补齐
 
-- BoardView._draw_edge_vignette()：四边 80px 宽渐暗带，8 级透明度递减
-- 柔化棋盘边界，营造沉浸感
-
-### 全新素材
-
-- 删除所有旧 PNG 文件（含中文命名的平面贴图和 v0.1.59 的 elevated 贴图）
-- 使用 Nano Banana Pro AI 重新生成 11 张赛博朋克风格等距方块贴图
-- 统一英文命名：normal_light/dark, high_ground, trap, encounter, heal, item, shop, chest, event, portal
-
-### 角色可见性提升
-
-- UnitRenderer 等距 scale 从 0.9 提升至 1.1（~22% 放大）
-- HP 条宽度从 60px 增至 72px
-- 选中脉冲环半径从 24 增至 30
-- 角色 Y 偏移从 -16 调整为 -20
-
-### UI 面板优化
-
-- DiceDebugPanel 宽度从 232 缩至 220，圆角增大至 8px
-- 面板透明度从 0.75 提升至 0.80（更好可读性）
-- CyberBackground 移除棋盘边框/角标（相机跟随下无意义）
-- DiceDebugPanel 位置从 (1040,8) 调整至 (1052,8)
+- Handoff_Package_latest.md 从 v0.1.54 更新至 v0.1.60
+- CyberTao_Migration_Snapshot_zh_v3.md 从 v0.1.54 更新至 v0.1.60
 
 ---
 
 ## 接口变更
 
-- `IsoTileRenderer.TILE_W`: 144→192
-- `IsoTileRenderer.TILE_H_DIAMOND`: 72→96
-- `IsoTileRenderer.TILE_H_HALF`: 36→48
-- `IsoTileRenderer.TILE_FULL_H`: 144→192
-- `IsoTileRenderer.TILE_ELEVATED_H`: 192→256
-- `IsoTileRenderer.ELEVATION_OFFSET`: 48→64
-- `IsoTileRenderer.calc_origin_for_cell(cell, screen_center)`: 新增静态方法
-- `BoardView.camera_cell`: 新增，Vector2i 类型
-- `BoardView.SCREEN_CENTER`: 新增常量，Vector2(640, 360)
-- `BoardView.set_camera_target(cell)`: 新增方法
-- `BoardView.iso_origin`: 从固定值变为动态计算
-- `Main._update_camera_to_player()`: 新增方法
-- `Main._on_move_completed_camera()`: 新增 move_completed 信号回调
-- `UnitRenderer.draw_full_unit_iso`: scale 0.9→1.1, HP条宽 60→72, 环半径 24→30
-- `DiceDebugPanel.size`: (232,700)→(220,680)
+- `IsoTileRenderer.draw_board(canvas, origin, board_mgr, pulse)`: 新增 pulse 参数（默认 0.5）
+- 移除：`IsoTileRenderer.TILE_FULL_H` / `TILE_ELEVATED_H` / `ELEVATION_OFFSET`
+- 移除：`IsoTileRenderer.ELEVATED_KEYS` / `is_elevated()`
+- 移除：`IsoTileRenderer.TILE_PATHS` / `_textures` / `_loaded` / `_ensure_loaded()`
 
 ---
 
 ## 测试确认
 
-- 相机跟随：玩家移动后棋盘视角自动居中到玩家位置
-- 棋盘溢出：居中在内部格子时，看不到棋盘四个角（被视口裁剪）
-- 边缘渐暗：四边渐暗效果柔化视觉边界
-- 等距贴图 11 张正确加载和绘制（TILE_W=192）
-- 高起贴图正确堆叠（TILE_ELEVATED_H=256，ELEVATION_OFFSET=64）
-- painter's algorithm 遮挡正确
-- 点击菱形格子正确转换为格坐标（screen_to_grid 适配动态 iso_origin）
-- 角色 scale 1.1 在全屏棋盘上更加清晰
-- DiceDebugPanel 220px 面板布局正常
-- 重新开始后相机正确重置到玩家位置
-- 层间切换后相机正确跟随到新层玩家位置
-- 传送后相机正确跟随到目标位置
-- 遭遇触发→卡牌战斗→返回棋盘流程正常
-- 掷骰演出在全屏中心正常播放
+- 代码层面确认：IsoTileRenderer 不再引用任何贴图文件
+- 坐标系完全保留：grid_to_screen / screen_to_grid / calc_origin_for_cell 签名不变
+- 相机跟随链完整：BoardView.set_camera_target → iso_origin 动态计算 → 重绘
+- BoardView._draw_layer_grid 正确传入 pulse 参数
+- 叠层/高亮/单位/攻击闪光/边缘渐暗层零修改
+- 需用户在 Godot 中实际运行确认视觉效果
 
 ---
 
 ## 剩余问题
 
+- 相机跟随暂无平滑过渡（仍为瞬间跳转）
 - 阵亡单位跨层不复活
 - CardRewardPanel 暂未使用 CardRenderer 风格
-- 扇形手牌暂无拖拽机制（仅点击出牌）
-- 角色立绘为程序化绘制（后续可考虑专用等距角色贴图）
-- SettingsPanel 暂未添加音量/音效开关控件
-- 路径格无专属贴图（仍使用程序化菱形叠层）
-- 相机跟随暂无平滑过渡动画（瞬间跳转）
+- 扇形手牌暂无拖拽机制
+- SettingsPanel 暂未添加音量控件
+- 路径格无专属装饰（仅半透明菱形叠层，由 BoardView._draw_layer_overlays 处理）
 
 ---
 
 ## 建议下一步
 
-1. 相机跟随平滑过渡（Tween 插值 iso_origin，而非瞬间跳转）
-2. 商店格扩展（多选商品 + 独立 UI 面板）
-3. 阵亡单位跨层复活机制
-4. SettingsPanel 添加音量滑块 + SFX/BGM 开关
-5. 等距角色专属贴图（替代程序化剪影）
+1. 用户在 Godot 中运行确认程序化渲染效果
+2. 相机跟随平滑过渡（Tween 插值 iso_origin）
+3. 商店格扩展（多选商品 + 独立 UI 面板）
+4. 阵亡单位跨层复活机制
+
+---
+
+## Codex 复审标注
+
+- 判断依据：AI 贴图为高耸 3D 方块（TILE_FULL_H=192，方块体高度远超菱形面），导致棋盘渲染为积木墙。用户明确要求回退。
+- 选择方案：程序化菱形渲染（最保守方案），保留等距坐标系和相机跟随，仅替换贴图绘制层。后续如有合适的扁平贴图素材可随时替换回去。

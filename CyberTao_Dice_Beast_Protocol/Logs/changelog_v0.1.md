@@ -1,5 +1,23 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.61 - 2026-03-31
+
+### 修改
+- **棋盘渲染回退至程序化**：IsoTileRenderer 从 AI 贴图渲染改为程序化菱形绘制
+  - 移除所有贴图加载代码（TILE_PATHS / _textures / _loaded / _ensure_loaded）
+  - 移除 TILE_FULL_H / TILE_ELEVATED_H / ELEVATION_OFFSET 常量（不再有高耸方块）
+  - 新增 `_draw_tile_procedural()` 程序化绘制：菱形填充+内部渐变+网格边框+类型装饰
+  - 9种格子类型（高台/陷阱/遭遇/回复/商店/宝箱/道具/事件/传送门）各有独立配色和符号
+  - draw_board() 新增 pulse 参数，格子装饰支持脉冲呼吸效果
+- BoardView._draw_layer_grid() 传入 pulse 参数
+- 删除 Assets/Tiles/ 下全部 11 张 AI 生成 PNG 贴图
+
+### 备注
+- 等距坐标系（TILE_W=192 / grid_to_screen / screen_to_grid）完全保留
+- 相机跟随系统（calc_origin_for_cell / camera_cell / set_camera_target）完全保留
+- 根因：AI 贴图为高耸 3D 方块图，渲染后棋盘如积木墙，视觉严重异常
+- 后续如有合适的扁平等距贴图资源，可在 _draw_tile_procedural 中替换回贴图路径
+
 ## v0.1.60 - 2026-03-31
 
 ### 新增
