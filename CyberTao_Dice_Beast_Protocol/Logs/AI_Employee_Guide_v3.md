@@ -1,10 +1,10 @@
 # CyberTao: Dice Beast Protocol — AI 员工上岗指令 v3
 
-**发布时间**: 2026-03-30
+**发布时间**: 2026-03-31
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.54
+**当前版本**: v0.1.55
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.54）
+### 2.2 当前完成状态总览（v0.1.55）
 
 **棋盘走位层（全部稳定）**
 
@@ -118,6 +118,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 单位精简（1主角+伙伴槽系统）+ 英雄存活制胜负判定 | v0.1.52 | 稳定 |
 | Boss解锁自动传送 + 宝可梦式卡牌战斗过渡 | v0.1.53 | 稳定 |
 | 全屏独立卡牌战斗界面+角色立绘+扇形手牌+棋盘单位美化 | v0.1.54 | 稳定 |
+| 美化 Phase 4.2（UITransitions+面板缓动动画+召唤展开演出） | v0.1.55 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -215,6 +216,7 @@ UI层
 ├── CyberBackground      — 背景氛围系统（class_name注册）  ~155行 ✅ Phase 4.1 新增
 ├── TransitionOverlay    — 宝可梦式百叶窗过渡（CanvasLayer 10） ~110行 ✅ v0.1.53 新增
 ├── BattleCharRenderer  — 战斗角色立绘渲染（class_name注册）   ~180行 ✅ v0.1.54 新增
+├── UITransitions       — UI过渡动画工具类（class_name注册）    ~60行 ✅ v0.1.55 新增
 └── SettingsPanel        — 显示设置
 
 Main.gd（场景组合+信号中转）                          ~356行
@@ -263,6 +265,7 @@ CyberStyle：          Scripts/UI/CyberStyle.gd
 CyberBackground：     Scripts/UI/CyberBackground.gd
 TransitionOverlay：   Scripts/UI/TransitionOverlay.gd
 BattleCharRenderer：  Scripts/UI/BattleCharRenderer.gd
+UITransitions：       Scripts/UI/UITransitions.gd
 Main：                Scripts/Main.gd
 旧项目参考（只读）：   [仓库根目录] Scripts/ （不要修改）
 ```
@@ -312,31 +315,31 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.54 Work Report，按优先级排列：
+以下任务来自 v0.1.55 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心 — 美术美化）
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 4.2：UI 过渡动画** | 面板弹出/关闭动画+召唤展开演出 |
+| **美化 Phase 5：音效系统** | AudioManager + 基础音效接入 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **美化 Phase 5：音效系统** | AudioManager + 基础音效接入 |
+| **层间难度递增** | 根据 current_floor 调整敌方 HP/ATK 或数量 |
 
 ### 🟢 中低优先级
 
 | 任务 | 说明 |
 |------|------|
-| **层间难度递增** | 根据 current_floor 调整敌方 HP/ATK 或数量 |
 | **商店格扩展** | 多选商品 + 独立 UI 面板 |
 
 ### ✅ 已完成
 
 | 任务 | 版本 |
 |------|------|
+| 美化 Phase 4.2（UITransitions+面板缓动+召唤展开演出） | v0.1.55 |
 | 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 |
 | BUG-001 修复（分辨率/全屏/无边框/窗口模式切换） | v0.1.43 |
 | 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级+BoardView瘦身） | v0.1.45 |

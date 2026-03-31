@@ -19,6 +19,7 @@ func _ready() -> void:
 	visible = false
 	custom_minimum_size = Vector2(340, 440)
 	size = Vector2(340, 440)
+	pivot_offset = Vector2(170, 220)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_ui()
 
@@ -29,12 +30,12 @@ func open() -> void:
 	if _controller == null:
 		return
 	_refresh_deck_list()
-	visible = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	UITransitions.popup(self)
 
 func close() -> void:
-	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITransitions.close(self)
 
 func is_open() -> bool:
 	return visible

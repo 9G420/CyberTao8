@@ -10,6 +10,7 @@ var mode_option: OptionButton
 func _ready() -> void:
 	custom_minimum_size = Vector2(400, 320)
 	size = Vector2(400, 320)
+	pivot_offset = Vector2(200, 160)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
 	_build_ui()
@@ -127,11 +128,11 @@ func _on_reset_pressed() -> void:
 	display_settings.save_settings()
 
 func _on_close_pressed() -> void:
-	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITransitions.close(self)
 	emit_signal("settings_closed")
 
 func open() -> void:
 	_sync_from_settings()
-	visible = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	UITransitions.popup(self)

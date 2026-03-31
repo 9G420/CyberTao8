@@ -1,5 +1,30 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.55 - 2026-03-31
+
+### 新增
+- **美化 Phase 4.2：UI 过渡动画**
+- **UITransitions.gd**（~60行）：UI 过渡动画工具类（class_name 全局注册）
+  - `popup()` 面板弹出动画：scale 0.9→1.0（EASE_OUT+TRANS_BACK 弹跳）+ alpha 0→1，0.2秒
+  - `close()` 面板关闭动画：scale 1.0→0.95 + alpha 1→0，0.15秒，自动隐藏+复位
+  - `close_await()` 异步关闭版本，可 await 等待完成
+  - `summon_unit_spawn()` 召唤出场闪光：青色 ColorRect scale 弹跳 0.3→1.3→1.0 + 淡出
+- **召唤展开演出**：路径格逐格铺展（每格 0.1s 延迟重绘）+ 单位出场闪光弹跳
+
+### 修改
+- `CardRewardPanel.gd`：奖励面板弹出/关闭/跳过/升级完成均接入 UITransitions 缓动动画
+- `DeckViewPanel.gd`：open/close 接入 UITransitions 缓动动画
+- `SettingsPanel.gd`：open/close 接入 UITransitions 缓动动画
+- `Main.gd`：_on_summon_completed 重写为路径逐格铺展 + 召唤单位出场闪光
+- 三个面板均新增 pivot_offset 设为面板中心，确保缩放动画从中心开始
+
+### 备注
+- UITransitions 使用 class_name 全局注册，无需 preload
+- close() 完成后自动复位 scale=Vector2.ONE 和 modulate=Color.WHITE，防止残留状态
+- 召唤展开演出为 async（使用 await timer），不阻塞棋盘操作但有视觉延迟
+- BattleFlowController / CardBattleController / BoardView 零修改
+- Phase 4.2 完成标准：面板弹出/关闭有缓动过渡感；召唤有展开演出而非直接出现
+
 ## docs: Snapshot 全面同步 - 2026-03-31
 
 ### 修改

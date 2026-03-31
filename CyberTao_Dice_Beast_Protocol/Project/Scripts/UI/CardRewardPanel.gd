@@ -29,6 +29,7 @@ func _ready() -> void:
 	visible = false
 	custom_minimum_size = Vector2(520, 340)
 	size = Vector2(520, 340)
+	pivot_offset = Vector2(260, 170)
 	_build_ui()
 
 func bind_controller(controller: CardBattleController) -> void:
@@ -54,7 +55,7 @@ func _on_reward_offered(options: Array) -> void:
 	# 检查是否有可升级的牌
 	var upgradeable: Array[int] = _controller.get_upgradeable_indices()
 	_upgrade_toggle_button.disabled = upgradeable.is_empty()
-	visible = true
+	UITransitions.popup(self)
 
 func _on_reward_selected(_card: Dictionary) -> void:
 	_deck_info_label.text = "已选择！牌组：" + str(_controller.get_deck_size()) + " 张"
@@ -62,7 +63,7 @@ func _on_reward_selected(_card: Dictionary) -> void:
 	_upgrade_toggle_button.visible = false
 	_back_button.visible = false
 	await get_tree().create_timer(0.8).timeout
-	visible = false
+	await UITransitions.close_await(self)
 
 func _on_card_upgraded(old_card: Dictionary, new_card: Dictionary) -> void:
 	_deck_info_label.text = "升级完成！" + String(old_card["name"]) + " → " + String(new_card["name"])
@@ -71,7 +72,7 @@ func _on_card_upgraded(old_card: Dictionary, new_card: Dictionary) -> void:
 	_back_button.visible = false
 	_skip_button.visible = false
 	await get_tree().create_timer(1.0).timeout
-	visible = false
+	await UITransitions.close_await(self)
 
 # --- 按钮回调 ---
 
@@ -88,7 +89,7 @@ func _on_card_option_pressed(index: int) -> void:
 func _on_skip_pressed() -> void:
 	if _controller:
 		_controller.skip_reward()
-	visible = false
+	UITransitions.close(self)
 
 func _on_upgrade_toggle_pressed() -> void:
 	if _controller == null:

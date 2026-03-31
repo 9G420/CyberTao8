@@ -232,7 +232,19 @@ func _on_enemy_attack_completed(attacker_id: String, defender_id: String, damage
 	_board_view.play_attack_feedback(target_cell, damage, killed)
 
 func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i) -> void:
+	# 召唤展开演出：路径格逐格铺展 + 单位出场闪光
 	_board_view.queue_redraw()
+	# 路径格逐格铺展（每格 0.1 秒延迟重绘）
+	for i in range(path_cells_created.size()):
+		if i > 0:
+			await get_tree().create_timer(0.1).timeout
+			_board_view.queue_redraw()
+	# 召唤单位出场：从小到大 + 发光闪烁
+	var pixel_pos: Vector2 = Vector2(
+		float(spawn_cell.x) * float(BoardView.CELL_SIZE) + float(BoardView.CELL_SIZE) / 2.0,
+		float(spawn_cell.y) * float(BoardView.CELL_SIZE) + float(BoardView.CELL_SIZE) / 2.0
+	)
+	UITransitions.summon_unit_spawn(_board_view, pixel_pos, float(BoardView.CELL_SIZE))
 
 func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String) -> void:
 	_board_view.play_attack_feedback(cell, damage)

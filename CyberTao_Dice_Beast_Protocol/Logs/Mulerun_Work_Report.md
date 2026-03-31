@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-31
-**版本**: v0.1.54
+**版本**: v0.1.55
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- 文档同步：CyberTao_Migration_Snapshot_zh_v3.md 从 v0.1.30 全面更新至 v0.1.54 状态
+- v0.1.55：美化 Phase 4.2 — UI 过渡动画（面板弹出/关闭缓动 + 召唤展开演出）
 
 ---
 
 ## 根因目标
 
-上岗确认时识别到关键风险：CyberTao_Migration_Snapshot_zh_v3.md 仍停留在 v0.1.30，与实际项目状态（v0.1.54）严重脱节。该文件是新 AI 接手时的项目全貌参考文档，信息滞后会导致后续账号上手效率降低、架构理解偏差。本轮目标是将其同步至最新状态。
+AI_Employee_Guide_v3 §6 当前最高优先级任务。所有面板（奖励选牌/牌组查看/设置）目前 visible = true/false 直切，无过渡动画，体验生硬。召唤单位和路径格直接出现，无展开演出。本轮目标：为所有弹出面板加入 scale+alpha 缓动动画，为召唤添加路径铺展和出场闪光演出。
 
 ---
 
@@ -22,66 +22,76 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Logs/CyberTao_Migration_Snapshot_zh_v3.md` | **全面重写**，从 v0.1.30 同步至 v0.1.54 |
+| `Scripts/UI/UITransitions.gd` | **新增文件**，UI 过渡动画工具类（class_name 全局注册），~60行 |
+| `Scripts/UI/CardRewardPanel.gd` | 接入 UITransitions：弹出/关闭/跳过均使用缓动动画；pivot_offset 设置 |
+| `Scripts/UI/DeckViewPanel.gd` | 接入 UITransitions：open/close 使用缓动动画；pivot_offset 设置 |
+| `Scripts/UI/SettingsPanel.gd` | 接入 UITransitions：open/close 使用缓动动画；pivot_offset 设置 |
+| `Scripts/Main.gd` | _on_summon_completed 重写：路径格逐格铺展（0.1s/格）+ 召唤单位出场闪光 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加文档同步条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 确认同步（本轮无需修改，v0.1.54 已是最新） |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.55 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+任务优先级 |
 
 ---
 
 ## 实现内容
 
-### Snapshot 文件全面更新（v0.1.30 → v0.1.54）
+### UITransitions 工具类（新增）
 
-更新了以下所有章节：
+- `UITransitions.popup(panel, duration)` — 面板弹出动画：scale 0.9→1.0（EASE_OUT + TRANS_BACK 弹跳）+ modulate alpha 0→1，默认 0.2 秒
+- `UITransitions.close(panel, duration)` — 面板关闭动画：scale 1.0→0.95 + modulate alpha 1→0，默认 0.15 秒，完成后自动 visible=false 并复位 scale/modulate
+- `UITransitions.close_await(panel, duration)` — 异步关闭（可 await），返回时面板已隐藏
+- `UITransitions.summon_unit_spawn(parent, pixel_pos, cell_size)` — 召唤单位出场：青色闪光从 0.3x→1.3x→1.0x 弹跳 + alpha 淡出
+- 使用 class_name 全局注册，所有 UI 文件无需 preload
 
-- **§0 快速上手指南**：阅读顺序更新为 AI_Employee_Guide_v3 优先；关键规则更新为三件套强制更新；阶段状态更新
-- **§2 已完成内容**：
-  - 棋盘走位层：新增 v0.1.33~v0.1.54 共 18 项（crest消耗入口/随机生成/BuffManager接入/BFC瘦身/9种格子/多层地图/BUG-001修复/美化Phase1~4.1/骰子演出/Boss机制/遭遇修复/单位精简/百叶窗过渡/全屏战斗界面）
-  - 卡牌战斗层：新增 v0.1.31~v0.1.47 共 9 项（持久牌组/选牌/5种敌方/牌组查看/卡牌升级/Boss遭遇/能量成长/CardRenderer重设计）
-  - 视觉演出系统：新增独立分类，9 个视觉模块全部列出
-  - 双层闭环流程图：更新为百叶窗过渡+全屏战斗+三分支resolve+Boss传送门链
-  - 玩家单位：更新为 v0.1.52 精简后的 1主角+伙伴槽
-  - 遭遇敌方：从 2 种更新为 6 种（含 Boss）
-  - 卡牌数据：从 7 种基础牌更新为 14 种（7基础+7奖励），含升级数据
-- **§3 架构概述**：
-  - BattleV2 模块新增 BoardGenerator/CrestActionHandler/CellEffectHandler，更新行数
-  - UI 层新增 BoardCellRenderer/UnitRenderer/DiceRollAnimation/BattleEffects/CardRenderer/CyberBackground/TransitionOverlay/BattleCharRenderer/CardRewardPanel/DeckViewPanel
-  - 信号体系新增 boss_unlocked/portal_spawned/hero_warped/floor_cleared/game_won
-  - 数据结构新增 shop_cells/chest_cells/locked_encounters/portal_cells/_persistent_deck
-  - 战斗流程更新为含百叶窗过渡和三分支resolve
-- **§4 技术债**：标记已解决项（BUG-001/BuffManager/BFC瘦身），新增当前债务
-- **§5 推进建议**：全面更新为当前优先级（UI过渡动画→音效→层间难度→商店扩展）
-- **§6 文件索引**：新增 13 个源代码文件，更新所有行数参考
-- **§7 里程碑**：新增 v0.1.31~v0.1.54 四个里程碑阶段
-- **§8 一句话状态**：更新为 v0.1.54 完整状态描述
+### 面板弹出/关闭动画
+
+- **CardRewardPanel**：奖励面板弹出使用 popup()；选牌完成后使用 close_await()（等待动画结束后才隐藏）；跳过使用 close()；升级完成后使用 close_await()
+- **DeckViewPanel**：open() 使用 popup()；close() 使用 close()
+- **SettingsPanel**：open() 使用 popup()；关闭使用 close()
+- 所有面板设置 pivot_offset 为面板中心，确保缩放从中心开始
+
+### 召唤展开演出
+
+- 路径格逐格铺展：_on_summon_completed 中遍历 path_cells_created，每格延迟 0.1 秒后触发 queue_redraw，产生路径格从召唤者位置向外依次出现的效果
+- 召唤单位出场闪光：在 spawn_cell 像素位置创建青色 ColorRect，scale 从 0.3→1.3（弹跳）→1.0 + alpha 渐隐至 0，自动销毁
 
 ---
 
 ## 接口变更
 
-无代码接口变更（纯文档任务）
+- `UITransitions` — 新增 class_name（全局注册）
+- `UITransitions.popup(panel, duration)` — 静态方法
+- `UITransitions.close(panel, duration)` — 静态方法
+- `UITransitions.close_await(panel, duration)` — 静态方法
+- `UITransitions.summon_path_spread(board_view, cells, delay)` — 静态方法（预留，当前由 Main.gd 内联实现）
+- `UITransitions.summon_unit_spawn(parent, pixel_pos, cell_size)` — 静态方法
 
 ---
 
 ## 测试确认
 
-- 无代码修改，不涉及功能测试
-- Snapshot 内容与 AI_Employee_Guide_v3.md §2.2/§3.1/§5/§6 交叉核对一致
-- Snapshot 内容与 Handoff_Package_latest.md 交叉核对一致
-- Snapshot 内容与 changelog_v0.1.md v0.1.50~v0.1.54 条目交叉核对一致
+- CardRewardPanel 弹出动画（scale+alpha 渐入）→ 选牌 → 关闭动画（scale+alpha 渐出）流程完整
+- DeckViewPanel toggle 开关：open 弹出 → 再点 close 关闭，动画正确
+- SettingsPanel open → 操作 → close 动画正确
+- 召唤路径格逐格出现（0.1s 间隔），召唤单位闪光弹跳后淡出
+- 所有面板 close 后 scale/modulate 正确复位为 Vector2.ONE/Color.WHITE
+- 棋盘层闭环不受影响：掷骰/移动/攻击/召唤/敌方回合/胜负重开
+- 卡牌层闭环不受影响：遭遇触发/百叶窗过渡/全屏战斗/出牌/奖励选牌/HP同步
 
 ---
 
 ## 剩余问题
 
-- 无新增问题
-- 现有问题清单同 AI_Employee_Guide_v3.md §5
+- 层间难度暂不递增
+- 阵亡单位跨层不复活
+- CardRewardPanel 暂未使用 CardRenderer 风格
+- 扇形手牌暂无拖拽机制（仅点击出牌）
+- 角色立绘为程序化绘制
 
 ---
 
 ## 建议下一步
 
-1. 美化 Phase 4.2：UI 过渡动画（面板弹出/关闭缓动 + 召唤展开演出）
-2. 美化 Phase 5：音效系统（AudioManager + 基础音效）
-3. 层间难度递增
+1. 美化 Phase 5：音效系统（AudioManager + 基础音效接入）
+2. 层间难度递增
+3. 商店格扩展（多选商品 + 独立 UI 面板）
