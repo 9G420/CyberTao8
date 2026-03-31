@@ -47,6 +47,9 @@ func _ready() -> void:
 	_audio.play_bgm("bgm_map")
 
 func _build_debug_view() -> void:
+	# 自定义鼠标光标（v0.1.63：赛博风格十字光标）
+	_setup_custom_cursor()
+
 	var cyber_bg := CyberBackground.new()
 	cyber_bg.set_board_rect(Vector2(0, 0), Vector2(1280, 720))
 	add_child(cyber_bg)
@@ -56,9 +59,9 @@ func _build_debug_view() -> void:
 	_board_view.position = Vector2(0, 0)
 	add_child(_board_view)
 
-	# 右侧操作面板（半透明叠加在棋盘上方）
+	# 底部右侧操作面板（v0.1.63 紧凑HUD）
 	_dice_panel = DiceDebugPanel.new()
-	_dice_panel.position = Vector2(1052, 8)
+	_dice_panel.position = Vector2(1012, 512)
 	add_child(_dice_panel)
 
 	var settings_btn := Button.new()
@@ -239,7 +242,7 @@ func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], 
 			await get_tree().create_timer(0.1).timeout
 			_board_view.queue_redraw()
 	# 召唤单位出场：从小到大 + 发光闪烁
-	var pixel_pos: Vector2 = IsoTileRenderer.grid_to_screen(spawn_cell.x, spawn_cell.y, _board_view.iso_origin)
+	var pixel_pos: Vector2 = IsoTileRenderer.grid_to_screen_zoom(spawn_cell.x, spawn_cell.y, _board_view.iso_origin, _board_view._zoom)
 	UITransitions.summon_unit_spawn(_board_view, pixel_pos, float(IsoTileRenderer.TILE_W) * 0.5)
 
 func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String) -> void:
@@ -253,15 +256,19 @@ func _on_item_picked_up(unit_id: String, item_id: String, effect_text: String, c
 	_board_view.queue_redraw()
 
 func _on_enemy_action_announced(unit_id: String, action_type: String, detail: String) -> void:
-	if action_type == "attack":
-		var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
-		if not unit.is_empty():
-			var cell: Vector2i = unit["cell"]
+	# 敌方行动时相机跟随敌人（v0.1.63）
+	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
+	if not unit.is_empty():
+		var cell: Vector2i = unit["cell"]
+		_board_view.set_camera_target(cell)
+		if action_type == "attack":
 			var adjacent: Array[Vector2i] = _battle_flow.battle_ai.get_adjacent_player_cells(cell)
 			if adjacent.size() > 0:
 				_board_view.play_enemy_warning(adjacent[0])
 
 func _on_enemy_turn_ended() -> void:
+	# 敌方回合结束，相机切回玩家（v0.1.63）
+	_update_camera_to_player()
 	_board_view.queue_redraw()
 
 func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i) -> void:
@@ -419,11 +426,9 @@ func _update_camera_to_player() -> void:
 	var cell: Vector2i = unit["cell"]
 	_board_view.set_camera_target(cell)
 
-## move_completed 相机跟随回调（v0.1.60）
+## move_completed 相机跟随回调（v0.1.63：敌方移动时也跟随）
 func _on_move_completed_camera(unit_id: String, _from_cell: Vector2i, to_cell: Vector2i) -> void:
-	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
-	if String(unit.get("owner", "")) == "player":
-		_board_view.set_camera_target(to_cell)
+	_board_view.set_camera_target(to_cell)
 
 func _on_settings_pressed() -> void:
 	_audio.play_sfx("click")
@@ -480,3 +485,29 @@ func _get_encounter_display_name(encounter_id: String) -> String:
 	if encounter_id.begins_with("encounter_boss_"):
 		return "BOSS"
 	return "未知遭遇"
+
+## 生成赛博风格十字光标纹理（v0.1.63）
+func _setup_custom_cursor() -> void:
+	var img := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var center: int = 15
+	var arm: int = 10
+	var gap: int = 3
+	var col := Color(0.0, 0.85, 1.0, 0.9)
+	var col_dim := Color(0.0, 0.6, 0.8, 0.5)
+	# 十字准星（中心留空）
+	for i in range(gap, arm + 1):
+		img.set_pixel(center + i, center, col)
+		img.set_pixel(center - i, center, col)
+		img.set_pixel(center, center + i, col)
+		img.set_pixel(center, center - i, col)
+	# 中心点
+	img.set_pixel(center, center, Color(1.0, 1.0, 1.0, 0.8))
+	# 角标记
+	for dx in [-1, 1]:
+		for dy in [-1, 1]:
+			img.set_pixel(center + dx * (arm - 1), center + dy, col_dim)
+			img.set_pixel(center + dx, center + dy * (arm - 1), col_dim)
+	var tex := ImageTexture.create_from_image(img)
+	Input.set_custom_mouse_cursor(tex, Input.CURSOR_ARROW, Vector2(15, 15))
+

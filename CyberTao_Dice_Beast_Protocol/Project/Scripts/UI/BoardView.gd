@@ -9,7 +9,7 @@ signal summon_requested(unit_id: String, target_cell: Vector2i)
 
 const CELL_SIZE: int = 72
 
-# --- 相机跟随（v0.1.62：拖拽平移+平滑插值）---
+# --- 相机跟随（v0.1.63：拖拽+平滑+缩放）---
 var board_manager: Node = null
 var unit_manager: Node = null
 var battle_flow: Node = null
@@ -19,6 +19,12 @@ var iso_origin: Vector2 = Vector2(640.0, 360.0)
 var _iso_origin_target: Vector2 = Vector2(640.0, 360.0)
 const SCREEN_CENTER: Vector2 = Vector2(640.0, 360.0)
 const CAMERA_LERP_SPEED: float = 8.0	# 平滑跟随速度
+
+# 缩放（v0.1.63）
+var _zoom: float = 1.0
+const ZOOM_MIN: float = 0.4
+const ZOOM_MAX: float = 1.6
+const ZOOM_STEP: float = 0.1
 
 # 鼠标拖拽平移
 var _drag_active: bool = false
@@ -55,7 +61,7 @@ func _ready() -> void:
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# 初始相机位置
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
 	iso_origin = _iso_origin_target
 	# 动画刷新定时器（50ms=20fps，驱动呼吸/脉冲效果）
 	_anim_timer = Timer.new()
@@ -75,10 +81,10 @@ func _on_anim_tick() -> void:
 			iso_origin = target
 	queue_redraw()
 
-## 设置相机跟随目标格子（v0.1.62：平滑过渡）
+## 设置相机跟随目标格子（v0.1.63：平滑过渡+缩放）
 func set_camera_target(cell: Vector2i) -> void:
 	camera_cell = cell
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell(camera_cell, SCREEN_CENTER)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
 	queue_redraw()
 
 func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
@@ -109,10 +115,21 @@ func _on_state_changed() -> void:
 		summon_highlight_cells = _filter_summon_cells(battle_flow.get_summon_cells_for(selected_unit_id))
 	queue_redraw()
 
-# --- 点击/拖拽交互逻辑（v0.1.62：鼠标拖拽平移）---
+# --- 点击/拖拽/缩放交互逻辑（v0.1.63）---
 
 func _gui_input(event: InputEvent) -> void:
-	# 鼠标拖拽平移（右键或中键）
+	# 鼠标滚轮缩放
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
+			_apply_zoom(ZOOM_STEP, mb.position)
+			accept_event()
+			return
+		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
+			_apply_zoom(-ZOOM_STEP, mb.position)
+			accept_event()
+			return
+	# 鼠标拖拽平移（右键或中键或左键拖拽）
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
@@ -122,7 +139,6 @@ func _gui_input(event: InputEvent) -> void:
 				_drag_start_origin = iso_origin
 			else:
 				_drag_active = false
-				# 将拖拽结果存入偏移
 				_drag_offset = iso_origin - _iso_origin_target
 			accept_event()
 			return
@@ -132,7 +148,7 @@ func _gui_input(event: InputEvent) -> void:
 		queue_redraw()
 		accept_event()
 		return
-	# 悬停高亮（v0.1.62）
+	# 悬停高亮
 	if event is InputEventMouseMotion and not _drag_active:
 		var mm: InputEventMouseMotion = event as InputEventMouseMotion
 		var hcell: Vector2i = _pixel_to_cell(mm.position)
@@ -157,12 +173,25 @@ func _gui_input(event: InputEvent) -> void:
 	accept_event()
 
 func _pixel_to_cell(pixel_pos: Vector2) -> Vector2i:
-	return IsoTileRenderer.screen_to_grid(pixel_pos, iso_origin)
+	return IsoTileRenderer.screen_to_grid_zoom(pixel_pos, iso_origin, _zoom)
 
 func _is_valid_cell(cell: Vector2i) -> bool:
 	if board_manager != null:
 		return board_manager.is_in_bounds(cell)
 	return cell.x >= 0 and cell.y >= 0 and cell.x < 12 and cell.y < 12
+
+## 缩放（以鼠标位置为中心）
+func _apply_zoom(delta: float, mouse_pos: Vector2) -> void:
+	var old_zoom: float = _zoom
+	_zoom = clampf(_zoom + delta, ZOOM_MIN, ZOOM_MAX)
+	if _zoom == old_zoom:
+		return
+	# 保持鼠标指向的世界位置不变
+	var ratio: float = _zoom / old_zoom
+	iso_origin = mouse_pos + (iso_origin - mouse_pos) * ratio
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
+	_drag_offset = iso_origin - _iso_origin_target
+	queue_redraw()
 
 func _handle_cell_click(cell: Vector2i) -> void:
 	if battle_flow and (battle_flow.is_battle_over() or battle_flow.current_phase == battle_flow.BattlePhase.ENCOUNTER):
@@ -248,7 +277,7 @@ func _cell_rect(cell: Vector2i, margin: int) -> Rect2:
 	return Rect2(Vector2(cell.x * CELL_SIZE + margin, cell.y * CELL_SIZE + margin), Vector2(CELL_SIZE - margin * 2, CELL_SIZE - margin * 2))
 
 func _iso_cell_center(cell: Vector2i) -> Vector2:
-	return IsoTileRenderer.grid_to_screen(cell.x, cell.y, iso_origin)
+	return IsoTileRenderer.grid_to_screen_zoom(cell.x, cell.y, iso_origin, _zoom)
 
 # ===========================================================
 #  绘制层（v0.1.62：悬停高亮+拖拽相机）
@@ -265,9 +294,9 @@ func _draw() -> void:
 	_draw_attack_flash()
 	_draw_edge_vignette()
 
-# Layer 1: 等距程序化菱形网格
+# Layer 1: 等距程序化菱形网格（含环境填充）
 func _draw_layer_grid(pulse: float) -> void:
-	IsoTileRenderer.draw_board(self, iso_origin, board_manager, pulse)
+	IsoTileRenderer.draw_board(self, iso_origin, board_manager, pulse, _zoom)
 
 # Layer 2: 叠层符号（高起贴图已区分格类型，此层仅补充文字/特殊标记）
 func _draw_layer_overlays(pulse: float, font: Font) -> void:
@@ -305,37 +334,38 @@ func _draw_layer_overlays(pulse: float, font: Font) -> void:
 		var owner_id: String = String(board_manager.path_cells[cell])
 		var col: Color = CyberStyle.ACCENT_CYAN if owner_id == "player" else CyberStyle.ACCENT_ORANGE
 		var center: Vector2 = _iso_cell_center(cell)
-		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.12 + pulse * 0.06), Color(col.r, col.g, col.b, 0.3 + pulse * 0.15), 8.0)
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.12 + pulse * 0.06), Color(col.r, col.g, col.b, 0.3 + pulse * 0.15), 8.0, _zoom)
 
-## 在菱形中心绘制居中文字
+## 在菱形中心绘制居中文字（缩放感知）
 func _draw_iso_label(center: Vector2, text: String, col: Color, font: Font, font_size: int) -> void:
-	var text_w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	draw_string(font, Vector2(center.x - text_w * 0.5, center.y + float(font_size) * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
+	var fs: int = int(float(font_size) * _zoom)
+	var text_w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	draw_string(font, Vector2(center.x - text_w * 0.5, center.y + float(fs) * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 
-# Layer 2.5: 悬停高亮（v0.1.62）
+# Layer 2.5: 悬停高亮
 func _draw_layer_hover(pulse: float) -> void:
 	if _hover_cell.x < 0:
 		return
 	var center: Vector2 = _iso_cell_center(_hover_cell)
 	var col: Color = Color(1.0, 1.0, 1.0, 0.08 + pulse * 0.04)
 	var border_col: Color = Color(1.0, 1.0, 1.0, 0.2 + pulse * 0.1)
-	IsoTileRenderer.draw_diamond_highlight(self, center, col, border_col, 4.0)
+	IsoTileRenderer.draw_diamond_highlight(self, center, col, border_col, 4.0, _zoom)
 
 # Layer 3: 高亮系统（菱形）
 func _draw_layer_highlights(pulse: float) -> void:
 	for cell in highlight_cells:
 		var center: Vector2 = _iso_cell_center(cell)
 		var col: Color = CyberStyle.ACCENT_CYAN
-		IsoTileRenderer.draw_diamond_corners(self, center, Color(col.r, col.g, col.b, 0.55 + pulse * 0.3))
-		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.06 + pulse * 0.04), Color(0, 0, 0, 0))
+		IsoTileRenderer.draw_diamond_corners(self, center, Color(col.r, col.g, col.b, 0.55 + pulse * 0.3), 8.0, _zoom)
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.06 + pulse * 0.04), Color(0, 0, 0, 0), 0.0, _zoom)
 	for cell in attack_highlight_cells:
 		var center: Vector2 = _iso_cell_center(cell)
 		var col: Color = CyberStyle.NEON_RED
-		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.15 + pulse * 0.15), Color(col.r, col.g, col.b, 0.35 + pulse * 0.3))
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.15 + pulse * 0.15), Color(col.r, col.g, col.b, 0.35 + pulse * 0.3), 0.0, _zoom)
 	for cell in summon_highlight_cells:
 		var center: Vector2 = _iso_cell_center(cell)
 		var col: Color = CyberStyle.ACCENT_MAGENTA
-		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.1 + pulse * 0.08), Color(col.r, col.g, col.b, 0.5 + pulse * 0.3))
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.1 + pulse * 0.08), Color(col.r, col.g, col.b, 0.5 + pulse * 0.3), 0.0, _zoom)
 
 # Layer 4: 单位层（按 depth 排序保证遮挡正确）
 func _draw_layer_units(pulse: float, font: Font) -> void:
@@ -358,7 +388,7 @@ func _draw_attack_flash() -> void:
 	if _flash_alpha <= 0.0 or _flash_cell.x < 0:
 		return
 	var center: Vector2 = _iso_cell_center(_flash_cell)
-	IsoTileRenderer.draw_diamond_highlight(self, center, Color(1.0, 1.0, 1.0, _flash_alpha), Color(0, 0, 0, 0), 4.0)
+	IsoTileRenderer.draw_diamond_highlight(self, center, Color(1.0, 1.0, 1.0, _flash_alpha), Color(0, 0, 0, 0), 4.0, _zoom)
 
 # ===========================================================
 #  反馈动画（Phase 2.2 增强：屏幕微震+粒子+弹跳飘字）
