@@ -1,7 +1,7 @@
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
-**更新时间**: 2026-03-29
-**当前版本**: v0.1.30
+**更新时间**: 2026-03-31
+**当前版本**: v0.1.54
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要开发分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
@@ -14,20 +14,19 @@
 
 **你正在接手一个 Godot 赛博朋克战术 Roguelike 项目。** 请按以下顺序阅读文件：
 
-1. **本文件**（`Logs/CyberTao_Migration_Snapshot_zh_v3.md`）— 项目全貌、架构、数据结构、当前状态、下一步
-2. **`Logs/Weekly_Mulerun_Plan_zh_v2.md`** — 当前周计划（Day 1~12 已全部完成）
-3. **`Logs/Board_Card_Battle_Concept_zh.md`** — 双层玩法机制方案（棋盘走位层 + 卡牌战斗层的设计文档）
-4. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告（v0.1.30 阶段收口）
-5. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.30）
+1. **`Logs/AI_Employee_Guide_v3.md`** — AI 员工上岗指令（行为规范+技术硬规则+日志规范）
+2. **`Logs/Handoff_Package_latest.md`** — 最新交接包（如存在，优先级高于本文件）
+3. **本文件**（`Logs/CyberTao_Migration_Snapshot_zh_v3.md`）— 项目全貌、架构、数据结构、当前状态
+4. **`Logs/Mulerun_Work_Report.md`** — 最近一轮工作报告
+5. **`Logs/changelog_v0.1.md`** — 完整版本变更记录（v0.1.0 ~ v0.1.54）
 
 **关键规则：**
 - **只在 `CyberTao_Dice_Beast_Protocol/Project/` 目录下开发**，不要修改旧项目 `CyberTao8` 根目录
 - **所有日志必须写中文**
-- 每轮任务完成后必须更新 `Mulerun_Work_Report.md` 和 `changelog_v0.1.md`
+- 每轮任务完成后必须更新三件套：`Mulerun_Work_Report.md` + `changelog_v0.1.md` + `AI_Employee_Guide_v3.md`
 - 每次任务前确认：服务于棋盘走位层 or 卡牌战斗层，两者都不是则不优先做
-- 工作报告必须包含：本轮任务 / 根因目标 / 修改文件 / 实现内容 / 剩余问题 / 建议下一步
 
-**当前阶段状态：双层玩法结构第一版已完成闭环。下一阶段应聚焦于深化战斗策略和视觉演出。**
+**当前阶段状态：双层玩法结构完整闭环，卡牌战斗层第一版完成并持续深化，美化 Phase 1~4.1 已完成，全屏独立卡牌战斗界面+角色立绘+扇形手牌已实现。下一阶段聚焦 UI 过渡动画和音效系统。**
 
 ---
 
@@ -53,61 +52,89 @@
 
 ---
 
-## 2. 当前已完成内容（v0.1.0 → v0.1.30）
+## 2. 当前已完成内容（v0.1.0 → v0.1.54）
 
-### 棋盘走位层（外层 — 完备）
+### 棋盘走位层（外层 — 全部稳定）
 
 | 系统 | 版本 | 状态 |
 |------|------|------|
-| 8x8 棋盘可视化（暗色赛博风格） | v0.1.0 | 稳定 |
-| 掷骰 → 6 种 crest 资源池 | v0.1.1 | 稳定 |
-| 单位选中 + BFS 移动（含地形权重） | v0.1.1 | 稳定 |
+| 8x8 棋盘可视化（赛博朋克风格） | v0.1.0 | 稳定 |
+| 掷骰 → 6种crest资源池 | v0.1.1 | 稳定 |
+| 单位选中 + BFS移动（含地形权重） | v0.1.1 | 稳定 |
 | 基础近战攻击（含地形适性加成） | v0.1.4 | 稳定 |
-| HP 显示 + 胜负判定 + 重新开始 | v0.1.6/v0.1.12 | 稳定 |
+| HP显示 + 胜负判定 + 重新开始 | v0.1.6/12 | 稳定 |
 | 攻击反馈（闪光+飘字） | v0.1.12 | 稳定 |
-| 敌方 AI 最小回合（优先攻击/追踪） | v0.1.13 | 稳定 |
-| 召唤铺路（SUMMON → 路径格 + 召唤单位） | v0.1.14 | 稳定 |
+| 敌方AI最小回合（优先攻击/追踪） | v0.1.13 | 稳定 |
+| 召唤铺路（SUMMON→路径格+召唤单位） | v0.1.14 | 稳定 |
 | 地形系统（高台+陷阱） | v0.1.15 | 稳定 |
 | 单位地形适性（3种） | v0.1.19 | 稳定 |
 | 道具拾取（2种即时效果） | v0.1.20 | 稳定 |
 | 敌方意图广播 + 攻击预警 | v0.1.21 | 稳定 |
-| 遭遇格入口 + 暂停流程 | v0.1.22/v0.1.23 | 稳定 |
-| 恢复格 + 事件格（7种格子） | v0.1.24 | 稳定 |
-| 显示设置系统 | v0.1.7 | 有 BUG-001 |
+| 遭遇暂停与ENCOUNTER阶段 | v0.1.23 | 稳定 |
+| 统一赛博朋克视觉风格（CyberStyle） | v0.1.29 | 稳定 |
+| DEFEND/SKILL/TRICK crest 消耗入口 | v0.1.33 | 稳定 |
+| 棋盘随机生成（BoardGenerator） | v0.1.35 | 稳定 |
+| BuffManager 接入（tick_turn+伤害修正+道具buff） | v0.1.39 | 稳定 |
+| BattleFlowController 瘦身（795→588行，CrestActionHandler+CellEffectHandler 剥离） | v0.1.40 | 稳定 |
+| 9种可交互格子（含恢复/事件/商店/宝箱） | v0.1.41 | 稳定 |
+| 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 | 稳定 |
+| BUG-001 修复（分辨率/全屏/无边框/窗口模式切换） | v0.1.43 | 稳定 |
+| 美化 Phase 1（BoardCellRenderer+UnitRenderer+高亮升级） | v0.1.45 | 稳定 |
+| 美化 Phase 2（DiceRollAnimation+BattleEffects） | v0.1.46 | 稳定 |
+| 美化 Phase 4.1（CyberBackground 背景氛围升级） | v0.1.48 | 稳定 |
+| 掷骰演出升级（伪3D等距骰子+全屏居中） | v0.1.49 | 稳定 |
+| Boss锁定+哨兵前置+传送门机制 | v0.1.50 | 稳定 |
+| Boss/遭遇格击败消失 Bug 修复（resolve_encounter 三分支） | v0.1.51 | 稳定 |
+| 单位精简（1主角+伙伴槽系统）+ 英雄存活制胜负判定 | v0.1.52 | 稳定 |
+| Boss解锁自动传送 + 宝可梦式卡牌战斗过渡 | v0.1.53 | 稳定 |
+| 全屏独立卡牌战斗界面+角色立绘+扇形手牌+棋盘单位美化 | v0.1.54 | 稳定 |
 
-### 卡牌战斗层（内层 — 最小策略版完成）
-
-| 系统 | 版本 | 状态 |
-|------|------|------|
-| CardBattleController 独立状态机 | v0.1.26 | 稳定 |
-| CardBattlePanel 纯 UI 面板 | v0.1.25/v0.1.26 | 稳定 |
-| 5 张固定手牌（斩击/重击/防御/修复/连斩） | v0.1.25 | 被 v0.1.27 升级 |
-| 能量系统（每回合 3E，牌消耗 1~3E） | v0.1.27 | 稳定 |
-| 双牌堆系统（10 张牌组，抽 3/回合，reshuffle） | v0.1.27 | 稳定 |
-| 3 种敌方行为模式 + 循环 pattern | v0.1.27 | 稳定 |
-| 敌方意图预告 | v0.1.27 | 稳定 |
-| 防御减伤机制 | v0.1.27 | 稳定 |
-| 胜利奖励（+1 随机 crest） | v0.1.27 | 稳定 |
-| 逃跑机制（-1 HP） | v0.1.25 | 稳定 |
-| HP 同步（卡牌层 → 棋盘层） | v0.1.25 | 稳定 |
-| 调试快捷按钮（一键进入战斗） | v0.1.28 | 稳定 |
-
-### 视觉系统
+### 卡牌战斗层（内层 — 第一版完成，持续深化）
 
 | 系统 | 版本 | 状态 |
 |------|------|------|
-| CyberStyle 统一风格系统 | v0.1.29 | 稳定 |
-| 面板赛博朋克化（暗底+霓虹边框） | v0.1.29 | 稳定 |
-| 按钮四态样式（normal/hover/pressed/disabled） | v0.1.29 | 稳定 |
-| Crest 彩色显示（青/橙/品红） | v0.1.29 | 稳定 |
+| 双层闭环首次跑通 | v0.1.25 | 稳定 |
+| CardBattleController独立状态机 | v0.1.26 | 稳定 |
+| 能量系统（每回合3点，成长至上限5） | v0.1.27/38 | 稳定 |
+| 双牌堆系统（抽牌/弃牌/洗牌） | v0.1.27 | 稳定 |
+| 3种敌方行为模式 + 意图预告 | v0.1.27 | 稳定 |
+| 胜利奖励crest | v0.1.27 | 稳定 |
+| 调试快捷按钮（一键测试卡牌战斗） | v0.1.28 | 稳定 |
+| 持久牌组系统（跨战斗保留） | v0.1.31 | 稳定 |
+| 战斗胜利选牌机制（3选1加入牌组） | v0.1.31 | 稳定 |
+| CardRewardPanel 奖励选牌面板 | v0.1.31 | 稳定 |
+| 5种遭遇敌方（含3种新敌方） | v0.1.32 | 稳定 |
+| 5个遭遇格（覆盖棋盘多条路线） | v0.1.32 | 稳定 |
+| DeckViewPanel 牌组查看面板 | v0.1.34 | 稳定 |
+| 卡牌升级机制（14种牌升级数据+奖励面板双模式） | v0.1.36 | 稳定 |
+| Boss 遭遇（零号协议 HP20/ATK3/6阶段+独立视觉+增强奖励） | v0.1.37 | 稳定 |
+| 能量成长机制（遭遇胜利+1/Boss+2，上限5） | v0.1.38 | 稳定 |
+| 美化 Phase 3（CardRenderer+CardBattlePanel 重设计） | v0.1.47 | 稳定 |
 
-### 双层闭环完整流程
+### 视觉演出系统
+
+| 系统 | 版本 | 状态 |
+|------|------|------|
+| CyberStyle 统一风格系统（class_name 全局注册） | v0.1.29 | 稳定 |
+| BoardCellRenderer 格子渲染（9种格子+Boss锁定+传送门） | v0.1.45/50 | 稳定 |
+| UnitRenderer 单位渲染（迷你角色剪影） | v0.1.54 | 稳定 |
+| DiceRollAnimation 伪3D等距骰子演出 | v0.1.49 | 稳定 |
+| BattleEffects 战斗特效 | v0.1.46 | 稳定 |
+| CardRenderer 卡牌渲染（6种类型独立配色+升级标记） | v0.1.47 | 稳定 |
+| CyberBackground 背景氛围（渐变+网格+粒子+扫描线） | v0.1.48 | 稳定 |
+| TransitionOverlay 宝可梦式百叶窗过渡 | v0.1.53 | 稳定 |
+| BattleCharRenderer 战斗角色立绘（玩家+6种敌方） | v0.1.54 | 稳定 |
+
+### 双层闭环完整流程（v0.1.54）
 
 ```
 棋盘走位层                              卡牌战斗层
 掷骰 → 获得 crest
 选中单位 → 移动/攻击/召唤
-踩遭遇格 → ENCOUNTER 暂停 ──────────→ CardBattleController.start_battle()
+踩遭遇格 → ENCOUNTER 暂停
+  → 百叶窗过渡（TransitionOverlay）──→ CardBattleController.start_battle()
+                                        ↓
+                                      全屏战斗界面（角色立绘+扇形手牌）
                                         ↓
                                       抽牌 3 张 → 显示意图
                                         ↓
@@ -117,56 +144,66 @@
                                         ↓
                                       循环至一方 HP ≤ 0
                                         ↓
-PLAYER_ACTION 恢复 ←─────────────────── battle_ended 信号
-棋盘单位 HP 同步 ←──────────────────── resolve_encounter(victory, hp)
-crest 奖励写入 ←────────────────────── victory_reward 信号
-遭遇格消失 → 棋盘继续
+                                      胜利 → 奖励选牌（3选1 新牌/升级）
+                                        ↓
+  ← 百叶窗过渡回棋盘 ←───────────── battle_ended 信号
+棋盘单位 HP 同步 ←──────────────── resolve_encounter(victory, hp)
+  胜利 → 遭遇格消失（Boss→生成传送门）
+  失败但存活 → 遭遇格保留，HP保底1，可再战
+  失败全灭 → DEFEAT
+
+多层地图信号链（v0.1.50+）：
+击杀哨兵 → _check_battle_outcome() → _try_unlock_boss() → boss_unlocked
+踩Boss遭遇格 → encounter_triggered → 卡牌战斗
+Boss胜利 → resolve_encounter() → _spawn_portal_near() → portal_spawned
+踩传送门 → _check_portal() → floor_cleared / game_won
 ```
 
-### 3 个玩家原型单位
+### 玩家单位（v0.1.52 精简后）
 
 | 单位 | 定位 | HP | ATK | DEF | 移动 | 攻击范围 | 适性 |
 |------|------|-----|-----|-----|------|----------|------|
-| 刀盾狗 | 前排坦克 | 8 | 3 | 1 | 1 | 1 | 路径（DEF+1） |
-| 灵狐骇客 | 控制型 | 6 | 2 | 0 | 2 | 2 | 陷阱（免疫） |
-| 鸦机术士 | 远程控场 | 5 | 2 | 0 | 1 | 3 | 高台（范围+2） |
+| 刀盾狗（英雄） | 前排坦克 | 8 | 3 | 1 | 1 | 1 | 路径（DEF+1） |
+| 伙伴（召唤） | 辅助 | — | — | — | — | — | 每层上限2次/场上1只 |
 
-### 2 个棋盘敌方单位
+> 灵狐骇客、鸦机术士在 v0.1.52 移除出场，仅保留 1 主角 + 伙伴槽系统
 
-| 单位 | HP | ATK | DEF | 位置 |
-|------|-----|-----|-----|------|
-| 哨兵甲 | 5 | 2 | 0 | (3,4) |
-| 哨兵乙 | 4 | 3 | 0 | (5,3) |
+### 6 个遭遇敌方（v0.1.32/37）
 
-### 2 个遭遇敌方
+| 遭遇ID | 名称 | HP | ATK | 行为模式 | 定位 |
+|--------|------|-----|-----|----------|------|
+| encounter_01 | 异常哨兵 | 8 | 2 | 攻→攻→防击→重击(4回合) | 均衡型 |
+| encounter_02 | 赛博游魂 | 4 | 3 | 攻→重击→攻(3回合) | 爆发型 |
+| encounter_03 | 暗网爬虫 | 12 | 1 | 防击→防击→重击→攻(4回合) | 坦克型 |
+| encounter_04 | 脉冲猎手 | 5 | 4 | 重击→攻→攻(3回合) | 玻璃炮型 |
+| encounter_05 | 数据幽灵 | 9 | 2 | 攻→防击→重击→重击→攻(5回合) | 长周期型 |
+| encounter_boss_01 | 零号协议 | 20 | 3 | 攻→防攻→重击→回复→攻→超载(6回合) | Boss |
 
-| 遭遇 ID | 名称 | HP | ATK | 行为模式 |
-|----------|------|-----|-----|----------|
-| encounter_01 | 异常哨兵 | 8 | 2 | attack→attack→defend_attack→heavy_attack |
-| encounter_02 | 赛博游魂 | 6 | 3 | attack→heavy_attack→attack |
+### 14种卡牌牌组（v0.1.36 升级机制）
 
-### 10 张卡牌牌组
+**初始牌组（10张）**
 
-| 牌名 | 费用 | 效果 | 数量 |
-|------|------|------|------|
-| 斩击 | 1E | 3 伤害 | x2 |
-| 重击 | 2E | 5 伤害 | x1 |
-| 防御 | 1E | 减伤 2 | x2 |
-| 修复 | 1E | 回复 2 HP | x1 |
-| 连斩 | 1E | 2 伤害 | x2 |
-| 猛攻 | 3E | 8 伤害 | x1 |
-| 急救 | 2E | 回复 4 HP | x1 |
+| 卡牌 | 数量 | 费用 | 效果 | 升级后 |
+|------|------|------|------|--------|
+| 斩击 | 2 | 1E | 造成3伤害 | 斩击+ → 4伤害 |
+| 重击 | 1 | 2E | 造成5伤害 | 重击+ → 7伤害 |
+| 防御 | 2 | 1E | 减伤2点 | 防御+ → 减伤3 |
+| 修复 | 1 | 1E | 回复2HP | 修复+ → 回复3 |
+| 连斩 | 2 | 1E | 造成2伤害 | 连斩+ → 3伤害 |
+| 猛攻 | 1 | 3E | 造成8伤害 | 猛攻+ → 11伤害 |
+| 急救 | 1 | 2E | 回复4HP | 急救+ → 回复6 |
 
-### 调试棋盘布局
+**奖励卡池（7种，战斗胜利后3选1）**
 
-| 格子 | 位置 | 类型 |
-|------|------|------|
-| 高台格 | (2,4) (2,5) | terrain: high_ground |
-| 陷阱格 | (1,5) (3,6) | terrain: trap |
-| 道具格 | (4,5) 补丁凉茶, (2,6) 超频骨头 | item |
-| 遭遇格 | (4,4) encounter_01, (6,5) encounter_02 | encounter |
-| 恢复格 | (5,6) HP+2, (1,3) HP+3 | heal |
-| 事件格 | (3,5) (6,3) (4,6) | event（随机正/负） |
+| 卡牌 | 费用 | 效果 | 升级后 |
+|------|------|------|--------|
+| 穿刺 | 2E | 无视防御造成4伤害 | 穿刺+ → 6伤害 |
+| 铁壁 | 2E | 减伤4点 | 铁壁+ → 减伤6 |
+| 吸血斩 | 2E | 造成3伤害+回复1HP | 吸血斩+ → 4伤害+回复2 |
+| 超频修复 | 3E | 回复6HP | 超频修复+ → 回复9 |
+| 电弧 | 1E | 造成2伤害+敌方ATK-1 | 电弧+ → 3伤害+ATK-1 |
+| 强化斩击 | 1E | 造成4伤害 | 强化斩击+ → 6伤害 |
+| 双重防御 | 1E | 减伤3点 | 双重防御+ → 减伤4 |
 
 ---
 
@@ -175,34 +212,42 @@ crest 奖励写入 ←───────────────────�
 ### BattleV2 模块化架构
 
 ```
-BattleFlowController（棋盘层核心控制器）
-├── DiceManager        — 掷骰 + crest 资源池
-├── BoardManager       — 棋盘状态（7 种格子字典）
-├── UnitManager        — 单位状态（生成/移动/伤害/击杀）
-├── ActionResolver     — 攻击范围计算（含地形加成）
-├── BuffManager        — buff 管理（tick_turn 未接入）
-├── BattleAI           — 敌方决策（简单优先攻击/追踪）
-├── AttackRuleHelper   — 伤害公式
-├── VictoryRuleHelper  — 胜负判定
-└── ItemEffectLibrary  — 道具效果执行
+BattleFlowController（棋盘层核心控制器）         ~693行（含多层地图）
+├── DiceManager          — 掷骰 + crest 资源池
+├── BoardManager         — 棋盘状态（9个格子字典+locked_encounters+portal_cells + BFS）
+├── BoardGenerator       — 棋盘程序化生成（静态工具类）
+├── UnitManager          — 单位状态（生成/移动/伤害/击杀）
+├── ActionResolver       — 攻击范围计算
+├── BuffManager          — buff管理（已接入：tick_turn+伤害修正） ✅
+├── BattleAI             — 敌方决策
+├── AttackRuleHelper     — 伤害公式
+├── VictoryRuleHelper    — 胜负判定（has_hero_unit 英雄存活制）
+├── CrestActionHandler   — Crest消耗操作（从BFC剥离）      ~66行
+└── CellEffectHandler    — 格子效果处理（从BFC剥离）       ~205行
 
-CardBattleController（卡牌层独立控制器）
-├── 能量系统           — 每回合 3E
-├── 双牌堆             — draw pile + discard pile + reshuffle
-├── 敌方行为循环       — 3 种行为 × 2 种 pattern
-└── 意图预告           — 每回合显示下一步行动
+CardBattleController（卡牌层独立状态机）         ~540行
+└── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
 ```
 
 ### UI 层
 
 ```
-Main.gd（场景组合+信号接线+反馈调度）
-├── BoardView          — 棋盘渲染 + 点击交互 + 反馈动画
-├── DiceDebugPanel     — 棋盘层 HUD（crest 池/阶段/意图/遭遇）
-├── CardBattlePanel    — 卡牌战斗 UI（手牌/能量/HP/意图/日志）
-├── SettingsPanel      — 显示设置
-├── DisplaySettings    — 分辨率/窗口模式管理
-└── CyberStyle         — 统一赛博朋克视觉风格（class_name 全局可用）
+Main.gd（场景组合+信号中转）                          ~356行
+├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~423行（Phase 1 瘦身）
+├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行 ✅ Phase 1 新增
+├── UnitRenderer         — 单位渲染（v0.1.54 迷你角色剪影）  ~230行
+├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~252行 ✅ v0.1.49 重写
+├── BattleEffects        — 战斗特效静态类（class_name）   ~103行 ✅ Phase 2 新增
+├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~540行
+├── CardRenderer         — 卡牌渲染静态类（class_name）     ~233行 ✅ Phase 3 新增
+├── CardBattlePanel      — 卡牌战斗UI（v0.1.54 全屏重设计）  ~420行
+├── CardRewardPanel      — 奖励选牌/升级面板             ~230行
+├── DeckViewPanel        — 牌组查看面板                 ~160行
+├── CyberStyle           — 全局视觉风格（class_name注册）~149行
+├── CyberBackground      — 背景氛围系统（class_name注册）  ~155行 ✅ Phase 4.1 新增
+├── TransitionOverlay    — 宝可梦式百叶窗过渡（CanvasLayer 10） ~110行 ✅ v0.1.53 新增
+├── BattleCharRenderer   — 战斗角色立绘渲染（class_name注册）   ~180行 ✅ v0.1.54 新增
+└── SettingsPanel        — 显示设置
 ```
 
 ### 信号体系
@@ -215,6 +260,8 @@ Main.gd（场景组合+信号接线+反馈调度）
   enemy_action_announced / enemy_turn_ended
   encounter_triggered / encounter_resolved
   heal_cell_triggered / event_cell_triggered
+  boss_unlocked / portal_spawned / hero_warped       ← v0.1.50/53 新增
+  floor_cleared / game_won                           ← v0.1.42 新增
 
 卡牌层信号（CardBattleController）：
   battle_started / hand_changed / card_played
@@ -229,16 +276,20 @@ Main.gd（场景组合+信号接线+反馈调度）
 
 ```
 BoardManager:
-  occupied_cells: Dictionary  # cell -> unit_id
-  path_cells: Dictionary      # cell -> owner_id
-  item_cells: Dictionary      # cell -> item_id
-  terrain_cells: Dictionary   # cell -> "high_ground" / "trap"
-  encounter_cells: Dictionary # cell -> encounter_id
-  heal_cells: Dictionary      # cell -> int (heal_amount)
-  event_cells: Dictionary     # cell -> String (event_id)
+  occupied_cells: Dictionary     # cell -> unit_id
+  path_cells: Dictionary         # cell -> owner_id
+  item_cells: Dictionary         # cell -> item_id
+  terrain_cells: Dictionary      # cell -> "high_ground" / "trap"
+  encounter_cells: Dictionary    # cell -> encounter_id
+  heal_cells: Dictionary         # cell -> int (heal_amount)
+  event_cells: Dictionary        # cell -> String (event_id)
+  shop_cells: Dictionary         # cell -> shop_data          ← v0.1.41 新增
+  chest_cells: Dictionary        # cell -> chest_data         ← v0.1.41 新增
+  locked_encounters: Dictionary  # cell -> bool               ← v0.1.50 新增
+  portal_cells: Dictionary       # cell -> bool               ← v0.1.50 新增
 
 UnitManager:
-  units_by_id: Dictionary     # unit_id -> {hp, max_hp, atk, def, move_range, attack_range, owner, cell, terrain_affinity, display_name}
+  units_by_id: Dictionary     # unit_id -> {hp, max_hp, atk, def, move_range, attack_range, owner, cell, terrain_affinity, display_name, is_summoned}
   units_by_cell: Dictionary   # cell -> unit_id
 
 DiceManager:
@@ -247,9 +298,10 @@ DiceManager:
 CardBattleController:
   _draw_pile: Array           # 抽牌堆
   _discard_pile: Array        # 弃牌堆
-  _hand: Array                # 当前手牌（每张 = {name, type, value, cost}）
-  energy / max_energy: int    # 当前能量 / 每回合能量上限
+  _hand: Array                # 当前手牌（每张 = {name, type, value, cost, upgraded}）
+  energy / max_energy: int    # 当前能量 / 每回合能量上限（3起步，上限5）
   _enemy_pattern: Array       # 敌方行为循环序列
+  _persistent_deck: Array     # 持久牌组（跨战斗保留）      ← v0.1.31 新增
 ```
 
 ### 战斗阶段流程
@@ -258,76 +310,65 @@ CardBattleController:
 棋盘层:
   BattlePhase: BOOT → PLAYER_ROLL → PLAYER_ACTION → [ENCOUNTER] → ENEMY_ROLL → ENEMY_ACTION → (loop)
   终态: VICTORY / DEFEAT
-  遭遇分支: PLAYER_ACTION → ENCOUNTER → [卡牌战斗] → resolve_encounter → PLAYER_ACTION
+  遭遇分支: PLAYER_ACTION → ENCOUNTER → [百叶窗过渡] → [全屏卡牌战斗] → resolve_encounter(三分支) → PLAYER_ACTION
+  Boss 链: 哨兵全灭 → Boss解锁 → 英雄自动传送 → Boss战斗 → 传送门 → 下一层/通关
 
 卡牌层:
-  BattleState: IDLE → PLAYER_TURN → ENEMY_TURN → (loop) → VICTORY / DEFEAT
+  BattleState: IDLE → PLAYER_TURN → ENEMY_TURN → (loop) → VICTORY → REWARD_SELECT / DEFEAT
 ```
 
 ### 关键代码路径
 
-- **移动后检查顺序**：`try_move_unit()` → `_check_terrain_trap()` → `_check_item_pickup()` → `_check_heal_cell()` → `_check_event_cell()` → `_check_encounter()`
+- **移动后检查顺序**：`try_move_unit()` → `_check_terrain_trap()` → `_check_item_pickup()` → `_check_heal_cell()` → `_check_event_cell()` → `_check_encounter()` → `_check_portal()`
 - **点击优先级**：attack > move > summon
 - **伤害公式**：`max(1, attacker.atk - defender.def - terrain_bonus)`
 - **保底机制**：每次掷骰保底 1 MOVE crest
-- **遭遇触发链**：`encounter_triggered` → Main.gd → `CardBattleController.start_battle()` → `battle_ended` → Main.gd → `resolve_encounter()`
+- **遭遇触发链**：`encounter_triggered` → Main.gd → TransitionOverlay 百叶窗 → `CardBattleController.start_battle()` → 全屏战斗界面 → `battle_ended` → 百叶窗回棋盘 → `resolve_encounter(三分支)`
+- **resolve_encounter 三分支**（v0.1.51）：胜利→清遭遇格（Boss生传送门）；失败存活→遭遇格保留HP保底1；失败全灭→DEFEAT
 
 ---
 
 ## 4. 已知问题与技术债
 
-### BUG-001：分辨率/窗口模式切换无效
-- **发现版本**: v0.1.20
-- **现象**: 窗口仍为 1280x720；内容偏左不居中；全屏无效
-- **优先级**: 低（不阻塞玩法推进）
-- **相关文件**: `Project/Scripts/System/DisplaySettings.gd`
-
-### 技术债
-
-| 问题 | 优先级 | 说明 |
-|------|--------|------|
-| BattleFlowController 740+ 行 | 中 | debug spawn 函数应剥离到 DebugScenario.gd |
-| BuffManager.tick_turn() 未接入 | 中 | buff 系统骨架存在但未在回合流程中调用 |
-| 调试按钮进入卡牌战斗不暂停棋盘 | 低 | 仅影响调试场景，正式遭遇不受影响 |
-| OptionButton 未风格化 | 低 | SettingsPanel 下拉框仍为 Godot 默认样式 |
-| 卡牌无升级/稀有度 | 后续 | 可参考旧项目 CardData.gd 的 rarity/fusion 系统 |
-| 无能量增长机制 | 后续 | 旧项目每回合 +1 能量（max 6），可在后续引入 |
+| 问题 | 严重程度 | 是否阻塞 | 说明 |
+|------|----------|----------|------|
+| ~~BUG-001：分辨率/窗口模式切换无效~~ | ~~低~~ | ~~否~~ | ✅ v0.1.43 已解决 |
+| ~~BuffManager.tick_turn() 未接入~~ | ~~中~~ | ~~否~~ | ✅ v0.1.39 已解决 |
+| ~~BattleFlowController 795行~~ | ~~中~~ | ~~否~~ | ✅ v0.1.40 已瘦身至588行 |
+| BattleFlowController 693行（多层地图后增长） | 中 | 否 | 下次大功能前考虑瘦身 |
+| 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
+| 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
+| 多层地图难度暂不递增（各层敌方数值相同） | 低 | 否 | 层间难度调优时 |
+| 阵亡单位跨层不复活（可能导致后续层过难） | 低 | 否 | 数值调优轮次 |
+| CardRewardPanel 未使用 CardRenderer 风格 | 低 | 否 | UI 统一轮次 |
+| 扇形手牌无拖拽（仅点击出牌） | 低 | 否 | 交互体验优化时 |
 
 ---
 
 ## 5. 下一阶段推进建议
 
-### 第二阶段核心方向：深化策略 + 视觉演出
+### 当前阶段核心方向：美术美化收尾 + 体验打磨
 
-Day 1~12 完成了双层玩法的最小闭环。下一阶段应从以下方向推进：
+v0.1.31~v0.1.54 完成了卡牌深化（构筑/升级/Boss/6种敌方）和全面美化（Phase 1~4.1 + 全屏战斗界面+角色立绘+扇形手牌+百叶窗过渡）。
 
-### A. 卡牌战斗深化（最高优先）
+### 🔴 高优先级
 
-1. **牌组构筑** — 战斗胜利后选牌加入牌组（参考 STS 模式）
-2. **卡牌升级** — 基础牌可升级为强化版本
-3. **能量成长** — 随关卡进度每回合能量上限 +1
-4. **更多敌方种类** — 3~5 种敌方，各有独特行为模式
-5. **Boss 遭遇** — 特殊遭遇格触发 Boss 战
+1. **美化 Phase 4.2：UI 过渡动画** — 面板弹出/关闭缓动动画 + 召唤展开演出
 
-### B. 棋盘走位深化
+### 🟡 中优先级
 
-1. **多层地图** — 通关当前棋盘后进入下一层
-2. **随机棋盘生成** — 从固定布局升级为程序化生成
-3. **更多格子类型** — 商店格、传送格、宝箱格
-4. **棋盘事件系统** — 更丰富的随机事件池
+2. **美化 Phase 5：音效系统** — AudioManager + 基础音效接入（掷骰/攻击/出牌/胜利/失败）
 
-### C. 视觉与体验
+### 🟢 中低优先级
 
-1. **2.5D 棋盘** — 从纯 2D 方块升级为 2.5D 等距视角
-2. **单位动画** — 移动/攻击/受伤动画
-3. **卡牌动画** — 抽牌/出牌/弃牌动效
-4. **音效系统** — 基础音效接入
+3. **层间难度递增** — 根据 current_floor 调整敌方 HP/ATK 或数量
+4. **商店格扩展** — 多选商品 + 独立 UI 面板
+5. **Crest 蓄力池 + 骰子操控机制**
 
-### D. 系统完善
+### 🔵 长期方向
 
-1. **BuffManager 接入** — tick_turn 在回合流程中调用
-2. **BFC 瘦身** — 剥离 debug spawn 到 DebugScenario.gd
-3. **存档系统** — 最小存档/读档
+6. **美化 Phase 6：2.5D 棋盘** — 等距视角（需 Codex 复审）
+7. **存档系统** — 最小存档/读档
 
 ---
 
@@ -337,36 +378,48 @@ Day 1~12 完成了双层玩法的最小闭环。下一阶段应从以下方向�
 
 | 文件路径 | 职责 | 行数参考 |
 |----------|------|----------|
-| `BattleV2/BattleFlowController.gd` | 棋盘层核心控制器：阶段管理/信号中枢/移动攻击召唤/遭遇检测/敌方回合 | ~740 行 |
-| `BattleV2/CardBattleController.gd` | 卡牌层独立控制器：能量/双牌堆/敌方行为/意图/奖励 | ~210 行 |
-| `BattleV2/BoardManager.gd` | 棋盘状态：7 个格子字典 + BFS 移动 | ~150 行 |
+| `BattleV2/BattleFlowController.gd` | 棋盘层核心控制器：阶段管理/多层地图/Boss锁定传送门 | ~693 行 |
+| `BattleV2/CardBattleController.gd` | 卡牌层独立控制器：能量/双牌堆/持久牌组/升级/6种敌方/Boss | ~540 行 |
+| `BattleV2/BoardManager.gd` | 棋盘状态：9+2 个格子字典 + BFS 移动 | ~150 行 |
+| `BattleV2/BoardGenerator.gd` | 棋盘程序化生成（静态工具类） | ~200 行 |
 | `BattleV2/UnitManager.gd` | 单位状态：生成/移动/伤害/击杀 | ~90 行 |
 | `BattleV2/ActionResolver.gd` | 攻击范围计算（含地形适性加成） | ~50 行 |
 | `BattleV2/DiceManager.gd` | 掷骰 + crest 资源池管理 | ~60 行 |
 | `BattleV2/BattleAI.gd` | 敌方 AI（优先攻击/追踪最近玩家） | ~80 行 |
-| `BattleV2/BuffManager.gd` | buff 管理（tick_turn 未接入） | ~30 行 |
+| `BattleV2/BuffManager.gd` | buff 管理（tick_turn 已接入） | ~30 行 |
 | `BattleV2/AttackRuleHelper.gd` | 伤害公式 | ~15 行 |
-| `BattleV2/VictoryRuleHelper.gd` | 胜负判定 | ~20 行 |
-| `BattleV2/ItemEffectLibrary.gd` | 道具效果执行 | ~40 行 |
-| `UI/BoardView.gd` | 棋盘渲染 + 点击交互 + 反馈动画 | ~470 行 |
-| `UI/DiceDebugPanel.gd` | 棋盘层 HUD（crest 池/阶段/意图/遭遇） | ~260 行 |
-| `UI/CardBattlePanel.gd` | 卡牌战斗 UI（手牌/能量/HP/意图） | ~230 行 |
-| `UI/CyberStyle.gd` | 统一赛博朋克视觉风格（全局 class_name） | ~120 行 |
+| `BattleV2/VictoryRuleHelper.gd` | 胜负判定（has_hero_unit+has_grunt_units） | ~30 行 |
+| `BattleV2/CrestActionHandler.gd` | Crest 消耗操作（从 BFC 剥离） | ~66 行 |
+| `BattleV2/CellEffectHandler.gd` | 格子效果处理（从 BFC 剥离） | ~205 行 |
+| `UI/BoardView.gd` | 棋盘渲染 + 点击交互 + 反馈动画 | ~423 行 |
+| `UI/BoardCellRenderer.gd` | 格子渲染静态类（9种格子+Boss锁定+传送门） | ~210 行 |
+| `UI/UnitRenderer.gd` | 单位渲染（迷你角色剪影） | ~230 行 |
+| `UI/DiceRollAnimation.gd` | 掷骰演出（伪3D等距骰子） | ~252 行 |
+| `UI/BattleEffects.gd` | 战斗特效静态类 | ~103 行 |
+| `UI/DiceDebugPanel.gd` | 棋盘层 HUD（crest 池/阶段/层数/部署提示） | ~540 行 |
+| `UI/CardRenderer.gd` | 卡牌渲染静态类（6种类型配色） | ~233 行 |
+| `UI/CardBattlePanel.gd` | 全屏卡牌战斗 UI（1280x720+立绘+扇形手牌） | ~420 行 |
+| `UI/CardRewardPanel.gd` | 奖励选牌/升级面板 | ~230 行 |
+| `UI/DeckViewPanel.gd` | 牌组查看面板 | ~160 行 |
+| `UI/CyberStyle.gd` | 统一赛博朋克视觉风格（全局 class_name） | ~149 行 |
+| `UI/CyberBackground.gd` | 背景氛围系统（渐变+网格+粒子+扫描线） | ~155 行 |
+| `UI/TransitionOverlay.gd` | 宝可梦式百叶窗过渡（CanvasLayer 10） | ~110 行 |
+| `UI/BattleCharRenderer.gd` | 战斗角色立绘渲染（玩家+6种敌方） | ~180 行 |
 | `UI/SettingsPanel.gd` | 显示设置面板 | ~100 行 |
-| `System/DisplaySettings.gd` | 分辨率/窗口模式（有 BUG-001） | ~60 行 |
-| `Main.gd` | 场景组合 + 信号接线 + 反馈调度 | ~270 行 |
-| `Data/UnitData.gd` | 单位数据资源脚本 | ~20 行 |
+| `Main.gd` | 场景组合 + 信号中转 + 过渡管理 | ~356 行 |
 
 ### 日志文件（`Logs/` 下）
 
-| 文件 | 用途 |
-|------|------|
-| `CyberTao_Migration_Snapshot_zh_v3.md` | 本文件 — 项目全貌+架构（阶段性更新） |
-| `Weekly_Mulerun_Plan_zh_v2.md` | 周推进计划（Day 1~12 全部完成） |
-| `Board_Card_Battle_Concept_zh.md` | 双层玩法机制方案 |
-| `Demo_Roadmap_2p5D_zh.md` | 中长期 Demo 路线 |
-| `Mulerun_Work_Report.md` | 最近一轮工作报告（每轮更新） |
-| `changelog_v0.1.md` | 完整版本变更记录（v0.1.0 ~ v0.1.30） |
+| 文件 | 用途 | 更新频率 |
+|------|------|----------|
+| `AI_Employee_Guide_v3.md` | AI 员工上岗指令（行为规范） | 每轮强制更新 |
+| `Handoff_Package_latest.md` | 最新交接包 | 交接时覆盖 |
+| `CyberTao_Migration_Snapshot_zh_v3.md` | 本文件 — 项目全貌+架构 | 阶段性更新 |
+| `Mulerun_Work_Report.md` | 上一轮精确状态 | 每轮覆盖 |
+| `changelog_v0.1.md` | 完整版本历史 | 每轮追加 |
+| `Board_Card_Battle_Concept_zh.md` | 双层玩法设计文档 | 设计变更时 |
+| `Demo_Roadmap_2p5D_zh.md` | 中长期路线图 | 阶段性更新 |
+| `Art_Beautification_Strategy_zh.md` | 美术美化推进策略（6阶段） | 美化阶段参考 |
 
 ---
 
@@ -381,11 +434,14 @@ Day 1~12 完成了双层玩法的最小闭环。下一阶段应从以下方向�
 | v0.1.15~v0.1.21 | 棋盘深化（地形+适性+道具+意图） |
 | v0.1.22~v0.1.24 | 双层入口（遭遇格+暂停+格子事件化） |
 | v0.1.25~v0.1.27 | 卡牌战斗（原型→丰富化） |
-| v0.1.28~v0.1.29 | 调试+UI（快捷按钮+赛博朋克风格化） |
-| v0.1.30 | 阶段收口（日志整理+下阶段建议） |
+| v0.1.28~v0.1.30 | 调试+UI+阶段收口 |
+| v0.1.31~v0.1.38 | 卡牌深化（构筑/升级/Boss/6种敌方/能量成长） |
+| v0.1.39~v0.1.43 | 系统完善（BuffManager接入/BFC瘦身/9种格子/多层地图/BUG-001修复） |
+| v0.1.45~v0.1.49 | 美化 Phase 1~4.1（格子/单位/骰子/卡牌/背景 视觉升级） |
+| v0.1.50~v0.1.54 | Boss机制+单位精简+全屏卡牌战斗界面+角色立绘+百叶窗过渡 |
 
 ---
 
 ## 8. 一句话状态
 
-**v0.1.30 双层玩法第一版完整闭环。棋盘走位层（7 种格子 + 3 单位适性 + 敌方 AI + 遭遇触发）和卡牌战斗层（能量 + 双牌堆 + 3 种敌方行为 + 意图预告 + 奖励回馈）已全部完成并通过赛博朋克统一风格化。下一阶段核心方向：卡牌构筑成长 + 更多敌方种类 + 棋盘随机生成。**
+**v0.1.54 双层玩法完整闭环+卡牌深化第一版完成。棋盘走位层（9种格子+随机生成+3层推进+Boss锁定传送门+单位精简）和卡牌战斗层（14种牌+升级+6种敌方+Boss+能量成长+持久牌组+奖励选牌）全部稳定。全屏独立卡牌战斗界面+角色立绘+扇形手牌+宝可梦式百叶窗过渡+赛博朋克全面美化（Phase 1~4.1）已完成。下一步：UI 过渡动画 + 音效系统。**
