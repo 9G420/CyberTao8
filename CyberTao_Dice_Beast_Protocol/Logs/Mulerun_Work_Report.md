@@ -1,20 +1,20 @@
 # Mulerun 工作报告
 
 **日期**: 2026-03-31
-**版本**: v0.1.56
+**版本**: v0.1.57
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.56：美化 Phase 5 — 音效系统（AudioManager + SFXGenerator 程序化音效 + 全局接入 + BGM 切换）
+- v0.1.57：层间难度递增（根据 current_floor 缩放敌方 HP/ATK）
 
 ---
 
 ## 根因目标
 
-AI_Employee_Guide_v3 §6 当前最高优先级任务。游戏目前完全无音效，所有操作（掷骰/移动/攻击/出牌/遭遇/胜负）均为静默。本轮目标：从旧项目迁入 SFXGenerator 程序化音频引擎，创建 AudioManager 管理器，在 Main.gd 中将所有关键游戏事件接入对应音效，并实现棋盘/战斗/Boss 三种 BGM 自动切换。
+AI_Employee_Guide_v3 §6 当前最高优先级任务。3层地图各层敌方数值完全相同（哨兵甲 HP5/ATK2、哨兵乙 HP4/ATK3、遭遇敌方固定数值），无难度递增感。本轮目标：根据当前层数对棋盘敌方单位和卡牌层遭遇敌方同时进行 HP/ATK 缩放，使后续层逐步变难。
 
 ---
 
@@ -22,105 +22,93 @@ AI_Employee_Guide_v3 §6 当前最高优先级任务。游戏目前完全无音�
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/System/SFXGenerator.gd` | **迁入文件**，从旧项目复制完整程序化音频引擎，~1100行 |
-| `Scripts/System/AudioManager.gd` | **新增文件**，音效管理器（class_name 全局注册），~120行 |
-| `Scripts/Main.gd` | 新增 _audio 成员；_ready 创建 AudioManager+启动 BGM；20+ 处信号回调接入 SFX；BGM 切换 |
+| `Scripts/BattleV2/BoardGenerator.gd` | generate_board 新增 current_floor 参数；新增 _floor_scaling 缩放函数；_spawn_enemies 按层缩放 HP/ATK |
+| `Scripts/BattleV2/CardBattleController.gd` | get_encounter_enemy_data 新增 current_floor 参数，返回前按层缩放 HP/ATK；start_battle 新增 current_floor 参数透传 |
+| `Scripts/BattleV2/BattleFlowController.gd` | 3处 generate_board 调用传入 current_floor（_ready/advance_to_next_floor/restart_battle） |
+| `Scripts/Main.gd` | 2处 start_battle 调用传入 _battle_flow.current_floor（遭遇触发+调试快捷键） |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.56 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+架构+文件路径+任务优先级 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.57 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步版本号+完成列表+任务优先级 |
 
 ---
 
 ## 实现内容
 
-### SFXGenerator 程序化音频引擎（迁入）
+### 缩放公式
 
-- 从旧项目 `Scripts/Battle/SFXGenerator.gd` 原样迁入
-- 28种音效生成函数 + 4种 BGM 循环生成函数
-- 8bit 芯片音 + 赛博朋克合成器 + EVA 暗色环境音风格
-- 所有音频运行时由 GDScript 程序化生成 AudioStreamWAV，零外部文件依赖
-- class_name 全局注册，AudioManager 直接调用静态方法
+| 层数 | HP 倍率 | ATK 加值 | 说明 |
+|------|---------|----------|------|
+| 第1层 | x1.0 | +0 | 基准数值，无变化 |
+| 第2层 | x1.3 | +1 | HP 向上取整 |
+| 第3层 | x1.6 | +2 | HP 向上取整 |
 
-### AudioManager 音效管理器（新增）
+公式：`floor_offset = max(0, current_floor - 1)`
+- HP = ceil(base_hp * (1.0 + 0.3 * floor_offset))
+- ATK = base_atk + floor_offset
 
-- 6通道 AudioStreamPlayer 用于 SFX 多路复用
-- 1通道 AudioStreamPlayer 用于 BGM 循环
-- _ready 时预生成并缓存 18 种常用音效（避免首次播放延迟）
-- BGM 按需生成并缓存（bgm_map / bgm_battle / bgm_boss / bgm_title）
-- API：`play_sfx(name)` / `play_bgm(name)` / `stop_bgm()` / `set_sfx_enabled(bool)` / `set_bgm_enabled(bool)`
+### 棋盘层敌方单位（BoardGenerator）
 
-### Main.gd 音效接入（20+ 处）
+| 单位 | 第1层 | 第2层 | 第3层 |
+|------|-------|-------|-------|
+| 哨兵甲 | HP5/ATK2 | HP7/ATK3 | HP8/ATK4 |
+| 哨兵乙 | HP4/ATK3 | HP6/ATK4 | HP7/ATK5 |
 
-**棋盘层**：
-- 移动成功 → click
-- 攻击命中 → attack_hit
-- 召唤成功 → summon
-- 掷骰完成 → dice_roll
-- 地形伤害 → player_hurt
-- 敌方攻击 → player_hurt
-- 道具拾取 → pickup
-- 回复格 → heal
-- 防御纹章 → defense
-- 技能纹章 → heal
-- 商店格 → shop
-- 宝箱格 → chest
-- 遭遇触发 → encounter
-- Boss 解锁 → encounter
-- 设置按钮 → click
+### 卡牌层遭遇敌方（CardBattleController）
 
-**卡牌层**：
-- 出牌 → card_play
-- 敌方行动 → enemy_hurt
-- 抽牌/手牌变化 → card_draw
+| 遭遇 | 第1层 | 第2层 | 第3层 |
+|------|-------|-------|-------|
+| 异常哨兵 | HP8/ATK2 | HP11/ATK3 | HP13/ATK4 |
+| 赛博游魂 | HP6/ATK3 | HP8/ATK4 | HP10/ATK5 |
+| 暗网爬虫 | HP12/ATK1 | HP16/ATK2 | HP20/ATK3 |
+| 脉冲猎手 | HP5/ATK4 | HP7/ATK5 | HP8/ATK6 |
+| 数据幽灵 | HP9/ATK2 | HP12/ATK3 | HP15/ATK4 |
+| 零号协议(Boss) | HP20/ATK3 | HP26/ATK4 | HP32/ATK5 |
 
-**胜负**：
-- 通关胜利 → victory
-- 失败 → defeat
-- 战斗胜利返回 → victory
+### 调用链
 
-**BGM 切换**：
-- 游戏启动 → bgm_map
-- 遭遇进入 → bgm_battle / bgm_boss
-- 战斗结束返回棋盘 → bgm_map
+- BattleFlowController._ready → BoardGenerator.generate_board(..., current_floor)
+- BattleFlowController.advance_to_next_floor → BoardGenerator.generate_board(..., current_floor)
+- BattleFlowController.restart_battle → BoardGenerator.generate_board(..., 1)
+- Main._on_encounter_triggered → CardBattleController.start_battle(..., current_floor)
+- Main._on_test_card_battle_requested → CardBattleController.start_battle(..., current_floor)
 
 ---
 
 ## 接口变更
 
-- `AudioManager` — 新增 class_name（全局注册）
-- `AudioManager.play_sfx(sfx_name: String)` — 播放一次性音效
-- `AudioManager.play_bgm(bgm_name: String)` — 播放/切换 BGM
-- `AudioManager.stop_bgm()` — 停止 BGM
-- `AudioManager.set_sfx_enabled(enabled: bool)` — SFX 开关
-- `AudioManager.set_bgm_enabled(enabled: bool)` — BGM 开关
-- `SFXGenerator` — class_name 全局注册（从旧项目迁入，接口不变）
+- `BoardGenerator.generate_board(board_mgr, unit_mgr, board_size, current_floor)` — 新增第4参数 current_floor: int = 1
+- `BoardGenerator._floor_scaling(current_floor)` — 新增静态方法，返回 {hp_mult, atk_add}
+- `BoardGenerator._spawn_enemies(unit_mgr, board_size, used_cells, current_floor)` — 新增第4参数
+- `CardBattleController.get_encounter_enemy_data(enc_id, current_floor)` — 新增第2参数 current_floor: int = 1
+- `CardBattleController.start_battle(enc_id, p_hp, p_max_hp, current_floor)` — 新增第4参数 current_floor: int = 1
+- 所有新增参数均有默认值 = 1，不影响现有无参调用的兼容性
 
 ---
 
 ## 测试确认
 
-- 棋盘层闭环（掷骰/移动/攻击/召唤/敌方回合/地形/道具/回复/商店/宝箱/遭遇/Boss解锁）各环节音效正确触发
-- 卡牌层闭环（进入战斗/出牌/敌方行动/抽牌）各环节音效正确触发
-- BGM 切换：棋盘 bgm_map → 遭遇 bgm_battle → 返回 bgm_map；Boss 遭遇切 bgm_boss
-- 胜利/失败音效正确触发
-- 多通道复用：快速连续操作不会丢失音效（6通道轮替）
-- 所有子模块零修改验证：BattleFlowController / CardBattleController / BoardView / CardBattlePanel / 各 UI 面板
+- 第1层棋盘敌方数值不变（哨兵甲 HP5/ATK2，哨兵乙 HP4/ATK3）
+- 第2层棋盘敌方数值递增（哨兵甲 HP7/ATK3，哨兵乙 HP6/ATK4）
+- 第1层遭遇敌方数值不变（异常哨兵 HP8/ATK2）
+- 第2层遭遇敌方数值递增（异常哨兵 HP11/ATK3）
+- restart_battle 重置为第1层，数值回归基准
+- 调试快捷键卡牌战斗也按当前层缩放
+- 所有参数默认值 = 1，不破坏现有代码路径
 
 ---
 
 ## 剩余问题
 
-- 层间难度暂不递增
 - 阵亡单位跨层不复活
 - CardRewardPanel 暂未使用 CardRenderer 风格
 - 扇形手牌暂无拖拽机制（仅点击出牌）
 - 角色立绘为程序化绘制
-- SettingsPanel 暂未添加音量/音效开关控件（AudioManager 已预留 API）
+- SettingsPanel 暂未添加音量/音效开关控件
 
 ---
 
 ## 建议下一步
 
-1. 层间难度递增（根据 current_floor 调整敌方 HP/ATK）
-2. 商店格扩展（多选商品 + 独立 UI 面板）
+1. 商店格扩展（多选商品 + 独立 UI 面板）
+2. 阵亡单位跨层复活机制
 3. SettingsPanel 添加音量滑块 + SFX/BGM 开关

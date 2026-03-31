@@ -1,5 +1,25 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.57 - 2026-03-31
+
+### 新增
+- **层间难度递增**：根据 current_floor 动态缩放敌方 HP/ATK
+- `BoardGenerator._floor_scaling()` 缩放函数：第1层基准，第2层 HP×1.3/ATK+1，第3层 HP×1.6/ATK+2
+- 棋盘层哨兵单位按层缩放（第1层 HP5/ATK2 → 第3层 HP8/ATK4）
+- 卡牌层遭遇敌方按层缩放（含 Boss：第1层 HP20/ATK3 → 第3层 HP32/ATK5）
+
+### 修改
+- `BoardGenerator.gd`：generate_board / _spawn_enemies 新增 current_floor 参数，缩放哨兵 HP/ATK
+- `CardBattleController.gd`：get_encounter_enemy_data / start_battle 新增 current_floor 参数，缩放遭遇敌方 HP/ATK
+- `BattleFlowController.gd`：3处 generate_board 调用传入 current_floor
+- `Main.gd`：2处 start_battle 调用传入 _battle_flow.current_floor
+
+### 备注
+- 所有新增参数均有默认值 = 1，不破坏现有无参调用路径
+- HP 缩放使用 ceil 向上取整，确保至少增加 1 点
+- 缩放公式线性简单，后续可根据玩测反馈调整系数
+- UI 面板 / BoardView / AudioManager 零修改
+
 ## v0.1.56 - 2026-03-31
 
 ### 新增

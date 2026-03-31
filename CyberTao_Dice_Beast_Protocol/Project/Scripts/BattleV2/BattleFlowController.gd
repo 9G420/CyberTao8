@@ -113,7 +113,7 @@ func _bootstrap() -> void:
 
 	board_manager.build_test_board(Vector2i(8, 8))
 	_spawn_player_units()
-	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8))
+	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8), current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -755,8 +755,8 @@ func advance_to_next_floor() -> void:
 	current_floor += 1
 	# 重新生成玩家单位（仅存活的，恢复保存的 HP）
 	_spawn_player_units_with_hp(hp_snapshot)
-	# 生成新棋盘布局
-	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8))
+	# 生成新棋盘布局（传入 current_floor 用于难度缩放）
+	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8), current_floor)
 	# 重置回合
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
@@ -834,7 +834,7 @@ func restart_battle() -> void:
 	_encounter_cell = Vector2i(-1, -1)
 	current_floor = 1
 	_spawn_player_units()
-	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8))
+	BoardGenerator.generate_board(board_manager, unit_manager, Vector2i(8, 8), current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

@@ -43,7 +43,8 @@ const PLAYER_ZONE_ROWS_START: int = 5  # row 5~7
 
 ## 生成完整棋盘布局（地形+道具+遭遇+恢复+事件+敌方单位）
 ## 玩家单位由 BFC 单独生成（需要加载 .tres 资源）
-static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i) -> void:
+## current_floor：当前层数（1起），影响敌方单位数值缩放
+static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i, current_floor: int = 1) -> void:
 	var used_cells: Dictionary = {}  # cell -> true，防止重叠
 	# 标记玩家单位初始位置为已占用
 	_mark_player_spawn_cells(used_cells)
@@ -104,10 +105,21 @@ static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i
 		board_mgr.add_chest_cell(cell, "chest")
 		used_cells[cell] = true
 	# 9. 敌方单位（上半区域，row 0~4）
-	_spawn_enemies(unit_mgr, board_size, used_cells)
+	_spawn_enemies(unit_mgr, board_size, used_cells, current_floor)
+
+## 层间难度缩放：返回 {hp_mult, atk_add} 基于当前层数
+## 第1层=基准，第2层 HP+30%/ATK+1，第3层 HP+60%/ATK+2
+static func _floor_scaling(current_floor: int) -> Dictionary:
+	var floor_offset: int = max(0, current_floor - 1)
+	return {
+		"hp_mult": 1.0 + 0.3 * float(floor_offset),
+		"atk_add": floor_offset,
+	}
 
 ## 生成敌方单位（随机位置，上半区域）
-static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dictionary) -> void:
+## current_floor 用于数值缩放
+static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dictionary, current_floor: int = 1) -> void:
+	var scaling: Dictionary = _floor_scaling(current_floor)
 	var enemy_templates: Array[Dictionary] = [
 		{"id": "enemy_grunt_1", "max_hp": 5, "atk": 2, "def": 0, "display_name": "哨兵甲"},
 		{"id": "enemy_grunt_2", "max_hp": 4, "atk": 3, "def": 0, "display_name": "哨兵乙"},
@@ -116,9 +128,11 @@ static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dic
 		var cell: Vector2i = _pick_enemy_cell(board_size, used_cells)
 		if cell.x < 0:
 			continue
+		var scaled_hp: int = int(ceil(float(int(tmpl["max_hp"])) * float(scaling["hp_mult"])))
+		var scaled_atk: int = int(tmpl["atk"]) + int(scaling["atk_add"])
 		var data: Dictionary = {
-			"max_hp": int(tmpl["max_hp"]),
-			"atk": int(tmpl["atk"]),
+			"max_hp": scaled_hp,
+			"atk": scaled_atk,
 			"def": int(tmpl["def"]),
 			"move_range": 1,
 			"attack_range": 1,

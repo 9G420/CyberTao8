@@ -112,48 +112,56 @@ static func _build_reward_pool() -> Array[Dictionary]:
 
 # ======== 遭遇敌方数据 ========
 
-static func get_encounter_enemy_data(enc_id: String) -> Dictionary:
+static func get_encounter_enemy_data(enc_id: String, current_floor: int = 1) -> Dictionary:
+	var base: Dictionary = {}
 	match enc_id:
 		"encounter_01":
-			return {
+			base = {
 				"name": "异常哨兵", "hp": 8, "atk": 2,
 				"pattern": ["attack", "attack", "defend_attack", "heavy_attack"],
 			}
 		"encounter_02":
-			return {
+			base = {
 				"name": "赛博游魂", "hp": 6, "atk": 3,
 				"pattern": ["attack", "heavy_attack", "attack"],
 			}
 		"encounter_03":
-			return {
+			base = {
 				"name": "暗网爬虫", "hp": 12, "atk": 1,
 				"pattern": ["defend_attack", "defend_attack", "heavy_attack", "attack"],
 			}
 		"encounter_04":
-			return {
+			base = {
 				"name": "脉冲猎手", "hp": 5, "atk": 4,
 				"pattern": ["heavy_attack", "attack", "attack"],
 			}
 		"encounter_05":
-			return {
+			base = {
 				"name": "数据幽灵", "hp": 9, "atk": 2,
 				"pattern": ["attack", "defend_attack", "heavy_attack", "heavy_attack", "attack"],
 			}
 		"encounter_boss_01":
-			return {
+			base = {
 				"name": "零号协议", "hp": 20, "atk": 3, "is_boss": true,
 				"pattern": ["attack", "defend_attack", "heavy_attack", "heal", "attack", "mega_attack"],
 			}
-	return {
-		"name": "未知敌人", "hp": 5, "atk": 2,
-		"pattern": ["attack", "attack"],
-	}
+		_:
+			base = {
+				"name": "未知敌人", "hp": 5, "atk": 2,
+				"pattern": ["attack", "attack"],
+			}
+	# 层间难度缩放：第1层=基准，第2层 HP+30%/ATK+1，第3层 HP+60%/ATK+2
+	var floor_offset: int = max(0, current_floor - 1)
+	if floor_offset > 0:
+		base["hp"] = int(ceil(float(int(base["hp"])) * (1.0 + 0.3 * float(floor_offset))))
+		base["atk"] = int(base["atk"]) + floor_offset
+	return base
 
 # ======== 战斗流程 ========
 
-func start_battle(enc_id: String, p_hp: int, p_max_hp: int) -> void:
+func start_battle(enc_id: String, p_hp: int, p_max_hp: int, current_floor: int = 1) -> void:
 	encounter_id = enc_id
-	var enemy_data: Dictionary = get_encounter_enemy_data(enc_id)
+	var enemy_data: Dictionary = get_encounter_enemy_data(enc_id, current_floor)
 	enemy_name = String(enemy_data["name"])
 	enemy_hp = int(enemy_data["hp"])
 	enemy_max_hp = enemy_hp
