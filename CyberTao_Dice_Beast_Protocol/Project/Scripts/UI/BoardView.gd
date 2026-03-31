@@ -15,6 +15,9 @@ var board_manager: Node = null
 var unit_manager: Node = null
 var battle_flow: Node = null
 
+# --- 等距棋盘原点（菱形棋盘顶端中心）---
+var iso_origin: Vector2 = Vector2(288.0, 30.0)
+
 # Selection state
 var selected_unit_id: String = ""
 var highlight_cells: Array[Vector2i] = []
@@ -37,7 +40,7 @@ var _item_names: Dictionary = {
 }
 
 func _ready() -> void:
-	size = Vector2(GRID_W * CELL_SIZE, GRID_H * CELL_SIZE)
+	size = Vector2(576, 350)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# 动画刷新定时器（50ms=20fps，驱动呼吸/脉冲效果）
 	_anim_timer = Timer.new()
@@ -92,9 +95,7 @@ func _gui_input(event: InputEvent) -> void:
 	accept_event()
 
 func _pixel_to_cell(pixel_pos: Vector2) -> Vector2i:
-	var cx: int = int(pixel_pos.x) / CELL_SIZE
-	var cy: int = int(pixel_pos.y) / CELL_SIZE
-	return Vector2i(cx, cy)
+	return IsoTileRenderer.screen_to_grid(pixel_pos, iso_origin)
 
 func _is_valid_cell(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_W and cell.y < GRID_H
@@ -177,13 +178,16 @@ func _filter_summon_cells(raw_summon_cells: Array[Vector2i]) -> Array[Vector2i]:
 			filtered.append(sc)
 	return filtered
 
-# --- 辅助：获取格子内矩形 ---
+# --- 辅助 ---
 
 func _cell_rect(cell: Vector2i, margin: int) -> Rect2:
 	return Rect2(Vector2(cell.x * CELL_SIZE + margin, cell.y * CELL_SIZE + margin), Vector2(CELL_SIZE - margin * 2, CELL_SIZE - margin * 2))
 
+func _iso_cell_center(cell: Vector2i) -> Vector2:
+	return IsoTileRenderer.grid_to_screen(cell.x, cell.y, iso_origin)
+
 # ===========================================================
-#  绘制层（全部委托给 BoardCellRenderer / UnitRenderer）
+#  绘制层（v0.1.58 Phase 6：等距贴图渲染）
 # ===========================================================
 
 func _draw() -> void:
@@ -195,78 +199,103 @@ func _draw() -> void:
 	_draw_layer_units(pulse, font)
 	_draw_attack_flash()
 
-# Layer 1: 基础网格
+# Layer 1: 等距贴图基础网格
 func _draw_layer_grid(_pulse: float) -> void:
-	for y in range(GRID_H):
-		for x in range(GRID_W):
-			BoardCellRenderer.draw_base_cell(self, x, y, CELL_SIZE)
+	IsoTileRenderer.draw_board(self, iso_origin, board_manager)
 
-# Layer 2: 类型格子覆盖层（地形/遭遇/回复/事件/商店/宝箱/道具/路径）
+# Layer 2: 叠层符号（贴图已区分格类型，此层仅补充文字/特殊标记）
 func _draw_layer_overlays(pulse: float, font: Font) -> void:
 	if board_manager == null:
 		return
-	for cell in board_manager.terrain_cells.keys():
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), String(board_manager.terrain_cells[cell]), pulse, font, "")
+	# Boss / Boss锁定 标记（encounter 贴图无法区分 boss 与普通）
 	for cell in board_manager.encounter_cells.keys():
 		var enc_id: String = String(board_manager.encounter_cells[cell])
 		var is_boss: bool = enc_id.begins_with("encounter_boss_")
-		var ctype: String
-		if is_boss and board_manager.is_encounter_locked(cell):
-			ctype = "boss_locked"
-		elif is_boss:
-			ctype = "boss"
+		if not is_boss:
+			continue
+		var center: Vector2 = _iso_cell_center(cell)
+		if board_manager.is_encounter_locked(cell):
+			_draw_iso_label(center, "LOCKED", Color(0.6, 0.3, 0.3, 0.7 + pulse * 0.2), font, 9)
 		else:
-			ctype = "encounter"
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), ctype, pulse, font, "")
+			_draw_iso_label(center, "BOSS", Color(CyberStyle.NEON_RED.r, CyberStyle.NEON_RED.g, CyberStyle.NEON_RED.b, 0.9 + pulse * 0.1), font, 11)
+	# 回复量文字
 	for cell in board_manager.heal_cells.keys():
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "heal", pulse, font, str(int(board_manager.heal_cells[cell])))
+		var center: Vector2 = _iso_cell_center(cell)
+		var amt: String = "+" + str(int(board_manager.heal_cells[cell]))
+		_draw_iso_label(center + Vector2(0, 6), amt, Color(CyberStyle.NEON_BLUE.r, CyberStyle.NEON_BLUE.g, CyberStyle.NEON_BLUE.b, 0.85), font, 10)
+	# 事件格（无专属贴图，显示 ? 符号）
 	for cell in board_manager.event_cells.keys():
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "event", pulse, font, "")
+		var center: Vector2 = _iso_cell_center(cell)
+		var col: Color = CyberStyle.NEON_PURPLE
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.18 + pulse * 0.1), Color(col.r, col.g, col.b, 0.4 + pulse * 0.2))
+		_draw_iso_label(center, "?", Color(col.r, col.g, col.b, 0.8 + pulse * 0.2), font, 16)
+	# 商店费用文字
 	for cell in board_manager.shop_cells.keys():
+		var center: Vector2 = _iso_cell_center(cell)
 		var heal_amount: int = int(board_manager.shop_cells[cell])
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "shop", pulse, font, "1步→HP+" + str(heal_amount))
-	for cell in board_manager.chest_cells.keys():
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "chest", pulse, font, "")
-	for cell in board_manager.path_cells.keys():
-		var owner_id: String = String(board_manager.path_cells[cell])
-		var ptype: String = "path_player" if owner_id == "player" else "path_other"
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 2), ptype, pulse, font, "")
+		_draw_iso_label(center + Vector2(0, 6), "HP+" + str(heal_amount), Color(CyberStyle.NEON_TEAL.r, CyberStyle.NEON_TEAL.g, CyberStyle.NEON_TEAL.b, 0.75), font, 9)
+	# 道具名称文字
 	for cell in board_manager.item_cells.keys():
 		var item_id: String = String(board_manager.item_cells[cell])
 		var display: String = String(_item_names.get(item_id, "?"))
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 3), "item", pulse, font, display)
+		var center: Vector2 = _iso_cell_center(cell)
+		_draw_iso_label(center + Vector2(0, 6), display, Color(CyberStyle.NEON_GREEN.r, CyberStyle.NEON_GREEN.g, CyberStyle.NEON_GREEN.b, 0.8), font, 10)
+	# 路径格叠层（无专属贴图）
+	for cell in board_manager.path_cells.keys():
+		var owner_id: String = String(board_manager.path_cells[cell])
+		var col: Color = CyberStyle.ACCENT_CYAN if owner_id == "player" else CyberStyle.ACCENT_ORANGE
+		var center: Vector2 = _iso_cell_center(cell)
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.12 + pulse * 0.06), Color(col.r, col.g, col.b, 0.3 + pulse * 0.15), 6.0)
+	# 传送门叠层（无专属贴图）
 	for cell in board_manager.portal_cells.keys():
-		BoardCellRenderer.draw_overlay(self, _cell_rect(cell, 1), "portal", pulse, font, "")
+		var center: Vector2 = _iso_cell_center(cell)
+		var col: Color = CyberStyle.ACCENT_CYAN
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.2 + pulse * 0.12), Color(col.r, col.g, col.b, 0.5 + pulse * 0.3), 4.0)
+		_draw_iso_label(center, "◎", Color(col.r, col.g, col.b, 0.7 + pulse * 0.25), font, 14)
 
-# Layer 3: 高亮系统
+## 在菱形中心绘制居中文字
+func _draw_iso_label(center: Vector2, text: String, col: Color, font: Font, font_size: int) -> void:
+	var text_w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	draw_string(font, Vector2(center.x - text_w * 0.5, center.y + float(font_size) * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
+
+# Layer 3: 高亮系统（菱形）
 func _draw_layer_highlights(pulse: float) -> void:
 	for cell in highlight_cells:
-		BoardCellRenderer.draw_move_highlight(self, _cell_rect(cell, 4), pulse)
+		var center: Vector2 = _iso_cell_center(cell)
+		var col: Color = CyberStyle.ACCENT_CYAN
+		IsoTileRenderer.draw_diamond_corners(self, center, Color(col.r, col.g, col.b, 0.55 + pulse * 0.3))
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.06 + pulse * 0.04), Color(0, 0, 0, 0))
 	for cell in attack_highlight_cells:
-		BoardCellRenderer.draw_attack_highlight(self, _cell_rect(cell, 4), pulse)
+		var center: Vector2 = _iso_cell_center(cell)
+		var col: Color = CyberStyle.NEON_RED
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.15 + pulse * 0.15), Color(col.r, col.g, col.b, 0.35 + pulse * 0.3))
 	for cell in summon_highlight_cells:
-		BoardCellRenderer.draw_summon_highlight(self, _cell_rect(cell, 4), pulse)
+		var center: Vector2 = _iso_cell_center(cell)
+		var col: Color = CyberStyle.ACCENT_MAGENTA
+		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.1 + pulse * 0.08), Color(col.r, col.g, col.b, 0.5 + pulse * 0.3))
 
-# Layer 4: 单位层
+# Layer 4: 单位层（按 depth 排序保证遮挡正确）
 func _draw_layer_units(pulse: float, font: Font) -> void:
 	if unit_manager == null:
 		return
-	for cell in unit_manager.units_by_cell.keys():
+	var cells: Array = unit_manager.units_by_cell.keys()
+	cells.sort_custom(func(a, b): return (a.x + a.y) < (b.x + b.y))
+	for cell in cells:
 		var uid: String = String(unit_manager.units_by_cell[cell])
 		var unit: Dictionary = unit_manager.get_unit(uid)
 		var is_sel: bool = uid == selected_unit_id
 		var idle_y: float = sin(Time.get_ticks_msec() * 0.004) * 2.0 if is_sel else 0.0
-		UnitRenderer.draw_full_unit(self, cell, CELL_SIZE, unit, is_sel, pulse, idle_y, font)
+		var center: Vector2 = _iso_cell_center(cell)
+		UnitRenderer.draw_full_unit_iso(self, center, unit, is_sel, pulse, idle_y, font)
 		if board_manager:
-			UnitRenderer.draw_affinity_star(self, cell, CELL_SIZE, unit, board_manager, font)
+			UnitRenderer.draw_affinity_star_iso(self, center, unit, board_manager, cell, font)
 
-# Layer 5: 攻击闪光（保留原逻辑）
+# Layer 5: 攻击闪光（菱形）
 func _draw_attack_flash() -> void:
 	if _flash_alpha <= 0.0 or _flash_cell.x < 0:
 		return
-	var pos: Vector2 = Vector2(_flash_cell.x * CELL_SIZE, _flash_cell.y * CELL_SIZE)
-	var sz: Vector2 = Vector2(CELL_SIZE - 2, CELL_SIZE - 2)
-	draw_rect(Rect2(pos, sz), Color(1.0, 1.0, 1.0, _flash_alpha), true)
+	var center: Vector2 = _iso_cell_center(_flash_cell)
+	IsoTileRenderer.draw_diamond_highlight(self, center, Color(1.0, 1.0, 1.0, _flash_alpha), Color(0, 0, 0, 0), 2.0)
 
 # ===========================================================
 #  反馈动画（Phase 2.2 增强：屏幕微震+粒子+弹跳飘字）
@@ -282,22 +311,23 @@ func play_attack_feedback(cell: Vector2i, damage: int, is_kill: bool = false) ->
 	# 屏幕微震
 	BattleEffects.shake_screen(self, 4.0 if is_kill else 2.5, 0.3 if is_kill else 0.2)
 	# 命中粒子
-	var center: Vector2 = Vector2(cell.x * CELL_SIZE + CELL_SIZE * 0.5, cell.y * CELL_SIZE + CELL_SIZE * 0.5)
+	var center: Vector2 = _iso_cell_center(cell)
 	BattleEffects.spawn_hit_particles(self, center, CyberStyle.NEON_GOLD if is_kill else CyberStyle.NEON_RED, is_kill)
 	# 增强伤害飘字
-	var popup_pos: Vector2 = Vector2(cell.x * CELL_SIZE + 16, cell.y * CELL_SIZE + 10)
+	var popup_pos: Vector2 = Vector2(center.x - 12, center.y - 20)
 	BattleEffects.enhanced_damage_popup(self, popup_pos, damage, is_kill)
 	# 击杀额外文字
 	if is_kill:
-		BattleEffects.kill_text_popup(self, Vector2(cell.x * CELL_SIZE + 12, cell.y * CELL_SIZE + 30))
+		BattleEffects.kill_text_popup(self, Vector2(center.x - 12, center.y))
 
 func play_pickup_feedback(cell: Vector2i, effect_text: String) -> void:
 	var lbl: Label = Label.new()
 	lbl.text = effect_text
 	lbl.add_theme_font_size_override("font_size", 18)
 	lbl.add_theme_color_override("font_color", CyberStyle.NEON_GREEN)
-	var start_x: float = cell.x * CELL_SIZE + 10
-	var start_y: float = cell.y * CELL_SIZE + 8
+	var center: Vector2 = _iso_cell_center(cell)
+	var start_x: float = center.x - 16
+	var start_y: float = center.y - 20
 	lbl.position = Vector2(start_x, start_y)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
@@ -320,9 +350,8 @@ func play_enemy_move_indicator(cell: Vector2i, unit_name: String) -> void:
 	lbl.text = unit_name
 	lbl.add_theme_font_size_override("font_size", 14)
 	lbl.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
-	var start_x: float = cell.x * CELL_SIZE + 8
-	var start_y: float = cell.y * CELL_SIZE - 4
-	lbl.position = Vector2(start_x, start_y)
+	var center: Vector2 = _iso_cell_center(cell)
+	lbl.position = Vector2(center.x - 16, center.y - 24)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
 	var tw: Tween = lbl.create_tween()
@@ -343,9 +372,9 @@ func play_encounter_feedback(cell: Vector2i, text: String) -> void:
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 20)
 	lbl.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
-	var start_x: float = cell.x * CELL_SIZE + 6
-	var start_y: float = cell.y * CELL_SIZE + 6
-	lbl.position = Vector2(start_x, start_y)
+	var center: Vector2 = _iso_cell_center(cell)
+	var start_y: float = center.y - 20
+	lbl.position = Vector2(center.x - 24, start_y)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
 	var tw: Tween = lbl.create_tween()
@@ -360,9 +389,9 @@ func play_heal_feedback(cell: Vector2i, text: String) -> void:
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 18)
 	lbl.add_theme_color_override("font_color", CyberStyle.NEON_BLUE)
-	var start_x: float = cell.x * CELL_SIZE + 10
-	var start_y: float = cell.y * CELL_SIZE + 8
-	lbl.position = Vector2(start_x, start_y)
+	var center: Vector2 = _iso_cell_center(cell)
+	var start_y: float = center.y - 20
+	lbl.position = Vector2(center.x - 16, start_y)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
 	var tw2: Tween = lbl.create_tween()
@@ -378,9 +407,9 @@ func play_event_feedback(cell: Vector2i, text: String, is_positive: bool) -> voi
 	lbl.add_theme_font_size_override("font_size", 18)
 	var color: Color = CyberStyle.NEON_GOLD if is_positive else CyberStyle.NEON_RED
 	lbl.add_theme_color_override("font_color", color)
-	var start_x: float = cell.x * CELL_SIZE + 10
-	var start_y: float = cell.y * CELL_SIZE + 8
-	lbl.position = Vector2(start_x, start_y)
+	var center: Vector2 = _iso_cell_center(cell)
+	var start_y: float = center.y - 20
+	lbl.position = Vector2(center.x - 16, start_y)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
 	var tw3: Tween = lbl.create_tween()
@@ -395,9 +424,9 @@ func play_shop_feedback(cell: Vector2i, text: String) -> void:
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 18)
 	lbl.add_theme_color_override("font_color", CyberStyle.NEON_TEAL)
-	var start_x: float = cell.x * CELL_SIZE + 10
-	var start_y: float = cell.y * CELL_SIZE + 8
-	lbl.position = Vector2(start_x, start_y)
+	var center: Vector2 = _iso_cell_center(cell)
+	var start_y: float = center.y - 20
+	lbl.position = Vector2(center.x - 16, start_y)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
 	var tw4: Tween = lbl.create_tween()
@@ -412,9 +441,9 @@ func play_chest_feedback(cell: Vector2i, text: String) -> void:
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 20)
 	lbl.add_theme_color_override("font_color", CyberStyle.NEON_GOLD)
-	var start_x: float = cell.x * CELL_SIZE + 8
-	var start_y: float = cell.y * CELL_SIZE + 6
-	lbl.position = Vector2(start_x, start_y)
+	var center: Vector2 = _iso_cell_center(cell)
+	var start_y: float = center.y - 20
+	lbl.position = Vector2(center.x - 16, start_y)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lbl)
 	var tw5: Tween = lbl.create_tween()

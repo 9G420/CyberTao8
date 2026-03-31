@@ -46,7 +46,7 @@ func _ready() -> void:
 
 func _build_debug_view() -> void:
 	var cyber_bg := CyberBackground.new()
-	cyber_bg.set_board_rect(Vector2(40, 94), Vector2(576, 576))
+	cyber_bg.set_board_rect(Vector2(40, 94), Vector2(576, 350))
 	add_child(cyber_bg)
 
 	var title := Label.new()
@@ -259,11 +259,8 @@ func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], 
 			await get_tree().create_timer(0.1).timeout
 			_board_view.queue_redraw()
 	# 召唤单位出场：从小到大 + 发光闪烁
-	var pixel_pos: Vector2 = Vector2(
-		float(spawn_cell.x) * float(BoardView.CELL_SIZE) + float(BoardView.CELL_SIZE) / 2.0,
-		float(spawn_cell.y) * float(BoardView.CELL_SIZE) + float(BoardView.CELL_SIZE) / 2.0
-	)
-	UITransitions.summon_unit_spawn(_board_view, pixel_pos, float(BoardView.CELL_SIZE))
+	var pixel_pos: Vector2 = IsoTileRenderer.grid_to_screen(spawn_cell.x, spawn_cell.y, _board_view.iso_origin)
+	UITransitions.summon_unit_spawn(_board_view, pixel_pos, float(IsoTileRenderer.TILE_W) * 0.5)
 
 func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String) -> void:
 	_board_view.play_attack_feedback(cell, damage)

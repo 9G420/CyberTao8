@@ -1,5 +1,36 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.58 - 2026-03-31
+
+### 新增
+- **美化 Phase 6：等距棋盘贴图替换**
+- **IsoTileRenderer.gd**（~145行）：等距棋盘贴图渲染器（class_name 全局注册）
+  - 9张等距方块贴图按格子类型加载缓存（普通浅/深、高台、陷阱、遭遇、恢复、道具、商店、宝箱）
+  - grid_to_screen / screen_to_grid 格坐标↔屏幕坐标双向转换
+  - painter's algorithm 按 depth=gx+gy 正确遮挡绘制
+  - diamond_points / draw_diamond_highlight / draw_diamond_corners 菱形辅助绘制
+- `UnitRenderer.draw_full_unit_iso()`：等距棋盘专用单位绘制（0.55缩放+菱形中心定位）
+- `UnitRenderer.draw_affinity_star_iso()`：等距棋盘适性星标
+
+### 修改
+- `BoardView.gd`：全面等距化重写
+  - 控件尺寸 576×576 → 576×350；新增 iso_origin = (288, 30)
+  - _pixel_to_cell 从正方形网格除法改为 IsoTileRenderer.screen_to_grid
+  - _draw_layer_grid 从 BoardCellRenderer.draw_base_cell 循环改为 IsoTileRenderer.draw_board
+  - _draw_layer_overlays 从 Rect2 覆盖层改为菱形中心居中文字/符号
+  - _draw_layer_highlights 从正方形 L 角标/准星改为菱形 diamond_corners/diamond_highlight
+  - _draw_layer_units 从 cell×CELL_SIZE 改为 IsoTileRenderer.grid_to_screen + depth 排序
+  - _draw_attack_flash 从正方形白闪改为菱形白闪
+  - 7个反馈方法全部使用等距坐标定位
+- `Main.gd`：CyberBackground 576×350 + summon_completed 等距坐标
+
+### 备注
+- BoardCellRenderer.gd 不再用于基础格绘制，文件保留供参考
+- 原有 UnitRenderer.draw_full_unit / draw_affinity_star 保留，旧路径兼容
+- 事件格/路径格/传送门格无专属贴图，使用程序化菱形叠层
+- 逻辑层（BattleFlowController / UnitManager / BoardManager）零修改
+- 卡牌面板（CardBattlePanel）零修改
+
 ## v0.1.57 - 2026-03-31
 
 ### 新增

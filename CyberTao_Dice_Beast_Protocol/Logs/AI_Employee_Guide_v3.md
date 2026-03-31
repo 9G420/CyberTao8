@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.57
+**当前版本**: v0.1.58
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -121,6 +121,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 美化 Phase 4.2（UITransitions+面板缓动动画+召唤展开演出） | v0.1.55 | 稳定 |
 | 美化 Phase 5（AudioManager+SFXGenerator+全局音效接入+BGM切换） | v0.1.56 | 稳定 |
 | 层间难度递增（current_floor缩放敌方HP/ATK） | v0.1.57 | 稳定 |
+| 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -204,9 +205,10 @@ CardBattleController（卡牌层独立状态机）         ~540行
 └── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
 
 UI层
-├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~423行（Phase 1 瘦身）
-├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行 ✅ Phase 1 新增
-├── UnitRenderer         — 单位渲染（v0.1.54 迷你角色剪影）  ~230行
+├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~340行（v0.1.58 等距化重写）
+├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行（Phase 6 后仅供参考）
+├── UnitRenderer         — 单位渲染（v0.1.54 迷你角色剪影+v0.1.58等距适配）  ~270行
+├── IsoTileRenderer      — 等距贴图渲染器（class_name）   ~145行 ✅ v0.1.58 新增
 ├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~252行 ✅ v0.1.49 重写
 ├── BattleEffects        — 战斗特效静态类（class_name）   ~103行 ✅ Phase 2 新增
 ├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~540行
@@ -258,9 +260,10 @@ BoardGenerator：      Scripts/BattleV2/BoardGenerator.gd
 UnitManager：         Scripts/BattleV2/UnitManager.gd
 CrestActionHandler：  Scripts/BattleV2/CrestActionHandler.gd
 CellEffectHandler：   Scripts/BattleV2/CellEffectHandler.gd
-BoardView：           Scripts/UI/BoardView.gd
-BoardCellRenderer：   Scripts/UI/BoardCellRenderer.gd
+BoardView：           Scripts/UI/BoardView.gd（v0.1.58 等距化重写）
+BoardCellRenderer：   Scripts/UI/BoardCellRenderer.gd（Phase 6 后仅供参考）
 UnitRenderer：        Scripts/UI/UnitRenderer.gd
+IsoTileRenderer：     Scripts/UI/IsoTileRenderer.gd
 DiceRollAnimation：   Scripts/UI/DiceRollAnimation.gd
 BattleEffects：       Scripts/UI/BattleEffects.gd
 DiceDebugPanel：      Scripts/UI/DiceDebugPanel.gd
@@ -324,7 +327,7 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.57 Work Report，按优先级排列：
+以下任务来自 v0.1.58 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心）
 
@@ -348,6 +351,7 @@ Main：                Scripts/Main.gd
 
 | 任务 | 版本 |
 |------|------|
+| 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 |
 | 层间难度递增（current_floor缩放敌方HP/ATK） | v0.1.57 |
 | 美化 Phase 5（AudioManager+SFXGenerator+全局音效接入+BGM切换） | v0.1.56 |
 | 美化 Phase 4.2（UITransitions+面板缓动+召唤展开演出） | v0.1.55 |
@@ -379,7 +383,7 @@ Main：                Scripts/Main.gd
 |------|------|
 | 美化 Phase 4：氛围与细节 | 背景氛围+UI过渡动画+召唤展开演出 |
 | 美化 Phase 5：音效系统 | AudioManager + 基础音效接入 |
-| 美化 Phase 6：2.5D 棋盘 | 从纯2D升级为等距视角（需 Codex 复审） |
+| 美化 Phase 6：2.5D 棋盘 | ✅ v0.1.58 等距贴图棋盘已实现 |
 
 > 完整美化策略详见 `Logs/Art_Beautification_Strategy_zh.md`
 
