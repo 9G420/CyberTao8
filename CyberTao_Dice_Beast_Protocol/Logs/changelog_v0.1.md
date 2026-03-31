@@ -1,5 +1,33 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.56 - 2026-03-31
+
+### 新增
+- **美化 Phase 5：音效系统**
+- **SFXGenerator.gd**（~1100行）：从旧项目迁入完整程序化音频引擎（28种音效+4种BGM循环）
+  - 8bit 芯片音风格 + 赛博朋克合成器音色 + EVA 暗色环境音
+  - 所有音频运行时生成，无外部音频文件依赖
+- **AudioManager.gd**（~120行）：音效管理器（class_name 全局注册）
+  - 6通道 SFX 多路复用播放 + 1通道 BGM 循环播放
+  - 启动时预缓存 18 种常用音效（attack_hit/defense/card_draw/card_play/victory/defeat 等）
+  - BGM 按需生成并缓存（bgm_map/bgm_battle/bgm_boss/bgm_title）
+  - `play_sfx(name)` / `play_bgm(name)` / `stop_bgm()` / `set_sfx_enabled()` / `set_bgm_enabled()` API
+
+### 修改
+- `Main.gd`：新增 `_audio: AudioManager` 成员，_ready 中创建并启动棋盘 BGM
+  - 棋盘层接入：移动(click)/攻击(attack_hit)/召唤(summon)/掷骰(dice_roll)/地形伤害(player_hurt)/道具拾取(pickup)/回复(heal)/防御(defense)/商店(shop)/宝箱(chest)/遭遇(encounter)/Boss解锁(encounter)
+  - 卡牌层接入：出牌(card_play)/敌方行动(enemy_hurt)/抽牌(card_draw)
+  - 胜负反馈：胜利(victory)/失败(defeat)
+  - BGM 切换：棋盘→遭遇(bgm_battle)/Boss(bgm_boss)→返回棋盘(bgm_map)
+  - 设置按钮点击(click)
+
+### 备注
+- SFXGenerator 使用 class_name 全局注册，AudioManager 同样 class_name 注册
+- AudioManager 在 _ready 时预生成并缓存常用音效，避免首次播放延迟
+- BGM 在场景切换时自动切换（棋盘↔战斗↔Boss），相同 BGM 不重复启动
+- 所有音效触发集中在 Main.gd 信号回调中，不侵入子模块代码
+- BattleFlowController / CardBattleController / BoardView / UI面板均零修改
+
 ## v0.1.55 - 2026-03-31
 
 ### 新增

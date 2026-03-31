@@ -25,6 +25,7 @@ var _result_label: Label
 var _restart_btn: Button
 var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
+var _audio: AudioManager
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
@@ -32,12 +33,16 @@ var _floor_clear_pending: bool = false
 func _ready() -> void:
 	_display_settings = DisplaySettings.new()
 	add_child(_display_settings)
+	_audio = AudioManager.new()
+	add_child(_audio)
 	_battle_flow = BattleFlowController.new()
 	add_child(_battle_flow)
 	_card_battle_ctrl = CardBattleController.new()
 	add_child(_card_battle_ctrl)
 	_build_debug_view()
 	_wire_debug_views()
+	# 启动棋盘 BGM
+	_audio.play_bgm("bgm_map")
 
 func _build_debug_view() -> void:
 	var cyber_bg := CyberBackground.new()
@@ -168,6 +173,9 @@ func _wire_debug_views() -> void:
 	# 卡牌战斗控制器信号
 	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
 	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
+	_card_battle_ctrl.card_played.connect(_on_card_played_sfx)
+	_card_battle_ctrl.enemy_acted.connect(_on_enemy_acted_sfx)
+	_card_battle_ctrl.hand_changed.connect(_on_hand_changed_sfx)
 	# 卡牌战斗面板绑定控制器
 	_card_battle_panel.bind_controller(_card_battle_ctrl)
 	# 卡牌奖励面板绑定控制器
@@ -179,9 +187,14 @@ func _wire_debug_views() -> void:
 	_dice_panel.set_dice_animation(_dice_anim)
 	_dice_panel.test_card_battle_requested.connect(_on_test_card_battle_requested)
 	_dice_panel.deck_view_requested.connect(_on_deck_view_requested)
+	# 掷骰音效
+	if _battle_flow.dice_manager and _battle_flow.dice_manager.has_signal("dice_rolled"):
+		_battle_flow.dice_manager.dice_rolled.connect(_on_dice_rolled_sfx)
 
 func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_move_unit(unit_id, target_cell)
+	if success:
+		_audio.play_sfx("click")
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
@@ -191,6 +204,7 @@ func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
 	if success:
 		_board_view.play_attack_feedback(target_cell, _last_attack_damage, _last_attack_killed)
+		_audio.play_sfx("attack_hit")
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
@@ -198,6 +212,8 @@ func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 
 func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
 	var success: bool = _battle_flow.try_summon(unit_id, target_cell)
+	if success:
+		_audio.play_sfx("summon")
 	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
@@ -209,11 +225,13 @@ func _on_phase_changed(phase_name: String) -> void:
 		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 		_result_label.visible = true
 		_restart_btn.visible = true
+		_audio.play_sfx("victory")
 	elif phase_name == "DEFEAT":
 		_result_label.text = "失败"
 		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_WARN)
 		_result_label.visible = true
 		_restart_btn.visible = true
+		_audio.play_sfx("defeat")
 	elif phase_name == "FLOOR_CLEAR":
 		var floor_num: int = _battle_flow.get_current_floor()
 		_result_label.text = "第 " + str(floor_num) + " 层通关！"
@@ -230,6 +248,7 @@ func _on_attack_completed(attacker_id: String, defender_id: String, damage: int,
 
 func _on_enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i) -> void:
 	_board_view.play_attack_feedback(target_cell, damage, killed)
+	_audio.play_sfx("player_hurt")
 
 func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i) -> void:
 	# 召唤展开演出：路径格逐格铺展 + 单位出场闪光
@@ -248,10 +267,12 @@ func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], 
 
 func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String) -> void:
 	_board_view.play_attack_feedback(cell, damage)
+	_audio.play_sfx("player_hurt")
 	_board_view.queue_redraw()
 
 func _on_item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i) -> void:
 	_board_view.play_pickup_feedback(cell, effect_text)
+	_audio.play_sfx("pickup")
 	_board_view.queue_redraw()
 
 func _on_enemy_action_announced(unit_id: String, action_type: String, detail: String) -> void:
@@ -268,6 +289,7 @@ func _on_enemy_turn_ended() -> void:
 
 func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i) -> void:
 	_board_view.queue_redraw()
+	_audio.play_sfx("encounter")
 	# 查询遭遇敌方名称和 Boss 标识
 	var is_boss: bool = encounter_id.begins_with("encounter_boss_")
 	var enemy_display: String = _get_encounter_display_name(encounter_id)
@@ -280,6 +302,11 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 	# 百叶窗合拢后：显示全屏卡牌战斗面板 + 启动战斗
 	_card_battle_panel.visible = true
 	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp)
+	# 切换为战斗 BGM
+	if is_boss:
+		_audio.play_bgm("bgm_boss")
+	else:
+		_audio.play_bgm("bgm_battle")
 	# 百叶窗展开，露出卡牌战斗界面
 	await _transition.reveal()
 
@@ -289,6 +316,7 @@ func _on_encounter_resolved(encounter_id: String, cell: Vector2i) -> void:
 
 func _on_heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int) -> void:
 	_board_view.play_heal_feedback(cell, "HP+" + str(actual_heal))
+	_audio.play_sfx("heal")
 	_board_view.queue_redraw()
 
 func _on_event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String) -> void:
@@ -301,6 +329,7 @@ func _on_defend_crest_used(unit_id: String, new_temp_def: int) -> void:
 	if not unit.is_empty():
 		var cell: Vector2i = unit["cell"]
 		_board_view.play_heal_feedback(cell, "DEF+" + str(new_temp_def))
+	_audio.play_sfx("defense")
 	_board_view.queue_redraw()
 
 func _on_skill_crest_used(unit_id: String, heal_amount: int) -> void:
@@ -308,6 +337,7 @@ func _on_skill_crest_used(unit_id: String, heal_amount: int) -> void:
 	if not unit.is_empty():
 		var cell: Vector2i = unit["cell"]
 		_board_view.play_heal_feedback(cell, "HP+" + str(heal_amount))
+	_audio.play_sfx("heal")
 	_board_view.queue_redraw()
 
 func _on_trick_crest_used(gained_crest: String) -> void:
@@ -315,10 +345,12 @@ func _on_trick_crest_used(gained_crest: String) -> void:
 
 func _on_shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int) -> void:
 	_board_view.play_shop_feedback(cell, "-1步 HP+" + str(actual_heal))
+	_audio.play_sfx("shop")
 	_board_view.queue_redraw()
 
 func _on_chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String) -> void:
 	_board_view.play_chest_feedback(cell, effect_text)
+	_audio.play_sfx("chest")
 	_board_view.queue_redraw()
 
 func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
@@ -345,11 +377,14 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 	# 反馈飘字
 	if victory and encounter_cell.x >= 0:
 		_board_view.play_pickup_feedback(encounter_cell, "战斗胜利！")
+		_audio.play_sfx("victory")
 	elif not victory and encounter_cell.x >= 0:
 		_board_view.play_encounter_feedback(encounter_cell, "战斗失败...")
 	_board_view.queue_redraw()
 	# 百叶窗展开，回到棋盘
 	await _transition.reveal()
+	# 恢复棋盘 BGM
+	_audio.play_bgm("bgm_map")
 
 func _on_card_battle_reward(reward_text: String) -> void:
 	# 卡牌战斗胜利奖励：将 crest 加入棋盘层资源池
@@ -370,6 +405,7 @@ func _on_game_won() -> void:
 
 func _on_boss_unlocked(cell: Vector2i) -> void:
 	_board_view.play_encounter_feedback(cell, "BOSS 解锁！")
+	_audio.play_sfx("encounter")
 	_board_view.queue_redraw()
 
 func _on_hero_warped(unit_id: String, target_cell: Vector2i) -> void:
@@ -391,6 +427,7 @@ func _on_restart_pressed() -> void:
 	_board_view.queue_redraw()
 
 func _on_settings_pressed() -> void:
+	_audio.play_sfx("click")
 	_settings_panel.open()
 
 func _on_test_card_battle_requested() -> void:
@@ -414,6 +451,20 @@ func _on_deck_view_requested() -> void:
 		_deck_view_panel.close()
 	else:
 		_deck_view_panel.open()
+
+## 掷骰音效回调
+func _on_dice_rolled_sfx(_results: Array[String], _crest_pool: Dictionary) -> void:
+	_audio.play_sfx("dice_roll")
+
+## 卡牌层音效回调
+func _on_card_played_sfx(_card_index: int, _card_name: String, _effect_text: String) -> void:
+	_audio.play_sfx("card_play")
+
+func _on_enemy_acted_sfx(_action_text: String) -> void:
+	_audio.play_sfx("enemy_hurt")
+
+func _on_hand_changed_sfx(_hand: Array, _energy: int, _max_energy: int) -> void:
+	_audio.play_sfx("card_draw")
 
 ## 遭遇 ID → 显示名称映射（用于过渡动画闪字）
 func _get_encounter_display_name(encounter_id: String) -> String:

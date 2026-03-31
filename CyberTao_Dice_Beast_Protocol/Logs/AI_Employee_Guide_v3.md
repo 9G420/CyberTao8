@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.55
+**当前版本**: v0.1.56
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -119,6 +119,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | Boss解锁自动传送 + 宝可梦式卡牌战斗过渡 | v0.1.53 | 稳定 |
 | 全屏独立卡牌战斗界面+角色立绘+扇形手牌+棋盘单位美化 | v0.1.54 | 稳定 |
 | 美化 Phase 4.2（UITransitions+面板缓动动画+召唤展开演出） | v0.1.55 | 稳定 |
+| 美化 Phase 5（AudioManager+SFXGenerator+全局音效接入+BGM切换） | v0.1.56 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -219,7 +220,12 @@ UI层
 ├── UITransitions       — UI过渡动画工具类（class_name注册）    ~60行 ✅ v0.1.55 新增
 └── SettingsPanel        — 显示设置
 
-Main.gd（场景组合+信号中转）                          ~356行
+System/
+├── DisplaySettings     — 显示设置管理
+├── AudioManager        — 音效管理器（class_name注册，多通道SFX+BGM）  ~120行 ✅ v0.1.56 新增
+└── SFXGenerator        — 程序化音频引擎（28种音效+4种BGM循环）       ~1100行 ✅ v0.1.56 迁入
+
+Main.gd（场景组合+信号中转+音效触发）                      ~484行
 ```
 
 ### 3.2 双层通信信号链
@@ -266,6 +272,8 @@ CyberBackground：     Scripts/UI/CyberBackground.gd
 TransitionOverlay：   Scripts/UI/TransitionOverlay.gd
 BattleCharRenderer：  Scripts/UI/BattleCharRenderer.gd
 UITransitions：       Scripts/UI/UITransitions.gd
+AudioManager：        Scripts/System/AudioManager.gd
+SFXGenerator：        Scripts/System/SFXGenerator.gd
 Main：                Scripts/Main.gd
 旧项目参考（只读）：   [仓库根目录] Scripts/ （不要修改）
 ```
@@ -315,30 +323,31 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.55 Work Report，按优先级排列：
+以下任务来自 v0.1.56 Work Report，按优先级排列：
 
-### 🔴 高优先级（当前阶段核心 — 美术美化）
-
-| 任务 | 说明 |
-|------|------|
-| **美化 Phase 5：音效系统** | AudioManager + 基础音效接入 |
-
-### 🟡 中优先级
+### 🔴 高优先级（当前阶段核心）
 
 | 任务 | 说明 |
 |------|------|
 | **层间难度递增** | 根据 current_floor 调整敌方 HP/ATK 或数量 |
 
-### 🟢 中低优先级
+### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
 | **商店格扩展** | 多选商品 + 独立 UI 面板 |
 
+### 🟢 中低优先级
+
+| 任务 | 说明 |
+|------|------|
+| **阵亡单位跨层复活机制** | 防止后续层无伙伴可用 |
+
 ### ✅ 已完成
 
 | 任务 | 版本 |
 |------|------|
+| 美化 Phase 5（AudioManager+SFXGenerator+全局音效接入+BGM切换） | v0.1.56 |
 | 美化 Phase 4.2（UITransitions+面板缓动+召唤展开演出） | v0.1.55 |
 | 多层地图（3层推进+层间奖励+HP保留） | v0.1.42 |
 | BUG-001 修复（分辨率/全屏/无边框/窗口模式切换） | v0.1.43 |
