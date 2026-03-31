@@ -1,7 +1,7 @@
 extends Node3D
 class_name BoardView3D
 
-## 3D 棋盘视图（v0.1.71 — 3D 渐进迁移 P0）
+## 3D 棋盘视图（v0.1.72 — 3D 交互手感修复）
 ## 与 BoardView（2D）信号接口对齐，支持 Main.gd 通过 _active_view() 路由
 ## 内嵌于 SubViewport 中，由 Main.gd 的 SubViewportContainer 承载
 
@@ -30,9 +30,10 @@ var _camera: Camera3D = null
 var _camera_target: Vector3 = Vector3.ZERO
 const CAMERA_HEIGHT: float = 18.0
 const CAMERA_ANGLE_DEG: float = 55.0
-const CAMERA_LERP_SPEED: float = 4.5
+const CAMERA_LERP_SPEED: float = 8.0		# v0.1.72：提高至 8.0（原 4.5 在 60fps 下过慢）
 const ZOOM_MIN: float = 10.0
 const ZOOM_MAX: float = 30.0
+const ZOOM_STEP: float = 1.5
 var _camera_distance: float = 18.0
 
 # --- 3D 场景容器 ---
@@ -45,6 +46,7 @@ var _ambient: WorldEnvironment = null
 # --- 拖拽 ---
 var _drag_active: bool = false
 var _drag_start_pos: Vector2 = Vector2.ZERO
+var _drag_start_offset: Vector3 = Vector3.ZERO		# v0.1.72：拖拽开始时的累积偏移快照
 var _drag_offset: Vector3 = Vector3.ZERO
 var _drag_offset_accumulated: Vector3 = Vector3.ZERO
 
@@ -119,13 +121,19 @@ func _setup_lighting() -> void:
 
 func _process(delta: float) -> void:
 	_pulse_time += delta
-	# 平滑相机插值
-	if _camera and not _drag_active:
+	# v0.1.72：边界限制 — 将拖拽偏移夹紧到棋盘世界范围
+	_clamp_drag_offset()
+	# 平滑相机插值（v0.1.72：拖拽期间也更新相机，消除滞后感）
+	if _camera:
 		var target_pos: Vector3 = _camera_target + _drag_offset_accumulated
 		var angle_rad: float = deg_to_rad(CAMERA_ANGLE_DEG)
 		var cam_offset := Vector3(0, sin(angle_rad) * _camera_distance, cos(angle_rad) * _camera_distance)
 		var desired_pos: Vector3 = target_pos + cam_offset
-		_camera.position = _camera.position.lerp(desired_pos, clampf(CAMERA_LERP_SPEED * delta, 0.0, 1.0))
+		if _drag_active:
+			# 拖拽中：高速追踪，接近即时响应
+			_camera.position = _camera.position.lerp(desired_pos, clampf(20.0 * delta, 0.0, 1.0))
+		else:
+			_camera.position = _camera.position.lerp(desired_pos, clampf(CAMERA_LERP_SPEED * delta, 0.0, 1.0))
 		_camera.look_at(target_pos, Vector3.UP)
 	# 移动动画更新
 	_update_move_animation()
@@ -324,32 +332,32 @@ func _refresh_highlights() -> void:
 func handle_input(event: InputEvent) -> void:
 	if _camera == null:
 		return
-	# 缩放
+	# 缩放（v0.1.72：以鼠标位置为轴心，与 2D 行为对齐）
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
-			_camera_distance = clampf(_camera_distance - 1.5, ZOOM_MIN, ZOOM_MAX)
+			_apply_zoom(-ZOOM_STEP, mb.position)
 			return
 		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
-			_camera_distance = clampf(_camera_distance + 1.5, ZOOM_MIN, ZOOM_MAX)
+			_apply_zoom(ZOOM_STEP, mb.position)
 			return
-	# 拖拽
+	# 拖拽（v0.1.72：改用起始位置 + 差值映射，消除增量累积漂移）
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
 			if mb.pressed:
 				_drag_active = true
 				_drag_start_pos = mb.position
+				_drag_start_offset = _drag_offset_accumulated
 			else:
 				_drag_active = false
 			return
 	if event is InputEventMouseMotion and _drag_active:
 		var mm: InputEventMouseMotion = event as InputEventMouseMotion
 		var delta_px: Vector2 = mm.position - _drag_start_pos
-		_drag_start_pos = mm.position
-		# 将屏幕像素偏移转换为世界 XZ 偏移（近似）
-		var world_scale: float = _camera_distance * 0.003
-		_drag_offset_accumulated += Vector3(-delta_px.x * world_scale, 0, -delta_px.y * world_scale)
+		# v0.1.72：基于起始位置计算绝对偏移（非增量累积）
+		var world_scale: float = _camera_distance / 350.0
+		_drag_offset_accumulated = _drag_start_offset + Vector3(-delta_px.x * world_scale, 0, -delta_px.y * world_scale)
 		return
 	# 点击
 	if event is InputEventMouseButton:
@@ -478,6 +486,46 @@ func _on_state_changed() -> void:
 # ============================
 #  工具方法
 # ============================
+
+## v0.1.72：拖拽偏移边界限制（防止相机漂移到棋盘外太远）
+func _clamp_drag_offset() -> void:
+	var half_board: float = float(_grid_size) * GridMapper3D.HALF_CELL
+	# 允许偏移超出棋盘边界 50%（给一定余量但不能无限漂移）
+	var max_offset: float = half_board * 0.5
+	_drag_offset_accumulated.x = clampf(_drag_offset_accumulated.x, -max_offset, max_offset)
+	_drag_offset_accumulated.z = clampf(_drag_offset_accumulated.z, -max_offset, max_offset)
+
+## v0.1.72：以鼠标位置为轴心的缩放（与 2D _apply_zoom 行为对齐）
+func _apply_zoom(delta_dist: float, mouse_pos: Vector2) -> void:
+	var old_dist: float = _camera_distance
+	_camera_distance = clampf(_camera_distance + delta_dist, ZOOM_MIN, ZOOM_MAX)
+	if _camera_distance == old_dist:
+		return
+	# 计算缩放前后鼠标指向的地面点，调整偏移使该点不变
+	var ground_before: Vector3 = _screen_to_ground(mouse_pos, old_dist)
+	var ground_after: Vector3 = _screen_to_ground(mouse_pos, _camera_distance)
+	if ground_before != Vector3.ZERO and ground_after != Vector3.ZERO:
+		var shift: Vector3 = ground_before - ground_after
+		_drag_offset_accumulated += Vector3(shift.x, 0, shift.z)
+
+## 辅助：在给定相机距离下，屏幕坐标对应的地面点（Y=0 射线交叉）
+func _screen_to_ground(screen_pos: Vector2, cam_dist: float) -> Vector3:
+	if _camera == null:
+		return Vector3.ZERO
+	# 临时计算该距离下的相机位置
+	var target_pos: Vector3 = _camera_target + _drag_offset_accumulated
+	var angle_rad: float = deg_to_rad(CAMERA_ANGLE_DEG)
+	var cam_offset := Vector3(0, sin(angle_rad) * cam_dist, cos(angle_rad) * cam_dist)
+	var cam_pos: Vector3 = target_pos + cam_offset
+	# 使用相机的投影方向（近似：从 cam_pos 看向 target_pos 的方向偏移）
+	var from: Vector3 = _camera.project_ray_origin(screen_pos)
+	var dir: Vector3 = _camera.project_ray_normal(screen_pos)
+	if abs(dir.y) < 0.001:
+		return Vector3.ZERO
+	var t: float = -from.y / dir.y
+	if t < 0:
+		return Vector3.ZERO
+	return from + dir * t
 
 func _update_camera_transform() -> void:
 	if _camera == null:

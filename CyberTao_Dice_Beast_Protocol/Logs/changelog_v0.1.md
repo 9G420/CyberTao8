@@ -1,5 +1,26 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.72 - 2026-03-31
+
+### 修复
+- **3D 拖拽手感**：改用起始位置+绝对差值映射（替代逐帧增量累积），消除拖拽漂移和精度丢失
+- **3D 拖拽实时响应**：拖拽期间相机以 20.0 高速 lerp 追踪（原先拖拽时 lerp 完全关闭，松手才生效）
+- **3D 镜头跟随速度**：CAMERA_LERP_SPEED 4.5 → 8.0，修复 60fps 下 lerp 因子过小（0.072→0.128/帧）导致的镜头迟滞
+- **3D 缩放轴心**：新增 _apply_zoom()，以鼠标位置为轴心缩放（射线交叉计算缩放前后地面点偏移），与 2D 行为对齐
+- **3D 边界限制**：新增 _clamp_drag_offset()，将拖拽偏移夹紧到棋盘世界范围的 ±50%，防止相机无限漂移
+
+### 修改
+- BoardView3D.gd: 重写 handle_input() 拖拽逻辑（_drag_start_offset 快照 + 绝对偏移计算）
+- BoardView3D.gd: 重写 _process() 相机更新（拖拽中/非拖拽双路径 lerp）
+- BoardView3D.gd: 新增 _clamp_drag_offset() / _apply_zoom() / _screen_to_ground() 三个内部方法
+- BoardView3D.gd: 新增 _drag_start_offset 变量、ZOOM_STEP 常量
+- DiceDebugPanel.gd: 版本标记 → v0.1.72
+
+### 备注
+- 仅修改 BoardView3D.gd 和 DiceDebugPanel.gd，核心逻辑文件零改动
+- 2D 模式不涉及本次修改，零影响
+- _screen_to_ground() 使用 camera.project_ray_origin/normal 投射，当相机位置因 lerp 未完全到位时存在微小偏差（可接受）
+
 ## v0.1.71.1 - 2026-03-31 (hotfix)
 
 ### 修复
