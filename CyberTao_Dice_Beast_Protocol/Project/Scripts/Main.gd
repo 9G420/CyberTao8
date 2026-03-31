@@ -269,8 +269,10 @@ func _on_enemy_action_announced(unit_id: String, action_type: String, detail: St
 				_board_view.play_enemy_warning(adjacent[0])
 
 func _on_enemy_turn_ended() -> void:
-	# 敌方回合结束，相机切回玩家（v0.1.64：重置拖拽偏移）
+	# 敌方回合结束，相机平滑切回玩家（v0.1.65：延迟切回，过渡更柔和）
 	_board_view._drag_offset = Vector2.ZERO
+	# 延迟 0.8 秒后才开始切回，让玩家看清敌方最后的行动
+	await get_tree().create_timer(0.8).timeout
 	_update_camera_to_player()
 	_board_view.queue_redraw()
 

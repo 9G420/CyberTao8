@@ -317,8 +317,10 @@ func _execute_enemy_actions() -> void:
 						break
 					dice_manager.pay({"move": 1})
 					unit_manager.move_unit(uid, move_cell)
+					# v0.1.65：敌方移动后也发射 move_completed，以便相机跟随
+					emit_signal("move_completed", uid, cell, move_cell)
 					_check_terrain_trap(uid, move_cell)
-					await get_tree().create_timer(0.6).timeout
+					await get_tree().create_timer(0.9).timeout
 					if is_battle_over():
 						break
 					if unit_manager.get_unit(uid).is_empty():
@@ -341,10 +343,11 @@ func _execute_enemy_actions() -> void:
 						emit_signal("enemy_attack_completed", uid, def_id, dmg, killed2, atk_target_cell)
 						_check_battle_outcome()
 						await get_tree().create_timer(0.7).timeout
-	# 敌方回合结束
+	# 敌方回合结束（v0.1.65：延长等待，让玩家看清最终状态）
 	if not is_battle_over():
+		await get_tree().create_timer(0.6).timeout
 		emit_signal("enemy_turn_ended")
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(1.2).timeout
 		_advance_to_next_player_round()
 
 ## 推进到下一个玩家回合

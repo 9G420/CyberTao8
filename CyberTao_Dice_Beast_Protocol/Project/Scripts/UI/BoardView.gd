@@ -18,7 +18,7 @@ var camera_cell: Vector2i = Vector2i(0, 0)
 var iso_origin: Vector2 = Vector2(640.0, 360.0)
 var _iso_origin_target: Vector2 = Vector2(640.0, 360.0)
 const SCREEN_CENTER: Vector2 = Vector2(640.0, 360.0)
-const CAMERA_LERP_SPEED: float = 8.0	# 平滑跟随速度
+const CAMERA_LERP_SPEED: float = 4.5	# 平滑跟随速度（v0.1.65：降低以获得更柔和的过渡）
 
 # 缩放（v0.1.63）
 var _zoom: float = 1.0

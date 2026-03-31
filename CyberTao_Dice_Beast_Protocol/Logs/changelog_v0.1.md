@@ -1,5 +1,18 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.65 - 2026-03-31
+
+### 修改
+- **敌方移动后相机跟随**：_execute_enemy_actions 中敌方 move_unit 后发射 move_completed 信号，相机自动跟踪敌方移动目标位置
+- **敌方回合结束延迟切回**：Main._on_enemy_turn_ended 增加 0.8 秒延迟再切回玩家，避免生硬跳转
+- **BFC 敌方回合结束延长等待**：敌方全部行动完毕后先等 0.6 秒再 emit enemy_turn_ended，再等 1.2 秒才推进玩家回合
+- **相机 Lerp 速度降低**：CAMERA_LERP_SPEED 从 8.0 降至 4.5，过渡更柔和平滑
+- **敌方移动后等待延长**：敌方移动后等待从 0.6 秒增至 0.9 秒，便于观察
+- DiceDebugPanel: 版本标记 → v0.1.65
+
+### 备注
+- 本版本专注于敌方回合镜头体验优化，解决 v0.1.64 反馈中镜头过快过硬的问题
+
 ## v0.1.64 - 2026-03-31
 
 ### 新增
