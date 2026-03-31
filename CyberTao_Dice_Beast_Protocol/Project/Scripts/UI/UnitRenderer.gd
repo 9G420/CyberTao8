@@ -1,8 +1,8 @@
 extends RefCounted
 class_name UnitRenderer
 
-## 单位渲染器（v0.1.54 美化：赛博角色剪影 + 发光 + HP条 + 选中脉冲）
-## 棋盘格内绘制迷你角色形象，替代旧版几何方框/三角形
+## 单位渲染器（v0.2.0 咩咩启示录风格：可爱Q版角色 + 发光 + HP条 + 选中脉冲）
+## Cult of the Lamb inspired chibi art: big round heads, dot pupils, stubby limbs
 ## 颜色 100% 来自 CyberStyle
 
 # --- 单位完整绘制 ---
@@ -31,48 +31,89 @@ static func draw_full_unit(c: CanvasItem, cell: Vector2i, cs: int, unit: Diction
 	if is_selected:
 		_draw_selection(c, Vector2(cell.x * cs + 5, cell.y * cs + 5 + idle_y), Vector2(cs - 12, cs - 16), pulse)
 
-# --- 玩家角色（迷你赛博战士剪影） ---
+# --- 玩家角色（Q版刀盾犬英雄 - Cult of the Lamb chibi style） ---
 
 static func _draw_player_char(c: CanvasItem, center: Vector2, s: float, name: String, pulse: float) -> void:
 	var col: Color = CyberStyle.HP_PLAYER
 	var cyan: Color = CyberStyle.ACCENT_CYAN
-	var ga: float = 0.25 + pulse * 0.12
+	var ga: float = 0.30 + pulse * 0.10
 
-	# 脚底光环
-	c.draw_arc(center + Vector2(0, 22 * s), 12 * s, 0, TAU, 12, Color(cyan.r, cyan.g, cyan.b, 0.15 + pulse * 0.08), 1.5 * s)
+	# --- 脚底光环 (soft glow circle beneath) ---
+	c.draw_circle(center + Vector2(0, 22 * s), 10 * s, Color(cyan.r, cyan.g, cyan.b, 0.08 + pulse * 0.04))
+	c.draw_arc(center + Vector2(0, 22 * s), 11 * s, 0, TAU, 14, Color(cyan.r, cyan.g, cyan.b, 0.12 + pulse * 0.06), 1.0 * s)
 
-	# 腿部
-	c.draw_line(center + Vector2(-5 * s, 10 * s), center + Vector2(-7 * s, 22 * s), Color(col.r, col.g, col.b, 0.55), 2.0 * s)
-	c.draw_line(center + Vector2(5 * s, 10 * s), center + Vector2(7 * s, 22 * s), Color(col.r, col.g, col.b, 0.55), 2.0 * s)
+	# --- 短粗腿 (stubby chibi legs) ---
+	var leg_col: Color = Color(col.r, col.g, col.b, ga + 0.15)
+	# Left leg - short rounded rectangle
+	var ll: PackedVector2Array = PackedVector2Array([
+		center + Vector2(-7 * s, 10 * s), center + Vector2(-3 * s, 10 * s),
+		center + Vector2(-3 * s, 20 * s), center + Vector2(-7 * s, 20 * s)])
+	c.draw_colored_polygon(ll, leg_col)
+	# Right leg
+	var rl: PackedVector2Array = PackedVector2Array([
+		center + Vector2(3 * s, 10 * s), center + Vector2(7 * s, 10 * s),
+		center + Vector2(7 * s, 20 * s), center + Vector2(3 * s, 20 * s)])
+	c.draw_colored_polygon(rl, leg_col)
 
-	# 躯干（小梯形）
-	var body: PackedVector2Array = PackedVector2Array([
-		center + Vector2(-8 * s, -8 * s), center + Vector2(8 * s, -8 * s),
-		center + Vector2(6 * s, 12 * s), center + Vector2(-6 * s, 12 * s)])
-	c.draw_colored_polygon(body, Color(col.r, col.g, col.b, ga))
-	for i in range(4):
-		c.draw_line(body[i], body[(i + 1) % 4], Color(col.r, col.g, col.b, 0.6), 1.5 * s)
+	# --- 圆润小身体 (cute rounded body - oval) ---
+	var body_center: Vector2 = center + Vector2(0, 2 * s)
+	c.draw_circle(body_center, 10 * s, Color(col.r, col.g, col.b, ga))
+	c.draw_arc(body_center, 10 * s, 0, TAU, 14, Color(col.r, col.g, col.b, 0.5), 1.2 * s)
+	# Chest energy line (small accent)
+	c.draw_line(body_center + Vector2(-5 * s, -2 * s), body_center + Vector2(5 * s, -2 * s), Color(cyan.r, cyan.g, cyan.b, 0.35 + pulse * 0.15), 1.0 * s)
 
-	# 胸甲能量线
-	c.draw_line(center + Vector2(-4 * s, -2 * s), center + Vector2(4 * s, -2 * s), Color(cyan.r, cyan.g, cyan.b, 0.4 + pulse * 0.2), 1.0 * s)
+	# --- 左手小盾牌 (stubby arm + small shield) ---
+	c.draw_line(center + Vector2(-10 * s, 0), center + Vector2(-14 * s, 4 * s), Color(col.r, col.g, col.b, 0.5), 2.5 * s)
+	c.draw_arc(center + Vector2(-15 * s, 4 * s), 4 * s, 0, TAU, 10, Color(cyan.r, cyan.g, cyan.b, 0.45 + pulse * 0.12), 1.8 * s)
+	c.draw_circle(center + Vector2(-15 * s, 4 * s), 2.5 * s, Color(cyan.r, cyan.g, cyan.b, 0.25))
 
-	# 左臂+盾
-	c.draw_line(center + Vector2(-8 * s, -5 * s), center + Vector2(-14 * s, 3 * s), Color(col.r, col.g, col.b, 0.5), 1.8 * s)
-	c.draw_arc(center + Vector2(-16 * s, 4 * s), 5 * s, 0, TAU, 8, Color(cyan.r, cyan.g, cyan.b, 0.5 + pulse * 0.15), 1.5 * s)
+	# --- 右手发光小刀 (stubby arm + glowing blade) ---
+	c.draw_line(center + Vector2(10 * s, 0), center + Vector2(14 * s, -2 * s), Color(col.r, col.g, col.b, 0.5), 2.5 * s)
+	c.draw_line(center + Vector2(14 * s, -2 * s), center + Vector2(17 * s, -12 * s), Color(1.0, 0.9, 0.3, 0.55 + pulse * 0.25), 2.2 * s)
+	c.draw_line(center + Vector2(14 * s, -2 * s), center + Vector2(17 * s, -12 * s), Color(1.0, 1.0, 0.8, 0.20), 4.0 * s)
 
-	# 右臂+刃
-	c.draw_line(center + Vector2(8 * s, -5 * s), center + Vector2(14 * s, -2 * s), Color(col.r, col.g, col.b, 0.5), 1.8 * s)
-	c.draw_line(center + Vector2(14 * s, -2 * s), center + Vector2(18 * s, -14 * s), Color(1.0, 0.9, 0.3, 0.6 + pulse * 0.2), 2.0 * s)
+	# --- 大圆头 (big round chibi head ~40% of total height) ---
+	var head: Vector2 = center + Vector2(0, -14 * s)
+	var head_r: float = 11 * s
+	c.draw_circle(head, head_r, Color(col.r, col.g, col.b, ga + 0.08))
+	c.draw_arc(head, head_r, 0, TAU, 16, Color(col.r, col.g, col.b, 0.55), 1.5 * s)
 
-	# 头部（圆形+护目镜）
-	var head: Vector2 = center + Vector2(0, -16 * s)
-	c.draw_circle(head, 7 * s, Color(col.r, col.g, col.b, ga + 0.05))
-	c.draw_arc(head, 7 * s, 0, TAU, 10, Color(col.r, col.g, col.b, 0.6), 1.5 * s)
-	# V 型护目镜
-	c.draw_line(head + Vector2(-4 * s, 0), head + Vector2(0, 2 * s), Color(cyan.r, cyan.g, cyan.b, 0.8), 1.5 * s)
-	c.draw_line(head + Vector2(0, 2 * s), head + Vector2(4 * s, 0), Color(cyan.r, cyan.g, cyan.b, 0.8), 1.5 * s)
+	# --- 大圆眼 + 小瞳孔 (Cult of the Lamb style eyes) ---
+	var eye_l: Vector2 = head + Vector2(-4 * s, 0)
+	var eye_r: Vector2 = head + Vector2(4 * s, 0)
+	# White eye circles
+	c.draw_circle(eye_l, 3.2 * s, Color(1.0, 1.0, 1.0, 0.85))
+	c.draw_circle(eye_r, 3.2 * s, Color(1.0, 1.0, 1.0, 0.85))
+	# Small dark pupils
+	c.draw_circle(eye_l + Vector2(0.5 * s, 0.5 * s), 1.3 * s, Color(0.1, 0.1, 0.15, 0.9))
+	c.draw_circle(eye_r + Vector2(0.5 * s, 0.5 * s), 1.3 * s, Color(0.1, 0.1, 0.15, 0.9))
+	# Tiny eye highlights
+	c.draw_circle(eye_l + Vector2(-0.5 * s, -0.8 * s), 0.6 * s, Color(1.0, 1.0, 1.0, 0.7))
+	c.draw_circle(eye_r + Vector2(-0.5 * s, -0.8 * s), 0.6 * s, Color(1.0, 1.0, 1.0, 0.7))
 
-# --- 敌方角色（各敌方类型不同剪影） ---
+	# --- 小嘴 (tiny cute mouth) ---
+	c.draw_arc(head + Vector2(0, 3 * s), 2 * s, 0.2, PI - 0.2, 6, Color(0.2, 0.15, 0.2, 0.5), 1.0 * s)
+
+	# --- 头顶小皇冠/光环 (crown/halo - 3 small triangles) ---
+	var crown_base: float = head.y - head_r - 1 * s
+	var crown_col: Color = Color(cyan.r, cyan.g, cyan.b, 0.5 + pulse * 0.15)
+	# Center spike
+	var spike_c: PackedVector2Array = PackedVector2Array([
+		Vector2(head.x - 2 * s, crown_base), Vector2(head.x + 2 * s, crown_base),
+		Vector2(head.x, crown_base - 5 * s)])
+	c.draw_colored_polygon(spike_c, crown_col)
+	# Left spike
+	var spike_l: PackedVector2Array = PackedVector2Array([
+		Vector2(head.x - 6 * s, crown_base), Vector2(head.x - 2 * s, crown_base),
+		Vector2(head.x - 4 * s, crown_base - 3.5 * s)])
+	c.draw_colored_polygon(spike_l, crown_col)
+	# Right spike
+	var spike_rr: PackedVector2Array = PackedVector2Array([
+		Vector2(head.x + 2 * s, crown_base), Vector2(head.x + 6 * s, crown_base),
+		Vector2(head.x + 4 * s, crown_base - 3.5 * s)])
+	c.draw_colored_polygon(spike_rr, crown_col)
+
+# --- 敌方角色（各敌方类型不同Q版剪影） ---
 
 static func _draw_enemy_char(c: CanvasItem, center: Vector2, s: float, name: String, pulse: float) -> void:
 	var col: Color = CyberStyle.HP_ENEMY
@@ -94,102 +135,279 @@ static func _draw_enemy_char(c: CanvasItem, center: Vector2, s: float, name: Str
 		# 通用敌方
 		_draw_mini_sentinel(c, center, s, col, ga, pulse)
 
-# 迷你哨兵：方形身躯+扫描眼
+# 哨兵: Cute boxy robot, rounded head, single scanning eye, antenna
 static func _draw_mini_sentinel(c: CanvasItem, center: Vector2, s: float, col: Color, ga: float, pulse: float) -> void:
-	var r: Rect2 = Rect2(center + Vector2(-9 * s, -8 * s), Vector2(18 * s, 22 * s))
-	c.draw_rect(r, Color(col.r, col.g, col.b, ga), true)
-	c.draw_rect(r, Color(col.r, col.g, col.b, 0.6), false, 1.5 * s)
-	# 头
-	c.draw_rect(Rect2(center + Vector2(-6 * s, -16 * s), Vector2(12 * s, 8 * s)), Color(col.r, col.g, col.b, ga + 0.05), true)
-	# 扫描眼
-	var ew: float = 8 * s * (0.7 + pulse * 0.3)
-	c.draw_line(center + Vector2(-ew * 0.5, -12 * s), center + Vector2(ew * 0.5, -12 * s), Color(CyberStyle.ACCENT_ORANGE.r, CyberStyle.ACCENT_ORANGE.g, CyberStyle.ACCENT_ORANGE.b, 0.8), 2.0 * s)
-	# 腿
-	c.draw_line(center + Vector2(-5 * s, 14 * s), center + Vector2(-7 * s, 23 * s), Color(col.r, col.g, col.b, 0.45), 1.5 * s)
-	c.draw_line(center + Vector2(5 * s, 14 * s), center + Vector2(7 * s, 23 * s), Color(col.r, col.g, col.b, 0.45), 1.5 * s)
+	var orange: Color = CyberStyle.ACCENT_ORANGE
 
-# 迷你游魂：飘渺圆+尾焰
+	# --- 短粗腿 (stubby mechanical legs) ---
+	var leg_col: Color = Color(col.r, col.g, col.b, ga + 0.1)
+	c.draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-7 * s, 12 * s), center + Vector2(-3 * s, 12 * s),
+		center + Vector2(-3 * s, 21 * s), center + Vector2(-7 * s, 21 * s)]), leg_col)
+	c.draw_colored_polygon(PackedVector2Array([
+		center + Vector2(3 * s, 12 * s), center + Vector2(7 * s, 12 * s),
+		center + Vector2(7 * s, 21 * s), center + Vector2(3 * s, 21 * s)]), leg_col)
+
+	# --- 方形圆角身体 (compact square body) ---
+	var body_r: Rect2 = Rect2(center + Vector2(-9 * s, -4 * s), Vector2(18 * s, 18 * s))
+	c.draw_rect(body_r, Color(col.r, col.g, col.b, ga), true)
+	c.draw_rect(body_r, Color(col.r, col.g, col.b, 0.5), false, 1.5 * s)
+	# Body accent line
+	c.draw_line(center + Vector2(-6 * s, 6 * s), center + Vector2(6 * s, 6 * s), Color(orange.r, orange.g, orange.b, 0.2), 1.0 * s)
+
+	# --- 大圆角方头 (boxy but rounded robot head) ---
+	var head_c: Vector2 = center + Vector2(0, -13 * s)
+	var head_rect: Rect2 = Rect2(head_c + Vector2(-8 * s, -7 * s), Vector2(16 * s, 14 * s))
+	c.draw_rect(head_rect, Color(col.r, col.g, col.b, ga + 0.06), true)
+	c.draw_rect(head_rect, Color(col.r, col.g, col.b, 0.55), false, 1.5 * s)
+
+	# --- 单只大扫描眼 (single big scanning eye - horizontal oval) ---
+	var eye_w: float = 7 * s * (0.8 + pulse * 0.2)
+	var eye_c: Vector2 = head_c + Vector2(0, 1 * s)
+	c.draw_arc(eye_c, eye_w, 0, TAU, 12, Color(orange.r, orange.g, orange.b, 0.7 + pulse * 0.2), 2.0 * s)
+	c.draw_circle(eye_c, 3.5 * s, Color(orange.r, orange.g, orange.b, 0.25 + pulse * 0.1))
+	# Pupil dot
+	c.draw_circle(eye_c, 1.5 * s, Color(orange.r, orange.g, orange.b, 0.8))
+
+	# --- 天线 (small antenna on top) ---
+	var ant_base: Vector2 = head_c + Vector2(0, -7 * s)
+	c.draw_line(ant_base, ant_base + Vector2(0, -6 * s), Color(col.r, col.g, col.b, 0.5), 1.2 * s)
+	c.draw_circle(ant_base + Vector2(0, -6 * s), 1.8 * s, Color(orange.r, orange.g, orange.b, 0.5 + pulse * 0.3))
+
+# 游魂: Round blob ghost, wavy bottom, angry cute eyes, trailing wisps
 static func _draw_mini_ghost(c: CanvasItem, center: Vector2, s: float, col: Color, ga: float, pulse: float) -> void:
-	c.draw_circle(center + Vector2(0, -3 * s), 10 * s, Color(col.r, col.g, col.b, ga))
-	c.draw_arc(center + Vector2(0, -3 * s), 10 * s, 0, TAU, 10, Color(col.r, col.g, col.b, 0.5), 1.5 * s)
-	# 双眼
-	c.draw_circle(center + Vector2(-4 * s, -5 * s), 2 * s, Color(1.0, 0.3, 0.3, 0.7 + pulse * 0.2))
-	c.draw_circle(center + Vector2(4 * s, -5 * s), 2 * s, Color(1.0, 0.3, 0.3, 0.7 + pulse * 0.2))
-	# 尾焰
+	# --- 幽灵尾焰 (faint trailing wisps below) ---
 	for i in range(3):
-		var ox: float = sin(float(i) * 1.5 + pulse * 3.0) * 4 * s
-		c.draw_line(center + Vector2(ox, 7 * s + float(i) * 5 * s), center + Vector2(ox, 12 * s + float(i) * 5 * s), Color(col.r, col.g, col.b, 0.3 - float(i) * 0.08), 1.5 * s)
+		var wx: float = (-4.0 + float(i) * 4.0) * s
+		var wy: float = 10 * s + float(i) * 3 * s
+		var fade: float = 0.18 - float(i) * 0.04
+		c.draw_circle(center + Vector2(wx, wy), 2.5 * s, Color(col.r, col.g, col.b, fade))
 
-# 迷你爬虫：椭圆体+多足
+	# --- 波浪底边 (wavy/wiggly bottom - 3 small arcs) ---
+	var bot_y: float = center.y + 8 * s
+	for i in range(3):
+		var ax: float = center.x + (-6.0 + float(i) * 6.0) * s
+		c.draw_arc(Vector2(ax, bot_y), 3 * s, 0, PI, 6, Color(col.r, col.g, col.b, ga + 0.1), 1.5 * s)
+
+	# --- 大圆身体 (round blob body, no legs) ---
+	var body_c: Vector2 = center + Vector2(0, -3 * s)
+	c.draw_circle(body_c, 12 * s, Color(col.r, col.g, col.b, ga))
+	c.draw_arc(body_c, 12 * s, 0, TAU, 16, Color(col.r, col.g, col.b, 0.45), 1.5 * s)
+
+	# --- 大圆眼 + 微怒表情 (big round eyes, slightly angry) ---
+	var eye_l: Vector2 = body_c + Vector2(-4 * s, -1 * s)
+	var eye_r: Vector2 = body_c + Vector2(4 * s, -1 * s)
+	# White sclera
+	c.draw_circle(eye_l, 3.0 * s, Color(1.0, 1.0, 1.0, 0.8))
+	c.draw_circle(eye_r, 3.0 * s, Color(1.0, 1.0, 1.0, 0.8))
+	# Red-tinted pupils for anger
+	c.draw_circle(eye_l + Vector2(0, 0.5 * s), 1.4 * s, Color(1.0, 0.2, 0.2, 0.8 + pulse * 0.15))
+	c.draw_circle(eye_r + Vector2(0, 0.5 * s), 1.4 * s, Color(1.0, 0.2, 0.2, 0.8 + pulse * 0.15))
+	# Angry eyebrow lines (angled down toward center)
+	c.draw_line(eye_l + Vector2(-2.5 * s, -3 * s), eye_l + Vector2(1.5 * s, -2 * s), Color(col.r, col.g, col.b, 0.6), 1.2 * s)
+	c.draw_line(eye_r + Vector2(2.5 * s, -3 * s), eye_r + Vector2(-1.5 * s, -2 * s), Color(col.r, col.g, col.b, 0.6), 1.2 * s)
+
+	# --- 小嘴 (tiny frowning mouth) ---
+	c.draw_arc(body_c + Vector2(0, 4 * s), 2 * s, PI + 0.3, TAU - 0.3, 6, Color(0.2, 0.1, 0.2, 0.5), 1.0 * s)
+
+# 爬虫: Cute round bug, stubby legs, cluster eyes, small mandibles
 static func _draw_mini_crawler(c: CanvasItem, center: Vector2, s: float, col: Color, ga: float, pulse: float) -> void:
-	c.draw_circle(center, 9 * s, Color(col.r, col.g, col.b, ga))
-	c.draw_arc(center, 9 * s, 0, TAU, 10, Color(col.r, col.g, col.b, 0.5), 1.5 * s)
-	# 6足
+	# --- 6只小短腿 (tiny stubby legs sticking out from sides) ---
 	for i in range(3):
-		var side: float = -1.0
-		for j in range(2):
-			var bx: float = side * 9 * s
-			var by: float = (-5 + i * 5) * s
-			c.draw_line(center + Vector2(bx, by), center + Vector2(bx + side * 8 * s, by + 4 * s), Color(col.r, col.g, col.b, 0.4), 1.0 * s)
-			side = 1.0
-	# 眼簇
-	for i in range(3):
-		c.draw_circle(center + Vector2((-3 + float(i) * 3) * s, -4 * s), 1.5 * s, Color(1.0, 0.2, 0.2, 0.6 + pulse * 0.2))
+		var by: float = (-4.0 + float(i) * 5.0) * s
+		var leg_a: float = 0.35
+		# Left legs
+		var ll_start: Vector2 = center + Vector2(-9 * s, by)
+		var ll_end: Vector2 = center + Vector2(-14 * s, by + 3 * s)
+		c.draw_line(ll_start, ll_end, Color(col.r, col.g, col.b, leg_a), 2.0 * s)
+		c.draw_circle(ll_end, 1.2 * s, Color(col.r, col.g, col.b, leg_a))
+		# Right legs
+		var rl_start: Vector2 = center + Vector2(9 * s, by)
+		var rl_end: Vector2 = center + Vector2(14 * s, by + 3 * s)
+		c.draw_line(rl_start, rl_end, Color(col.r, col.g, col.b, leg_a), 2.0 * s)
+		c.draw_circle(rl_end, 1.2 * s, Color(col.r, col.g, col.b, leg_a))
 
-# 迷你猎手：纤细三角+枪
+	# --- 圆形主体 (round/oval main body like a cute bug) ---
+	c.draw_circle(center, 10 * s, Color(col.r, col.g, col.b, ga))
+	c.draw_arc(center, 10 * s, 0, TAU, 14, Color(col.r, col.g, col.b, 0.45), 1.5 * s)
+	# Shell line accent
+	c.draw_arc(center, 6 * s, 0.3, PI - 0.3, 8, Color(col.r, col.g, col.b, 0.25), 1.0 * s)
+
+	# --- 眼簇 (multiple small dot eyes in a cluster) ---
+	var eye_positions: Array = [
+		Vector2(-3.0, -4.0), Vector2(0.0, -5.0), Vector2(3.0, -4.0),
+		Vector2(-1.5, -2.5), Vector2(1.5, -2.5)]
+	for ep in eye_positions:
+		c.draw_circle(center + Vector2(ep.x * s, ep.y * s), 1.2 * s, Color(1.0, 0.15, 0.15, 0.6 + pulse * 0.2))
+
+	# --- 小钳子 (small mandibles/pincers at front) ---
+	c.draw_line(center + Vector2(-3 * s, 8 * s), center + Vector2(-6 * s, 13 * s), Color(col.r, col.g, col.b, 0.5), 1.5 * s)
+	c.draw_line(center + Vector2(3 * s, 8 * s), center + Vector2(6 * s, 13 * s), Color(col.r, col.g, col.b, 0.5), 1.5 * s)
+	# Pincer tips
+	c.draw_line(center + Vector2(-6 * s, 13 * s), center + Vector2(-4 * s, 15 * s), Color(col.r, col.g, col.b, 0.4), 1.2 * s)
+	c.draw_line(center + Vector2(6 * s, 13 * s), center + Vector2(4 * s, 15 * s), Color(col.r, col.g, col.b, 0.4), 1.2 * s)
+
+# 猎手: Fox/cat pointed head, cyclops eye, slim cute body, small blaster
 static func _draw_mini_hunter(c: CanvasItem, center: Vector2, s: float, col: Color, ga: float, pulse: float) -> void:
-	var body: PackedVector2Array = PackedVector2Array([
-		center + Vector2(0, -18 * s), center + Vector2(-7 * s, 12 * s), center + Vector2(7 * s, 12 * s)])
-	c.draw_colored_polygon(body, Color(col.r, col.g, col.b, ga))
-	for i in range(3):
-		c.draw_line(body[i], body[(i + 1) % 3], Color(col.r, col.g, col.b, 0.6), 1.5 * s)
-	# 单眼
-	c.draw_circle(center + Vector2(0, -10 * s), 3 * s, Color(1.0, 0.8, 0.1, 0.7 + pulse * 0.2))
-	# 枪
-	c.draw_line(center + Vector2(7 * s, -4 * s), center + Vector2(16 * s, -10 * s), Color(col.r, col.g, col.b, 0.5 + pulse * 0.2), 2.0 * s)
-	# 腿
-	c.draw_line(center + Vector2(-4 * s, 12 * s), center + Vector2(-6 * s, 22 * s), Color(col.r, col.g, col.b, 0.4), 1.5 * s)
-	c.draw_line(center + Vector2(4 * s, 12 * s), center + Vector2(6 * s, 22 * s), Color(col.r, col.g, col.b, 0.4), 1.5 * s)
+	# --- 细腿 (thin but cute legs) ---
+	c.draw_line(center + Vector2(-4 * s, 10 * s), center + Vector2(-5 * s, 21 * s), Color(col.r, col.g, col.b, 0.4), 1.8 * s)
+	c.draw_line(center + Vector2(4 * s, 10 * s), center + Vector2(5 * s, 21 * s), Color(col.r, col.g, col.b, 0.4), 1.8 * s)
+	# Tiny feet
+	c.draw_circle(center + Vector2(-5 * s, 21 * s), 1.5 * s, Color(col.r, col.g, col.b, 0.35))
+	c.draw_circle(center + Vector2(5 * s, 21 * s), 1.5 * s, Color(col.r, col.g, col.b, 0.35))
 
-# 迷你幽灵：菱形+数据线
+	# --- 可爱纤细身体 (slim but still cute body) ---
+	var body_c: Vector2 = center + Vector2(0, 3 * s)
+	var body_poly: PackedVector2Array = PackedVector2Array([
+		body_c + Vector2(-7 * s, -7 * s), body_c + Vector2(7 * s, -7 * s),
+		body_c + Vector2(5 * s, 8 * s), body_c + Vector2(-5 * s, 8 * s)])
+	c.draw_colored_polygon(body_poly, Color(col.r, col.g, col.b, ga))
+	for i in range(4):
+		c.draw_line(body_poly[i], body_poly[(i + 1) % 4], Color(col.r, col.g, col.b, 0.45), 1.0 * s)
+
+	# --- 小枪/爆能枪 (small gun/blaster to the side) ---
+	c.draw_line(center + Vector2(7 * s, -2 * s), center + Vector2(14 * s, -5 * s), Color(col.r, col.g, col.b, 0.45), 2.0 * s)
+	c.draw_line(center + Vector2(14 * s, -5 * s), center + Vector2(18 * s, -8 * s), Color(col.r, col.g, col.b, 0.5 + pulse * 0.2), 2.5 * s)
+	# Muzzle glow
+	c.draw_circle(center + Vector2(18 * s, -8 * s), 1.5 * s, Color(1.0, 0.6, 0.1, 0.4 + pulse * 0.3))
+
+	# --- 三角尖头 (triangular/pointed fox-cat head) ---
+	var head_c: Vector2 = center + Vector2(0, -12 * s)
+	# Main round head
+	c.draw_circle(head_c, 9 * s, Color(col.r, col.g, col.b, ga + 0.05))
+	c.draw_arc(head_c, 9 * s, 0, TAU, 14, Color(col.r, col.g, col.b, 0.5), 1.2 * s)
+	# Pointed ears (fox/cat)
+	var ear_l: PackedVector2Array = PackedVector2Array([
+		head_c + Vector2(-7 * s, -5 * s), head_c + Vector2(-3 * s, -7 * s),
+		head_c + Vector2(-9 * s, -14 * s)])
+	c.draw_colored_polygon(ear_l, Color(col.r, col.g, col.b, ga + 0.05))
+	var ear_r: PackedVector2Array = PackedVector2Array([
+		head_c + Vector2(3 * s, -7 * s), head_c + Vector2(7 * s, -5 * s),
+		head_c + Vector2(9 * s, -14 * s)])
+	c.draw_colored_polygon(ear_r, Color(col.r, col.g, col.b, ga + 0.05))
+
+	# --- 独眼 (one big cyclops eye, glowing) ---
+	c.draw_circle(head_c + Vector2(0, 0), 4 * s, Color(1.0, 1.0, 1.0, 0.8))
+	c.draw_circle(head_c + Vector2(0, 0), 2 * s, Color(1.0, 0.75, 0.1, 0.75 + pulse * 0.2))
+	c.draw_circle(head_c + Vector2(0, 0), 0.8 * s, Color(0.1, 0.05, 0.0, 0.9))
+	# Eye glow
+	c.draw_arc(head_c, 4.5 * s, 0, TAU, 10, Color(1.0, 0.8, 0.2, 0.15 + pulse * 0.1), 1.5 * s)
+
+# 幽灵: Diamond ethereal body, soft glowing eyes, data lines, floating
 static func _draw_mini_phantom(c: CanvasItem, center: Vector2, s: float, col: Color, ga: float, pulse: float) -> void:
+	# --- 数据辐射线 (thin data lines radiating outward) ---
+	for i in range(6):
+		var angle: float = float(i) * TAU / 6.0 + pulse * 0.25
+		var r_inner: float = 12 * s
+		var r_outer: float = 18 * s
+		c.draw_line(
+			center + Vector2(cos(angle) * r_inner, sin(angle) * r_inner * 0.7),
+			center + Vector2(cos(angle) * r_outer, sin(angle) * r_outer * 0.7),
+			Color(col.r, col.g, col.b, 0.12 + pulse * 0.06), 1.0 * s)
+
+	# --- 菱形空灵身体 (diamond/rhombus shaped ethereal body) ---
 	var diamond: PackedVector2Array = PackedVector2Array([
 		center + Vector2(0, -14 * s), center + Vector2(10 * s, 0),
 		center + Vector2(0, 14 * s), center + Vector2(-10 * s, 0)])
-	c.draw_colored_polygon(diamond, Color(col.r, col.g, col.b, ga))
+	# Slight transparency effect - inner glow
+	c.draw_colored_polygon(diamond, Color(col.r, col.g, col.b, ga * 0.7))
+	# Brighter inner diamond for ethereal glow
+	var inner_d: PackedVector2Array = PackedVector2Array([
+		center + Vector2(0, -8 * s), center + Vector2(6 * s, 0),
+		center + Vector2(0, 8 * s), center + Vector2(-6 * s, 0)])
+	c.draw_colored_polygon(inner_d, Color(col.r, col.g, col.b, ga * 0.35))
+	# Outer edge
 	for i in range(4):
-		c.draw_line(diamond[i], diamond[(i + 1) % 4], Color(col.r, col.g, col.b, 0.5 + pulse * 0.15), 1.5 * s)
-	# 数据辐射线
-	for i in range(4):
-		var angle: float = float(i) * TAU / 4.0 + pulse * 0.3
-		var r: float = 16 * s
-		c.draw_line(center, center + Vector2(cos(angle) * r, sin(angle) * r * 0.7), Color(col.r, col.g, col.b, 0.1), 1.0 * s)
-	# 双眼
-	c.draw_circle(center + Vector2(-3 * s, -3 * s), 2 * s, Color(1.0, 1.0, 1.0, 0.6))
-	c.draw_circle(center + Vector2(3 * s, -3 * s), 2 * s, Color(1.0, 1.0, 1.0, 0.6))
+		c.draw_line(diamond[i], diamond[(i + 1) % 4], Color(col.r, col.g, col.b, 0.4 + pulse * 0.15), 1.5 * s)
 
-# 迷你Boss：大型方体+冠+三眼
+	# --- 柔和发光双眼 (two soft glowing eyes) ---
+	var eye_l: Vector2 = center + Vector2(-3.5 * s, -2 * s)
+	var eye_r: Vector2 = center + Vector2(3.5 * s, -2 * s)
+	# Soft outer glow
+	c.draw_circle(eye_l, 3 * s, Color(1.0, 1.0, 1.0, 0.2 + pulse * 0.08))
+	c.draw_circle(eye_r, 3 * s, Color(1.0, 1.0, 1.0, 0.2 + pulse * 0.08))
+	# White eye
+	c.draw_circle(eye_l, 2.2 * s, Color(1.0, 1.0, 1.0, 0.65))
+	c.draw_circle(eye_r, 2.2 * s, Color(1.0, 1.0, 1.0, 0.65))
+	# Small pupils
+	c.draw_circle(eye_l, 0.9 * s, Color(0.15, 0.25, 0.5, 0.8))
+	c.draw_circle(eye_r, 0.9 * s, Color(0.15, 0.25, 0.5, 0.8))
+
+# Boss 零号协议: Large head + golden crown, three eyes, imposing body, shoulder pads
 static func _draw_mini_boss(c: CanvasItem, center: Vector2, s: float, col: Color, ga: float, pulse: float) -> void:
 	var gold: Color = CyberStyle.NEON_GOLD
-	# 大身躯
-	var r: Rect2 = Rect2(center + Vector2(-12 * s, -10 * s), Vector2(24 * s, 28 * s))
-	c.draw_rect(r, Color(col.r, col.g, col.b, ga + 0.05), true)
-	c.draw_rect(r, Color(col.r, col.g, col.b, 0.7), false, 2.0 * s)
-	# 肩甲
-	c.draw_rect(Rect2(center + Vector2(-18 * s, -12 * s), Vector2(6 * s, 10 * s)), Color(col.r, col.g, col.b, 0.4), true)
-	c.draw_rect(Rect2(center + Vector2(12 * s, -12 * s), Vector2(6 * s, 10 * s)), Color(col.r, col.g, col.b, 0.4), true)
-	# 头+冠
-	c.draw_circle(center + Vector2(0, -18 * s), 7 * s, Color(col.r, col.g, col.b, ga + 0.08))
-	c.draw_arc(center + Vector2(0, -18 * s), 7 * s, 0, TAU, 10, Color(col.r, col.g, col.b, 0.6), 1.5 * s)
-	c.draw_line(center + Vector2(-5 * s, -23 * s), center + Vector2(0, -30 * s), Color(gold.r, gold.g, gold.b, 0.5), 1.5 * s)
-	c.draw_line(center + Vector2(5 * s, -23 * s), center + Vector2(0, -30 * s), Color(gold.r, gold.g, gold.b, 0.5), 1.5 * s)
-	# 三眼
-	c.draw_circle(center + Vector2(-3 * s, -19 * s), 1.5 * s, Color(gold.r, gold.g, gold.b, 0.8))
-	c.draw_circle(center + Vector2(3 * s, -19 * s), 1.5 * s, Color(gold.r, gold.g, gold.b, 0.8))
-	c.draw_circle(center + Vector2(0, -24 * s), 1.0 * s, Color(1.0, 0.1, 0.1, 0.7 + pulse * 0.2))
-	# 腿
-	c.draw_line(center + Vector2(-6 * s, 18 * s), center + Vector2(-8 * s, 26 * s), Color(col.r, col.g, col.b, 0.45), 2.0 * s)
-	c.draw_line(center + Vector2(6 * s, 18 * s), center + Vector2(8 * s, 26 * s), Color(col.r, col.g, col.b, 0.45), 2.0 * s)
+
+	# --- 粗壮腿 (thick sturdy legs) ---
+	var leg_col: Color = Color(col.r, col.g, col.b, ga + 0.12)
+	c.draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-8 * s, 14 * s), center + Vector2(-3 * s, 14 * s),
+		center + Vector2(-4 * s, 25 * s), center + Vector2(-9 * s, 25 * s)]), leg_col)
+	c.draw_colored_polygon(PackedVector2Array([
+		center + Vector2(3 * s, 14 * s), center + Vector2(8 * s, 14 * s),
+		center + Vector2(9 * s, 25 * s), center + Vector2(4 * s, 25 * s)]), leg_col)
+
+	# --- 宽大身体 (big imposing body, wider than regular enemies) ---
+	var body_r: Rect2 = Rect2(center + Vector2(-13 * s, -6 * s), Vector2(26 * s, 22 * s))
+	c.draw_rect(body_r, Color(col.r, col.g, col.b, ga + 0.05), true)
+	c.draw_rect(body_r, Color(col.r, col.g, col.b, 0.6), false, 2.0 * s)
+	# Golden accent lines on body
+	c.draw_line(center + Vector2(-10 * s, 0), center + Vector2(10 * s, 0), Color(gold.r, gold.g, gold.b, 0.25), 1.0 * s)
+	c.draw_line(center + Vector2(-10 * s, 6 * s), center + Vector2(10 * s, 6 * s), Color(gold.r, gold.g, gold.b, 0.2), 1.0 * s)
+	# Center gem
+	c.draw_circle(center + Vector2(0, 3 * s), 2.5 * s, Color(gold.r, gold.g, gold.b, 0.4 + pulse * 0.15))
+
+	# --- 肩甲 (shoulder pads) ---
+	var sp_col: Color = Color(col.r, col.g, col.b, ga + 0.08)
+	# Left shoulder pad (rounded)
+	c.draw_circle(center + Vector2(-16 * s, -4 * s), 5 * s, sp_col)
+	c.draw_arc(center + Vector2(-16 * s, -4 * s), 5 * s, 0, TAU, 10, Color(gold.r, gold.g, gold.b, 0.3), 1.0 * s)
+	# Right shoulder pad
+	c.draw_circle(center + Vector2(16 * s, -4 * s), 5 * s, sp_col)
+	c.draw_arc(center + Vector2(16 * s, -4 * s), 5 * s, 0, TAU, 10, Color(gold.r, gold.g, gold.b, 0.3), 1.0 * s)
+
+	# --- 大圆头 (large round head) ---
+	var head: Vector2 = center + Vector2(0, -17 * s)
+	var head_r: float = 10 * s
+	c.draw_circle(head, head_r, Color(col.r, col.g, col.b, ga + 0.08))
+	c.draw_arc(head, head_r, 0, TAU, 16, Color(col.r, col.g, col.b, 0.55), 1.5 * s)
+
+	# --- 金色皇冠 (golden crown with 3 pointed spikes) ---
+	var crown_y: float = head.y - head_r
+	# Crown base band
+	c.draw_line(Vector2(head.x - 8 * s, crown_y), Vector2(head.x + 8 * s, crown_y), Color(gold.r, gold.g, gold.b, 0.5), 2.0 * s)
+	# Center spike (tallest)
+	var cs_poly: PackedVector2Array = PackedVector2Array([
+		Vector2(head.x - 2.5 * s, crown_y), Vector2(head.x + 2.5 * s, crown_y),
+		Vector2(head.x, crown_y - 8 * s)])
+	c.draw_colored_polygon(cs_poly, Color(gold.r, gold.g, gold.b, 0.5 + pulse * 0.15))
+	# Left spike
+	var ls_poly: PackedVector2Array = PackedVector2Array([
+		Vector2(head.x - 7 * s, crown_y), Vector2(head.x - 2.5 * s, crown_y),
+		Vector2(head.x - 5 * s, crown_y - 5.5 * s)])
+	c.draw_colored_polygon(ls_poly, Color(gold.r, gold.g, gold.b, 0.45 + pulse * 0.12))
+	# Right spike
+	var rs_poly: PackedVector2Array = PackedVector2Array([
+		Vector2(head.x + 2.5 * s, crown_y), Vector2(head.x + 7 * s, crown_y),
+		Vector2(head.x + 5 * s, crown_y - 5.5 * s)])
+	c.draw_colored_polygon(rs_poly, Color(gold.r, gold.g, gold.b, 0.45 + pulse * 0.12))
+
+	# --- 三眼 (two normal eyes + one red third eye above) ---
+	# Normal eyes (big, round, Cult of the Lamb style)
+	var el: Vector2 = head + Vector2(-4 * s, 0)
+	var er: Vector2 = head + Vector2(4 * s, 0)
+	c.draw_circle(el, 3 * s, Color(1.0, 1.0, 1.0, 0.8))
+	c.draw_circle(er, 3 * s, Color(1.0, 1.0, 1.0, 0.8))
+	c.draw_circle(el, 1.3 * s, Color(gold.r, gold.g, gold.b, 0.85))
+	c.draw_circle(er, 1.3 * s, Color(gold.r, gold.g, gold.b, 0.85))
+	# Third eye (red, smaller, above center)
+	var te: Vector2 = head + Vector2(0, -5 * s)
+	c.draw_circle(te, 2.2 * s, Color(1.0, 0.15, 0.15, 0.5 + pulse * 0.25))
+	c.draw_circle(te, 1.0 * s, Color(1.0, 0.05, 0.05, 0.8 + pulse * 0.15))
+	# Third eye glow
+	c.draw_arc(te, 3 * s, 0, TAU, 10, Color(1.0, 0.1, 0.1, 0.15 + pulse * 0.1), 1.0 * s)
+
+	# --- 小嘴 (stern small mouth) ---
+	c.draw_line(head + Vector2(-3 * s, 4 * s), head + Vector2(3 * s, 4 * s), Color(0.2, 0.1, 0.15, 0.45), 1.2 * s)
 
 # --- HP 条：薄条 + 绿→黄→红渐变 ---
 

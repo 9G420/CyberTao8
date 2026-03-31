@@ -74,9 +74,10 @@ func _build_debug_view() -> void:
 	add_child(settings_btn)
 
 	_settings_panel = SettingsPanel.new()
-	_settings_panel.position = Vector2(440, 130)
+	_settings_panel.position = Vector2(420, 100)
 	add_child(_settings_panel)
 	_settings_panel.bind_display_settings(_display_settings)
+	_settings_panel.bind_audio_manager(_audio)
 
 	# 卡牌战斗面板（v0.1.54 全屏独立界面，自带战斗背景）
 	_card_battle_panel = CardBattlePanel.new()

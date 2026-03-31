@@ -121,3 +121,32 @@ func _get_or_generate(name: String) -> AudioStream:
 	if stream != null:
 		_cache[name] = stream
 	return stream
+
+# --- 音量控制 API ---
+
+## 设置 BGM 音量（0.0 ~ 1.0）
+func set_bgm_volume(volume: float) -> void:
+	var db: float = linear_to_db(clampf(volume, 0.0, 1.0)) if volume > 0.001 else -80.0
+	_bgm_player.volume_db = db
+
+## 设置 SFX 音量（0.0 ~ 1.0）
+func set_sfx_volume(volume: float) -> void:
+	var db: float = linear_to_db(clampf(volume, 0.0, 1.0)) if volume > 0.001 else -80.0
+	for player in _sfx_players:
+		player.volume_db = db
+
+## 获取当前 BGM 音量（0.0 ~ 1.0）
+func get_bgm_volume() -> float:
+	return db_to_linear(_bgm_player.volume_db)
+
+## 获取当前 SFX 音量（0.0 ~ 1.0）
+func get_sfx_volume() -> float:
+	if _sfx_players.size() > 0:
+		return db_to_linear(_sfx_players[0].volume_db)
+	return 1.0
+
+func is_sfx_enabled() -> bool:
+	return _sfx_enabled
+
+func is_bgm_enabled() -> bool:
+	return _bgm_enabled

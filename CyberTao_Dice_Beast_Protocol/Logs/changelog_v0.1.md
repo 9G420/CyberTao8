@@ -1,5 +1,22 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.66 - 2026-03-31
+
+### 新增
+- **角色形象全面重构（咩咩启示录风格）**：玩家英雄+全部敌方单位（哨兵/游魂/爬虫/猎手/幽灵/Boss）重新设计为 Cult of the Lamb 风格——大圆头、大眼睛、萌系 Q 版身材
+- **棋盘迷你角色重构（UnitRenderer）**：同步重构，所有棋盘上的迷你角色与战斗立绘风格统一
+- **音效设置面板**：SettingsPanel 新增 BGM/SFX 音量滑块（0-100）和开关按钮，实时调节
+- **AudioManager 音量控制 API**：新增 set_bgm_volume/set_sfx_volume/get_bgm_volume/get_sfx_volume/is_sfx_enabled/is_bgm_enabled 方法
+
+### 修改
+- SettingsPanel: 标题改为"设置"，面板扩大至 440x520，新增音效设置区域
+- Main.gd: 新增 bind_audio_manager 调用，调整 SettingsPanel 位置
+- DiceDebugPanel: 版本标记 → v0.1.66
+
+### 备注
+- 角色设计灵感来源：咩咩启示录（Cult of the Lamb）——大头萌系 Q 版+赛博朋克配色
+- 音效设置为实时生效，无需点击"应用"按钮（滑块和开关即时响应）
+
 ## v0.1.65 - 2026-03-31
 
 ### 修改
