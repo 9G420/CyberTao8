@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.70
+**当前版本**: v0.1.71
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -134,6 +134,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 卡牌拖拽出牌+即时伤害反馈 | v0.1.68 | 稳定 |
 | 顶部单位头像 HUD | v0.1.69 | 稳定 |
 | 玩家角色精灵动画（4方向 spritesheet） | v0.1.70 | 稳定 |
+| 3D 渐进迁移 P0（BoardView3D+SubViewport+F5切换） | v0.1.71 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -237,12 +238,18 @@ UI层
 ├── PlayerSpriteAnimator — 玩家精灵动画管理器（class_name注册）  ~70行 ✅ v0.1.70 新增
 └── SettingsPanel        — 显示设置
 
+UI3D/（v0.1.71 新增 — 3D 表现层）
+├── GridMapper3D        — 格坐标↔3D世界坐标转换（class_name注册）  ~40行 ✅ v0.1.71 新增
+├── TileMeshFactory3D   — 格子 BoxMesh 程序化工厂（class_name注册）  ~110行 ✅ v0.1.71 新增
+├── UnitMeshFactory3D   — 单位 CapsuleMesh/CylinderMesh 工厂（class_name注册）  ~100行 ✅ v0.1.71 新增
+└── BoardView3D         — 3D 棋盘视图（SubViewport 内嵌，class_name注册）  ~340行 ✅ v0.1.71 新增
+
 System/
 ├── DisplaySettings     — 显示设置管理
 ├── AudioManager        — 音效管理器（class_name注册，多通道SFX+BGM）  ~120行 ✅ v0.1.56 新增
 └── SFXGenerator        — 程序化音频引擎（28种音效+4种BGM循环）       ~1100行 ✅ v0.1.56 迁入
 
-Main.gd（场景组合+信号中转+音效触发+相机跟随）                      ~500行
+Main.gd（场景组合+信号中转+音效触发+相机跟随+3D/2D切换）              ~670行
 ```
 
 ### 3.2 双层通信信号链
@@ -293,6 +300,10 @@ UITransitions：       Scripts/UI/UITransitions.gd
 AudioManager：        Scripts/System/AudioManager.gd
 SFXGenerator：        Scripts/System/SFXGenerator.gd
 Main：                Scripts/Main.gd
+GridMapper3D：       Scripts/UI3D/GridMapper3D.gd          ✅ v0.1.71 新增
+TileMeshFactory3D：  Scripts/UI3D/TileMeshFactory3D.gd     ✅ v0.1.71 新增
+UnitMeshFactory3D：  Scripts/UI3D/UnitMeshFactory3D.gd     ✅ v0.1.71 新增
+BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 旧项目参考（只读）：   [仓库根目录] Scripts/ （不要修改）
 ```
 
@@ -375,6 +386,7 @@ Main：                Scripts/Main.gd
 | 卡牌拖拽出牌+即时伤害反馈 | v0.1.68 |
 | 顶部单位头像 HUD | v0.1.69 |
 | 玩家角色精灵动画（4方向 spritesheet） | v0.1.70 |
+| 3D 渐进迁移 P0（BoardView3D+SubViewport+F5切换） | v0.1.71 |
 | 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 |
 | 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 |
 | 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 |

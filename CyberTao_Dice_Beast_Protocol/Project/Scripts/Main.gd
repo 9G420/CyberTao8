@@ -12,10 +12,17 @@ const DeckViewPanel = preload("res://Scripts/UI/DeckViewPanel.gd")
 const CyberBackground = preload("res://Scripts/UI/CyberBackground.gd")
 const TransitionOverlay = preload("res://Scripts/UI/TransitionOverlay.gd")
 const UnitPortraitHUD = preload("res://Scripts/UI/UnitPortraitHUD.gd")
+const BoardView3DScript = preload("res://Scripts/UI3D/BoardView3D.gd")
+
+# v0.1.71：3D/2D 视图切换标志（默认 false = 2D 模式）
+var _use_3d: bool = false
 
 var _battle_flow: BattleFlowController
 var _card_battle_ctrl: CardBattleController
 var _board_view: BoardView
+var _board_view_3d: BoardView3D = null
+var _sub_viewport: SubViewport = null
+var _sub_viewport_container: SubViewportContainer = null
 var _dice_panel: DiceDebugPanel
 var _display_settings: DisplaySettings
 var _settings_panel: SettingsPanel
@@ -44,6 +51,8 @@ func _ready() -> void:
 	add_child(_card_battle_ctrl)
 	_build_debug_view()
 	_wire_debug_views()
+	# v0.1.71：3D 视图初始化（默认隐藏）
+	_setup_3d_view()
 	# 初始相机跟随玩家位置
 	_update_camera_to_player()
 	# 启动棋盘 BGM
@@ -201,23 +210,25 @@ func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	_last_operated_unit_id = unit_id
 	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
+	var view = _active_view()
 	if success:
-		_board_view.play_attack_feedback(target_cell, _last_attack_damage, _last_attack_killed)
+		view.play_attack_feedback(target_cell, _last_attack_damage, _last_attack_killed)
 		_audio.play_sfx("attack_hit")
-	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
-	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
-	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
-	_board_view.queue_redraw()
+	view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+	view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+	view.summon_highlight_cells = view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
+	view.queue_redraw()
 
 func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
 	_last_operated_unit_id = unit_id
 	var success: bool = _battle_flow.try_summon(unit_id, target_cell)
 	if success:
 		_audio.play_sfx("summon")
-	_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
-	_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
-	_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
-	_board_view.queue_redraw()
+	var view = _active_view()
+	view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+	view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+	view.summon_highlight_cells = view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
+	view.queue_redraw()
 
 func _on_phase_changed(phase_name: String) -> void:
 	if phase_name == "VICTORY":
@@ -247,57 +258,58 @@ func _on_attack_completed(attacker_id: String, defender_id: String, damage: int,
 	_last_attack_killed = killed
 
 func _on_enemy_attack_completed(attacker_id: String, defender_id: String, damage: int, killed: bool, target_cell: Vector2i) -> void:
-	_board_view.play_attack_feedback(target_cell, damage, killed)
+	_active_view().play_attack_feedback(target_cell, damage, killed)
 	_audio.play_sfx("player_hurt")
 
 func _on_summon_completed(unit_id: String, path_cells_created: Array[Vector2i], spawn_cell: Vector2i) -> void:
 	# 召唤展开演出：路径格逐格铺展 + 单位出场闪光
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 	# 路径格逐格铺展（每格 0.1 秒延迟重绘）
 	for i in range(path_cells_created.size()):
 		if i > 0:
 			await get_tree().create_timer(0.1).timeout
-			_board_view.queue_redraw()
-	# 召唤单位出场：从小到大 + 发光闪烁
-	var pixel_pos: Vector2 = IsoTileRenderer.grid_to_screen_zoom(spawn_cell.x, spawn_cell.y, _board_view.iso_origin, _board_view._zoom)
-	UITransitions.summon_unit_spawn(_board_view, pixel_pos, float(IsoTileRenderer.TILE_W) * 0.5)
+			_active_view().queue_redraw()
+	# 召唤单位出场：2D 模式下做 UITransitions 演出
+	if not _use_3d:
+		var pixel_pos: Vector2 = IsoTileRenderer.grid_to_screen_zoom(spawn_cell.x, spawn_cell.y, _board_view.iso_origin, _board_view._zoom)
+		UITransitions.summon_unit_spawn(_board_view, pixel_pos, float(IsoTileRenderer.TILE_W) * 0.5)
 
 func _on_terrain_damage_triggered(unit_id: String, cell: Vector2i, damage: int, terrain_type: String) -> void:
-	_board_view.play_attack_feedback(cell, damage)
+	_active_view().play_attack_feedback(cell, damage)
 	_audio.play_sfx("player_hurt")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_item_picked_up(unit_id: String, item_id: String, effect_text: String, cell: Vector2i) -> void:
-	_board_view.play_pickup_feedback(cell, effect_text)
+	_active_view().play_pickup_feedback(cell, effect_text)
 	_audio.play_sfx("pickup")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_enemy_action_announced(unit_id: String, action_type: String, detail: String) -> void:
 	# 敌方行动时相机跟随敌人（v0.1.63）
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
 	if not unit.is_empty():
 		var cell: Vector2i = unit["cell"]
-		_board_view.set_camera_target(cell)
+		_active_view().set_camera_target(cell)
 		if action_type == "attack":
 			var adjacent: Array[Vector2i] = _battle_flow.battle_ai.get_adjacent_player_cells(cell)
 			if adjacent.size() > 0:
-				_board_view.play_enemy_warning(adjacent[0])
+				_active_view().play_enemy_warning(adjacent[0])
 
 func _on_enemy_turn_ended() -> void:
 	# 敌方回合结束（v0.1.67：切回上一轮操作的我方单位，而非固定切主角）
-	_board_view._drag_offset = Vector2.ZERO
+	_reset_drag_offset()
 	await get_tree().create_timer(0.8).timeout
 	if _last_operated_unit_id != "":
 		var last_unit: Dictionary = _battle_flow.unit_manager.get_unit(_last_operated_unit_id)
 		if not last_unit.is_empty() and String(last_unit.get("owner", "")) == "player":
-			_board_view.set_camera_target(last_unit["cell"])
-			_board_view.queue_redraw()
+			_active_view().set_camera_target(last_unit["cell"])
+			_active_view().queue_redraw()
 			return
 	_update_camera_to_player()
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector2i) -> void:
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 	_audio.play_sfx("encounter")
 	# 查询遭遇敌方名称和 Boss 标识
 	var is_boss: bool = encounter_id.begins_with("encounter_boss_")
@@ -321,60 +333,63 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 	await _transition.reveal()
 
 func _on_encounter_resolved(encounter_id: String, cell: Vector2i) -> void:
-	_board_view.play_pickup_feedback(cell, "遭遇清除")
-	_board_view.queue_redraw()
+	_active_view().play_pickup_feedback(cell, "遭遇清除")
+	_active_view().queue_redraw()
 
 func _on_heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int) -> void:
-	_board_view.play_heal_feedback(cell, "HP+" + str(actual_heal))
+	_active_view().play_heal_feedback(cell, "HP+" + str(actual_heal))
 	_audio.play_sfx("heal")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, effect_text: String) -> void:
 	var is_positive: bool = not effect_text.begins_with("HP-")
-	_board_view.play_event_feedback(cell, effect_text, is_positive)
-	_board_view.queue_redraw()
+	_active_view().play_event_feedback(cell, effect_text, is_positive)
+	_active_view().queue_redraw()
 
 func _on_defend_crest_used(unit_id: String, new_temp_def: int) -> void:
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
 	if not unit.is_empty():
 		var cell: Vector2i = unit["cell"]
-		_board_view.play_heal_feedback(cell, "DEF+" + str(new_temp_def))
+		_active_view().play_heal_feedback(cell, "DEF+" + str(new_temp_def))
 	_audio.play_sfx("defense")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_skill_crest_used(unit_id: String, heal_amount: int) -> void:
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
 	if not unit.is_empty():
 		var cell: Vector2i = unit["cell"]
-		_board_view.play_heal_feedback(cell, "HP+" + str(heal_amount))
+		_active_view().play_heal_feedback(cell, "HP+" + str(heal_amount))
 	_audio.play_sfx("heal")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_trick_crest_used(gained_crest: String) -> void:
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int) -> void:
-	_board_view.play_shop_feedback(cell, "-1步 HP+" + str(actual_heal))
+	_active_view().play_shop_feedback(cell, "-1步 HP+" + str(actual_heal))
 	_audio.play_sfx("shop")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String) -> void:
-	_board_view.play_chest_feedback(cell, effect_text)
+	_active_view().play_chest_feedback(cell, effect_text)
 	_audio.play_sfx("chest")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
+	var view = _active_view()
 	# 层间奖励完成 → 进入下一层（无过渡动画）
 	if _floor_clear_pending:
 		_floor_clear_pending = false
 		_result_label.visible = false
-		_board_view.selected_unit_id = ""
-		_board_view.highlight_cells = []
-		_board_view.attack_highlight_cells = []
-		_board_view.summon_highlight_cells = []
+		view.selected_unit_id = ""
+		view.highlight_cells = []
+		view.attack_highlight_cells = []
+		view.summon_highlight_cells = []
 		_battle_flow.advance_to_next_floor()
 		_update_camera_to_player()
-		_board_view.queue_redraw()
+		view.queue_redraw()
+		if _use_3d and _board_view_3d:
+			_board_view_3d.rebuild_board()
 		return
 	# 卡牌战斗结束：先等待结果展示
 	var encounter_cell: Vector2i = _battle_flow._encounter_cell
@@ -388,11 +403,11 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 	_battle_flow.resolve_encounter(victory, player_hp_remaining)
 	# 反馈飘字
 	if victory and encounter_cell.x >= 0:
-		_board_view.play_pickup_feedback(encounter_cell, "战斗胜利！")
+		view.play_pickup_feedback(encounter_cell, "战斗胜利！")
 		_audio.play_sfx("victory")
 	elif not victory and encounter_cell.x >= 0:
-		_board_view.play_encounter_feedback(encounter_cell, "战斗失败...")
-	_board_view.queue_redraw()
+		view.play_encounter_feedback(encounter_cell, "战斗失败...")
+	view.queue_redraw()
 	# 百叶窗展开，回到棋盘
 	await _transition.reveal()
 	# 恢复棋盘 BGM
@@ -416,30 +431,33 @@ func _on_game_won() -> void:
 	pass
 
 func _on_boss_unlocked(cell: Vector2i) -> void:
-	_board_view.play_encounter_feedback(cell, "BOSS 解锁！")
+	_active_view().play_encounter_feedback(cell, "BOSS 解锁！")
 	_audio.play_sfx("encounter")
-	_board_view.queue_redraw()
+	_active_view().queue_redraw()
 
 func _on_hero_warped(unit_id: String, target_cell: Vector2i) -> void:
-	_board_view.set_camera_target(target_cell)
-	_board_view.play_pickup_feedback(target_cell, "传送至 Boss！")
-	_board_view.queue_redraw()
+	_active_view().set_camera_target(target_cell)
+	_active_view().play_pickup_feedback(target_cell, "传送至 Boss！")
+	_active_view().queue_redraw()
 
 func _on_portal_spawned(cell: Vector2i) -> void:
-	_board_view.play_pickup_feedback(cell, "传送门！")
-	_board_view.queue_redraw()
+	_active_view().play_pickup_feedback(cell, "传送门！")
+	_active_view().queue_redraw()
 
 func _on_restart_pressed() -> void:
-	_board_view.selected_unit_id = ""
-	_board_view.highlight_cells = []
-	_board_view.attack_highlight_cells = []
-	_board_view.summon_highlight_cells = []
+	var view = _active_view()
+	view.selected_unit_id = ""
+	view.highlight_cells = []
+	view.attack_highlight_cells = []
+	view.summon_highlight_cells = []
 	_floor_clear_pending = false
 	_last_operated_unit_id = ""
 	_card_battle_ctrl.reset_persistent_deck()
 	_battle_flow.restart_battle()
 	_update_camera_to_player()
-	_board_view.queue_redraw()
+	view.queue_redraw()
+	if _use_3d and _board_view_3d:
+		_board_view_3d.rebuild_board()
 
 ## 相机跟随：找到第一个玩家单位位置并更新相机目标（v0.1.60）
 func _update_camera_to_player() -> void:
@@ -452,20 +470,20 @@ func _update_camera_to_player() -> void:
 	if unit.is_empty():
 		return
 	var cell: Vector2i = unit["cell"]
-	_board_view.set_camera_target(cell)
+	_active_view().set_camera_target(cell)
 
 ## move_completed 相机跟随回调（v0.1.64：仅跟随当前阶段活动单位）
 func _on_move_completed_camera(unit_id: String, _from_cell: Vector2i, to_cell: Vector2i) -> void:
-	_board_view._drag_offset = Vector2.ZERO
-	_board_view.set_camera_target(to_cell)
+	_reset_drag_offset()
+	_active_view().set_camera_target(to_cell)
 
-## v0.1.67：逐格移动动画 — 收到 BFC 的 move_step_visual 后驱动 BoardView 动画
+## v0.1.67：逐格移动动画 — 收到 BFC 的 move_step_visual 后驱动活动视图动画
 func _on_move_step_visual(unit_id: String, from_cell: Vector2i, to_cell: Vector2i) -> void:
-	_board_view._drag_offset = Vector2.ZERO
-	_board_view.set_camera_target(to_cell)
-	_board_view.play_move_step(unit_id, from_cell, to_cell, 0.15)
+	_reset_drag_offset()
+	_active_view().set_camera_target(to_cell)
+	_active_view().play_move_step(unit_id, from_cell, to_cell, 0.15)
 
-## v0.1.67：BoardView 单步动画完成后通知 BFC 继续下一步
+## v0.1.67：视图单步动画完成后通知 BFC 继续下一步
 func _on_board_move_anim_done() -> void:
 	_battle_flow.move_step_done.emit()
 
@@ -474,8 +492,8 @@ func _on_enemy_turn_starting(first_enemy_id: String) -> void:
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(first_enemy_id)
 	if not unit.is_empty():
 		var cell: Vector2i = unit["cell"]
-		_board_view._drag_offset = Vector2.ZERO
-		_board_view.set_camera_target(cell)
+		_reset_drag_offset()
+		_active_view().set_camera_target(cell)
 
 func _on_settings_pressed() -> void:
 	_audio.play_sfx("click")
@@ -511,16 +529,17 @@ func _on_portrait_clicked(unit_id: String) -> void:
 		return
 	_audio.play_sfx("click")
 	var cell: Vector2i = unit["cell"]
-	_board_view._drag_offset = Vector2.ZERO
-	_board_view.set_camera_target(cell)
+	var view = _active_view()
+	_reset_drag_offset()
+	view.set_camera_target(cell)
 	# 如果是玩家单位，选中它
 	if String(unit.get("owner", "")) == "player":
-		_board_view.selected_unit_id = unit_id
-		_board_view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
-		_board_view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
-		_board_view.summon_highlight_cells = _board_view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
+		view.selected_unit_id = unit_id
+		view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
+		view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
+		view.summon_highlight_cells = view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
 	_portrait_hud.set_selected(unit_id)
-	_board_view.queue_redraw()
+	view.queue_redraw()
 
 ## 掷骰音效回调
 func _on_dice_rolled_sfx(_results: Array[String], _crest_pool: Dictionary) -> void:
@@ -555,6 +574,77 @@ func _get_encounter_display_name(encounter_id: String) -> String:
 	if encounter_id.begins_with("encounter_boss_"):
 		return "BOSS"
 	return "未知遭遇"
+
+## v0.1.71：初始化 3D 视图（SubViewport + SubViewportContainer）
+func _setup_3d_view() -> void:
+	# 创建 SubViewportContainer（全屏覆盖，初始隐藏）
+	_sub_viewport_container = SubViewportContainer.new()
+	_sub_viewport_container.position = Vector2(0, 0)
+	_sub_viewport_container.size = Vector2(1280, 720)
+	_sub_viewport_container.stretch = true
+	_sub_viewport_container.visible = false
+	# 插入到 BoardView 后面（背景之后、HUD 之前）
+	var bv_idx: int = _board_view.get_index()
+	add_child(_sub_viewport_container)
+	move_child(_sub_viewport_container, bv_idx + 1)
+	# 创建 SubViewport
+	_sub_viewport = SubViewport.new()
+	_sub_viewport.size = Vector2i(1280, 720)
+	_sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_sub_viewport.transparent_bg = false
+	_sub_viewport_container.add_child(_sub_viewport)
+	# 创建 BoardView3D 并添加到 SubViewport
+	_board_view_3d = BoardView3DScript.new()
+	_sub_viewport.add_child(_board_view_3d)
+	# 绑定管理器和信号
+	_board_view_3d.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
+	_board_view_3d.bind_battle_flow(_battle_flow)
+	_board_view_3d.move_requested.connect(_on_move_requested)
+	_board_view_3d.attack_requested.connect(_on_attack_requested)
+	_board_view_3d.summon_requested.connect(_on_summon_requested)
+	_board_view_3d.move_anim_done.connect(_on_board_move_anim_done)
+	_board_view_3d.unit_selected.connect(func(uid: String): _portrait_hud.set_selected(uid))
+	_board_view_3d.unit_deselected.connect(func(): _portrait_hud.set_selected(""))
+
+## v0.1.71：获取当前活动视图（duck typing — 2D 和 3D 视图共享信号/方法接口）
+func _active_view():
+	if _use_3d and _board_view_3d:
+		return _board_view_3d
+	return _board_view
+
+## v0.1.71：重置拖拽偏移（兼容 2D/3D）
+func _reset_drag_offset() -> void:
+	if _use_3d:
+		if _board_view_3d:
+			_board_view_3d._drag_offset_accumulated = Vector3.ZERO
+	else:
+		_board_view._drag_offset = Vector2.ZERO
+
+## v0.1.71：切换 2D/3D 视图
+func toggle_3d_view() -> void:
+	_use_3d = not _use_3d
+	_board_view.visible = not _use_3d
+	_sub_viewport_container.visible = _use_3d
+	if _use_3d and _board_view_3d:
+		_board_view_3d.rebuild_board()
+		_update_camera_to_player()
+	elif not _use_3d:
+		_update_camera_to_player()
+		_board_view.queue_redraw()
+
+## v0.1.71：处理 3D 视图输入转发
+func _input(event: InputEvent) -> void:
+	# F5 切换 2D/3D
+	if event is InputEventKey:
+		var key: InputEventKey = event as InputEventKey
+		if key.pressed and not key.echo and key.keycode == KEY_F5:
+			toggle_3d_view()
+			get_viewport().set_input_as_handled()
+			return
+	# 3D 模式下转发鼠标事件给 BoardView3D
+	if _use_3d and _board_view_3d and _sub_viewport_container.visible:
+		if event is InputEventMouse:
+			_board_view_3d.handle_input(event)
 
 ## 生成赛博风格十字光标纹理（v0.1.63）
 func _setup_custom_cursor() -> void:

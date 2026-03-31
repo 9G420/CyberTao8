@@ -1,5 +1,42 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.71 - 2026-03-31
+
+### 新增
+- **3D 渐进迁移 P0**：新增完整 3D 表现层，与 2D 视图可切换共存
+- **GridMapper3D.gd**：新文件，`class_name GridMapper3D`，棋盘格坐标(Vector2i) ↔ 3D世界坐标(Vector3) 双向转换
+- **TileMeshFactory3D.gd**：新文件，`class_name TileMeshFactory3D`，为 9 种格子类型创建程序化 BoxMesh + StandardMaterial3D（配色沿用 CyberStyle）
+- **UnitMeshFactory3D.gd**：新文件，`class_name UnitMeshFactory3D`，为玩家（CapsuleMesh）/敌方（CylinderMesh）创建 3D 单位 + billboard HP 条
+- **BoardView3D.gd**：新文件，`class_name BoardView3D`，extends Node3D，完整 3D 棋盘视图，信号接口与 BoardView(2D) 对齐
+- **SubViewport 嵌入**：通过 SubViewportContainer + SubViewport 将 3D 场景嵌入 2D UI 树
+- **F5 切换 2D/3D**：运行时按 F5 键切换视图模式
+- **3D 相机系统**：透视相机（55° 俯视），平滑跟随 + 鼠标拖拽平移 + 滚轮缩放
+- **3D 射线检测**：地面平面射线交叉实现鼠标→格子映射
+- **3D 高亮系统**：半透明薄片叠层显示移动/攻击/召唤高亮
+- **3D 逐格移动动画**：Tween 驱动 Vector3 插值
+- **赛博朋克 3D 光照**：DirectionalLight3D（冷调光）+ WorldEnvironment（暗色背景+辉光+ACES 色调映射）
+
+### 修改
+- Main.gd: 新增 `_use_3d` 标志 + `_active_view()` duck typing 路由 + `_reset_drag_offset()` 兼容方法
+- Main.gd: 新增 `_setup_3d_view()` 初始化 SubViewport + BoardView3D + 信号绑定
+- Main.gd: 新增 `toggle_3d_view()` + `_input()` F5 快捷键
+- Main.gd: 所有 ~40 处 `_board_view.` 调用替换为 `_active_view().` 路由
+- Main.gd: 召唤演出、拖拽偏移等 2D-specific 代码用 `_use_3d` 守卫
+- DiceDebugPanel: 版本标记 → v0.1.71
+
+### 架构说明
+- **不修改核心逻辑文件**：BattleFlowController、CardBattleController、BoardManager、UnitManager 零改动
+- **duck typing 路由**：BoardView(2D) 和 BoardView3D(3D) 共享信号名和方法名，Main.gd 通过 `_active_view()` 无类型返回实现统一路由
+- **2D 始终可用**：`_use_3d` 默认 false，2D 为生产模式，3D 为实验预览
+- **3D 反馈方法暂为桩**：play_attack_feedback 等 3D 版暂返回空，后续迭代补充粒子/飘字
+
+### 备注
+- 4 个新文件均在 `Scripts/UI3D/` 目录下
+- BoardView3D 内嵌于 SubViewport（1280x720），由 SubViewportContainer 显示
+- 3D 格子使用 BoxMesh（CELL_SIZE=2.0），高台格额外抬高 0.4
+- 3D 单位使用 CapsuleMesh（玩家蓝）/ CylinderMesh（敌方红），发光色匹配 CyberStyle
+- 3D 模式下鼠标事件通过 Main._input() 转发给 BoardView3D.handle_input()
+
 ## v0.1.70 - 2026-03-31
 
 ### 新增
