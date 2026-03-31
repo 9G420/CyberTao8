@@ -1,17 +1,17 @@
 extends RefCounted
 class_name IsoTileRenderer
 
-## 等距棋盘贴图渲染器（v0.1.59 全屏等距棋盘 + 高度堆叠）
+## 等距棋盘贴图渲染器（v0.1.60 相机跟随 + 全新素材）
 ## 负责：贴图加载/缓存、格坐标↔屏幕坐标转换、等距贴图绘制
 ## class_name 全局注册，BoardView 直接调用静态方法
 
-# --- 等距参数（v0.1.59：放大至全屏 1280x720）---
-const TILE_W: int = 144			# 菱形宽度（像素）
-const TILE_H_DIAMOND: int = 72	# 菱形高度 = TILE_W / 2
-const TILE_H_HALF: int = 36	# 菱形半高 = 格子行步进
-const TILE_FULL_H: int = 144	# 普通贴图显示完整高度（含方块体）
-const TILE_ELEVATED_H: int = 192	# 高起贴图显示高度（含突起方块）
-const ELEVATION_OFFSET: int = 48	# 高起贴图额外向上偏移
+# --- 等距参数（v0.1.60：放大至超出视口，配合相机跟随）---
+const TILE_W: int = 192			# 菱形宽度（像素）
+const TILE_H_DIAMOND: int = 96	# 菱形高度 = TILE_W / 2
+const TILE_H_HALF: int = 48	# 菱形半高 = 格子行步进
+const TILE_FULL_H: int = 192	# 普通贴图显示完整高度（含方块体）
+const TILE_ELEVATED_H: int = 256	# 高起贴图显示高度（含突起方块）
+const ELEVATION_OFFSET: int = 64	# 高起贴图额外向上偏移
 const GRID_SIZE: int = 8
 
 # --- 需要高起渲染的 tile key 集合 ---
@@ -23,19 +23,19 @@ const ELEVATED_KEYS: Array[String] = [
 static var _textures: Dictionary = {}
 static var _loaded: bool = false
 
-# --- 贴图路径映射（v0.1.59：特殊格使用 AI 生成的高起贴图）---
+# --- 贴图路径映射（v0.1.60：全新 AI 生成素材）---
 const TILE_PATHS: Dictionary = {
-	"normal_light": "res://Assets/Tiles/普通格（浅色）.png",
-	"normal_dark": "res://Assets/Tiles/普通格（深色）.png",
-	"high_ground": "res://Assets/Tiles/high_ground_elevated.png",
-	"trap": "res://Assets/Tiles/陷阱格.png",
-	"encounter": "res://Assets/Tiles/encounter_elevated.png",
-	"heal": "res://Assets/Tiles/heal_elevated.png",
-	"item": "res://Assets/Tiles/item_elevated.png",
-	"shop": "res://Assets/Tiles/shop_elevated.png",
-	"chest": "res://Assets/Tiles/chest_elevated.png",
-	"event": "res://Assets/Tiles/event_tile.png",
-	"portal": "res://Assets/Tiles/portal_tile.png",
+	"normal_light": "res://Assets/Tiles/normal_light.png",
+	"normal_dark": "res://Assets/Tiles/normal_dark.png",
+	"high_ground": "res://Assets/Tiles/high_ground.png",
+	"trap": "res://Assets/Tiles/trap.png",
+	"encounter": "res://Assets/Tiles/encounter.png",
+	"heal": "res://Assets/Tiles/heal.png",
+	"item": "res://Assets/Tiles/item.png",
+	"shop": "res://Assets/Tiles/shop.png",
+	"chest": "res://Assets/Tiles/chest.png",
+	"event": "res://Assets/Tiles/event.png",
+	"portal": "res://Assets/Tiles/portal.png",
 }
 
 static func _ensure_loaded() -> void:
@@ -54,6 +54,15 @@ static func is_elevated(tile_key: String) -> bool:
 		if k == tile_key:
 			return true
 	return false
+
+# --- 相机跟随：根据目标格子计算 iso_origin ---
+
+## 计算使指定格子处于屏幕中心的 iso_origin
+static func calc_origin_for_cell(cell: Vector2i, screen_center: Vector2) -> Vector2:
+	# 反推 origin 使 grid_to_screen(cell.x, cell.y, origin) == screen_center
+	var ox: float = screen_center.x - float(cell.x - cell.y) * float(TILE_W) * 0.5
+	var oy: float = screen_center.y - float(cell.x + cell.y) * float(TILE_H_HALF)
+	return Vector2(ox, oy)
 
 # --- 坐标转换 ---
 
@@ -85,10 +94,8 @@ static func diamond_points(center: Vector2, shrink: float = 0.0) -> PackedVector
 # --- 贴图绘制 ---
 
 ## 按 painter's algorithm 顺序绘制整张棋盘基础贴图
-## board_mgr 用于查询格子类型，决定使用哪张贴图
 static func draw_board(canvas: CanvasItem, origin: Vector2, board_mgr: Node) -> void:
 	_ensure_loaded()
-	# 按 depth = gx+gy 从后向前绘制（painter's algorithm）
 	for depth in range(GRID_SIZE * 2 - 1):
 		var gx_min: int = max(0, depth - GRID_SIZE + 1)
 		var gx_max: int = min(GRID_SIZE - 1, depth)
@@ -107,14 +114,12 @@ static func _draw_single_tile(canvas: CanvasItem, gx: int, gy: int, tile_key: St
 	var center: Vector2 = grid_to_screen(gx, gy, origin)
 	var elevated: bool = is_elevated(tile_key)
 	if elevated:
-		# 高起贴图：更大绘制区域 + 向上偏移
 		var draw_pos: Vector2 = Vector2(
 			center.x - float(TILE_W) * 0.5,
 			center.y - float(TILE_H_HALF) - float(ELEVATION_OFFSET)
 		)
 		canvas.draw_texture_rect(tex, Rect2(draw_pos, Vector2(TILE_W, TILE_ELEVATED_H)), false)
 	else:
-		# 普通贴图
 		var draw_pos: Vector2 = Vector2(
 			center.x - float(TILE_W) * 0.5,
 			center.y - float(TILE_H_HALF)
@@ -126,7 +131,6 @@ static func _get_tile_key(gx: int, gy: int, board_mgr: Node) -> String:
 	var cell: Vector2i = Vector2i(gx, gy)
 	if board_mgr == null:
 		return "normal_dark" if (gx + gy) % 2 == 0 else "normal_light"
-	# 优先级：传送门 > 遭遇 > 回复 > 商店 > 宝箱 > 道具 > 事件 > 地形 > 普通
 	if board_mgr.portal_cells.has(cell):
 		return "portal"
 	if board_mgr.encounter_cells.has(cell):
@@ -147,24 +151,20 @@ static func _get_tile_key(gx: int, gy: int, board_mgr: Node) -> String:
 			return "high_ground"
 		if ttype == "trap":
 			return "trap"
-	# 普通格：棋盘交替色
 	return "normal_dark" if (gx + gy) % 2 == 0 else "normal_light"
 
 # --- 叠层绘制辅助 ---
 
-## 绘制菱形高亮（半透明填充 + 边框）
-static func draw_diamond_highlight(canvas: CanvasItem, center: Vector2, fill_color: Color, border_color: Color, shrink: float = 6.0) -> void:
+static func draw_diamond_highlight(canvas: CanvasItem, center: Vector2, fill_color: Color, border_color: Color, shrink: float = 8.0) -> void:
 	var pts: PackedVector2Array = diamond_points(center, shrink)
 	canvas.draw_colored_polygon(pts, fill_color)
-	# 边框
 	if border_color.a > 0.01:
 		for i in range(4):
 			canvas.draw_line(pts[i], pts[(i + 1) % 4], border_color, 2.0)
 
-## 绘制菱形边框 L 角标（移动高亮用）
-static func draw_diamond_corners(canvas: CanvasItem, center: Vector2, col: Color, shrink: float = 6.0) -> void:
+static func draw_diamond_corners(canvas: CanvasItem, center: Vector2, col: Color, shrink: float = 8.0) -> void:
 	var pts: PackedVector2Array = diamond_points(center, shrink)
-	var frac: float = 0.25  # 角标长度占边长比例
+	var frac: float = 0.25
 	for i in range(4):
 		var a: Vector2 = pts[i]
 		var b: Vector2 = pts[(i + 1) % 4]

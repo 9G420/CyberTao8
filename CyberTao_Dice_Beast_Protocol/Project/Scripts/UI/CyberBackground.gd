@@ -96,8 +96,7 @@ func _draw() -> void:
 	_draw_gradient(vp_size)
 	_draw_grid(vp_size, t_sec)
 	_draw_scan_line(vp_size, t_sec)
-	_draw_board_glow(t_sec)
-	_draw_corner_marks()
+	# v0.1.60：相机跟随模式下不再绘制棋盘边框和角标（棋盘超出视口）
 
 # --- 绘制子模块 ---
 

@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.59
+**当前版本**: v0.1.60
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.59）
+### 2.2 当前完成状态总览（v0.1.60）
 
 **棋盘走位层（全部稳定）**
 
@@ -123,6 +123,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 层间难度递增（current_floor缩放敌方HP/ATK） | v0.1.57 | 稳定 |
 | 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 | 稳定 |
 | 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 | 稳定 |
+| 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -206,10 +207,10 @@ CardBattleController（卡牌层独立状态机）         ~540行
 └── 状态：IDLE/PLAYER_TURN/ENEMY_TURN/VICTORY/DEFEAT/REWARD_SELECT
 
 UI层
-├── BoardView            — 棋盘渲染+点击交互+反馈动画    ~340行（v0.1.59 全屏等距化）
+├── BoardView            — 棋盘渲染+点击交互+反馈动画+相机跟随    ~475行（v0.1.60 相机跟随+边缘渐暗）
 ├── BoardCellRenderer    — 格子渲染静态类（class_name）   ~210行（Phase 6 后仅供参考）
-├── UnitRenderer         — 单位渲染（v0.1.59 全屏放大+等距适配）  ~270行
-├── IsoTileRenderer      — 等距贴图渲染器（class_name）   ~165行 ✅ v0.1.59 高起贴图
+├── UnitRenderer         — 单位渲染（v0.1.60 scale=1.1+等距适配）  ~270行
+├── IsoTileRenderer      — 等距贴图渲染器（class_name）   ~175行 ✅ v0.1.60 相机跟随+TILE_W=192
 ├── DiceRollAnimation    — 掷骰演出动画（class_name）     ~252行 ✅ v0.1.49 重写
 ├── BattleEffects        — 战斗特效静态类（class_name）   ~103行 ✅ Phase 2 新增
 ├── DiceDebugPanel       — 棋盘层HUD（含层数显示）       ~540行
@@ -229,7 +230,7 @@ System/
 ├── AudioManager        — 音效管理器（class_name注册，多通道SFX+BGM）  ~120行 ✅ v0.1.56 新增
 └── SFXGenerator        — 程序化音频引擎（28种音效+4种BGM循环）       ~1100行 ✅ v0.1.56 迁入
 
-Main.gd（场景组合+信号中转+音效触发）                      ~484行
+Main.gd（场景组合+信号中转+音效触发+相机跟随）                      ~500行
 ```
 
 ### 3.2 双层通信信号链
@@ -328,12 +329,13 @@ Main：                Scripts/Main.gd
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.59 Work Report，按优先级排列：
+以下任务来自 v0.1.60 Work Report，按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心）
 
 | 任务 | 说明 |
 |------|------|
+| **相机跟随平滑过渡** | Tween 插值 iso_origin，而非瞬间跳转 |
 | **商店格扩展** | 多选商品 + 独立 UI 面板 |
 
 ### 🟡 中优先级
@@ -352,6 +354,7 @@ Main：                Scripts/Main.gd
 
 | 任务 | 版本 |
 |------|------|
+| 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 |
 | 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 |
 | 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 |
 | 层间难度递增（current_floor缩放敌方HP/ATK） | v0.1.57 |

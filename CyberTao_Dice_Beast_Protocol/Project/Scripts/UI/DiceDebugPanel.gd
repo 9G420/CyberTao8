@@ -22,8 +22,8 @@ var encounter_title_label: Label
 var encounter_resolve_button: Button
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(232, 700)
-	size = Vector2(232, 700)
+	custom_minimum_size = Vector2(220, 680)
+	size = Vector2(220, 680)
 	_build_ui()
 
 func bind_battle_flow(next_battle_flow: Node) -> void:
@@ -94,16 +94,16 @@ func set_dice_animation(anim: DiceRollAnimation) -> void:
 func _build_ui() -> void:
 	# --- 半透明面板背景（叠加在棋盘上方）---
 	var bg_style := StyleBoxFlat.new()
-	bg_style.bg_color = Color(0.02, 0.02, 0.06, 0.75)
+	bg_style.bg_color = Color(0.02, 0.02, 0.06, 0.80)
 	bg_style.border_color = CyberStyle.BORDER_CYAN
 	bg_style.set_border_width_all(1)
-	bg_style.set_corner_radius_all(6)
+	bg_style.set_corner_radius_all(8)
 	add_theme_stylebox_override("panel", bg_style)
 
 	# --- 分隔线辅助 ---
 	var sep1 := ColorRect.new()
 	sep1.position = Vector2(12, 34)
-	sep1.size = Vector2(208, 1)
+	sep1.size = Vector2(196, 1)
 	sep1.color = Color(0.0, 0.7, 0.9, 0.25)
 	sep1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep1)
@@ -112,7 +112,7 @@ func _build_ui() -> void:
 	var title := Label.new()
 	title.text = "骰兽协议"
 	title.position = Vector2(0, 6)
-	title.size = Vector2(232, 24)
+	title.size = Vector2(220, 24)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 17)
 	title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
@@ -155,7 +155,7 @@ func _build_ui() -> void:
 	# --- 分隔线 ---
 	var sep2 := ColorRect.new()
 	sep2.position = Vector2(12, 78)
-	sep2.size = Vector2(208, 1)
+	sep2.size = Vector2(196, 1)
 	sep2.color = Color(0.0, 0.7, 0.9, 0.15)
 	sep2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep2)
@@ -238,7 +238,7 @@ func _build_ui() -> void:
 	# --- 分隔线 ---
 	var sep3 := ColorRect.new()
 	sep3.position = Vector2(12, 254)
-	sep3.size = Vector2(208, 1)
+	sep3.size = Vector2(196, 1)
 	sep3.color = Color(0.0, 0.7, 0.9, 0.15)
 	sep3.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep3)
@@ -275,8 +275,8 @@ func _build_ui() -> void:
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.59"
-	ver_label.position = Vector2(170, 680)
+	ver_label.text = "v0.1.60"
+	ver_label.position = Vector2(158, 660)
 	ver_label.size = Vector2(50, 14)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	ver_label.add_theme_font_size_override("font_size", 9)
