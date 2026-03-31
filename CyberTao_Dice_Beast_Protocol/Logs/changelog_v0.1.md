@@ -1,5 +1,10 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.71.1 - 2026-03-31 (hotfix)
+
+### 修复
+- **BoardView3D.gd**：`Environment.TONE_MAP_ACES` → `Environment.TONE_MAPPER_ACES`（Godot 4.x 正确枚举常量），修复 3D 视图解析错误导致无法运行
+
 ## v0.1.71 - 2026-03-31
 
 ### 新增
