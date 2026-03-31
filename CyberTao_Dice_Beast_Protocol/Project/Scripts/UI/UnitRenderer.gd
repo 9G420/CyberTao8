@@ -234,8 +234,8 @@ static func draw_affinity_star(c: CanvasItem, cell: Vector2i, cs: int, unit: Dic
 		var sy: float = cell.y * cs + 13
 		c.draw_string(font, Vector2(sx, sy), "*", HORIZONTAL_ALIGNMENT_LEFT, 14, 13, CyberStyle.NEON_GOLD)
 
-# --- 等距棋盘专用绘制（v0.1.58 Phase 6）---
-# 与 draw_full_unit 相同的角色剪影，但以屏幕中心点定位、缩小以适配菱形格
+# --- 等距棋盘专用绘制（v0.1.59 全屏棋盘 — 角色放大至清晰可见）---
+# 与 draw_full_unit 相同的角色剪影，但以屏幕中心点定位、放大以适配全屏菱形格
 
 static func draw_full_unit_iso(c: CanvasItem, center: Vector2, unit: Dictionary, is_selected: bool, pulse: float, idle_y: float, font: Font) -> void:
 	var owner: String = String(unit.get("owner", "player"))
@@ -244,18 +244,18 @@ static func draw_full_unit_iso(c: CanvasItem, center: Vector2, unit: Dictionary,
 	var hp: int = int(unit.get("hp", 1))
 	var max_hp: int = int(unit.get("max_hp", 1))
 	var hp_ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
-	var s: float = 0.55
+	var s: float = 0.9
 	var cx: float = center.x
-	var cy: float = center.y - 10.0 + idle_y
+	var cy: float = center.y - 16.0 + idle_y
 	if is_player:
 		_draw_player_char(c, Vector2(cx, cy), s, display_name, pulse)
 	else:
 		_draw_enemy_char(c, Vector2(cx, cy), s, display_name, pulse)
-	_draw_hp_bar(c, Vector2(center.x - 20.0, center.y + 10.0), 40.0, hp_ratio, is_player)
+	_draw_hp_bar(c, Vector2(center.x - 30.0, center.y + 14.0), 60.0, hp_ratio, is_player)
 	if is_selected:
 		var col: Color = CyberStyle.NEON_GOLD
 		var a: float = 0.5 + pulse * 0.4
-		c.draw_arc(Vector2(cx, cy), 16.0, 0, TAU, 16, Color(col.r, col.g, col.b, a), 2.0)
+		c.draw_arc(Vector2(cx, cy), 24.0, 0, TAU, 16, Color(col.r, col.g, col.b, a), 2.5)
 
 static func draw_affinity_star_iso(c: CanvasItem, center: Vector2, unit: Dictionary, board_mgr: Node, cell: Vector2i, font: Font) -> void:
 	var affinity: String = String(unit.get("terrain_affinity", ""))
@@ -269,4 +269,4 @@ static func draw_affinity_star_iso(c: CanvasItem, center: Vector2, unit: Diction
 	elif affinity == "trap" and board_mgr.get_terrain_type(cell) == "trap":
 		active = true
 	if active:
-		c.draw_string(font, Vector2(center.x + 14.0, center.y - 16.0), "*", HORIZONTAL_ALIGNMENT_LEFT, 14, 13, CyberStyle.NEON_GOLD)
+		c.draw_string(font, Vector2(center.x + 22.0, center.y - 24.0), "*", HORIZONTAL_ALIGNMENT_LEFT, 18, 16, CyberStyle.NEON_GOLD)

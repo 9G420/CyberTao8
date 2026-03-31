@@ -22,8 +22,8 @@ var encounter_title_label: Label
 var encounter_resolve_button: Button
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(280, 574)
-	size = Vector2(280, 574)
+	custom_minimum_size = Vector2(232, 700)
+	size = Vector2(232, 700)
 	_build_ui()
 
 func bind_battle_flow(next_battle_flow: Node) -> void:
@@ -92,13 +92,18 @@ func set_dice_animation(anim: DiceRollAnimation) -> void:
 		_dice_anim.animation_finished.connect(_on_dice_anim_finished)
 
 func _build_ui() -> void:
-	# --- 面板背景 ---
-	add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.BORDER_CYAN, 8))
+	# --- 半透明面板背景（叠加在棋盘上方）---
+	var bg_style := StyleBoxFlat.new()
+	bg_style.bg_color = Color(0.02, 0.02, 0.06, 0.75)
+	bg_style.border_color = CyberStyle.BORDER_CYAN
+	bg_style.set_border_width_all(1)
+	bg_style.set_corner_radius_all(6)
+	add_theme_stylebox_override("panel", bg_style)
 
 	# --- 分隔线辅助 ---
 	var sep1 := ColorRect.new()
-	sep1.position = Vector2(16, 38)
-	sep1.size = Vector2(248, 1)
+	sep1.position = Vector2(12, 34)
+	sep1.size = Vector2(208, 1)
 	sep1.color = Color(0.0, 0.7, 0.9, 0.25)
 	sep1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep1)
@@ -106,51 +111,51 @@ func _build_ui() -> void:
 	# --- 标题 ---
 	var title := Label.new()
 	title.text = "骰兽协议"
-	title.position = Vector2(0, 8)
-	title.size = Vector2(280, 28)
+	title.position = Vector2(0, 6)
+	title.size = Vector2(232, 24)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", 17)
 	title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
 	add_child(title)
 
 	# --- 回合 + 阶段 + 选中 ---
 	round_label = Label.new()
 	round_label.text = "回合：1"
-	round_label.position = Vector2(20, 44)
-	round_label.size = Vector2(80, 20)
-	round_label.add_theme_font_size_override("font_size", 14)
+	round_label.position = Vector2(12, 40)
+	round_label.size = Vector2(60, 18)
+	round_label.add_theme_font_size_override("font_size", 12)
 	round_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	add_child(round_label)
 
 	floor_label = Label.new()
 	floor_label.text = "层数：1/3"
-	floor_label.position = Vector2(100, 44)
-	floor_label.size = Vector2(40, 20)
-	floor_label.add_theme_font_size_override("font_size", 14)
+	floor_label.position = Vector2(72, 40)
+	floor_label.size = Vector2(50, 18)
+	floor_label.add_theme_font_size_override("font_size", 12)
 	floor_label.add_theme_color_override("font_color", CyberStyle.ACCENT_MAGENTA)
 	add_child(floor_label)
 
 	phase_label = Label.new()
 	phase_label.text = "阶段：玩家掷骰"
-	phase_label.position = Vector2(140, 44)
-	phase_label.size = Vector2(130, 20)
+	phase_label.position = Vector2(122, 40)
+	phase_label.size = Vector2(102, 18)
 	phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	phase_label.add_theme_font_size_override("font_size", 13)
+	phase_label.add_theme_font_size_override("font_size", 11)
 	phase_label.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
 	add_child(phase_label)
 
 	selected_label = Label.new()
 	selected_label.text = "选中：无"
-	selected_label.position = Vector2(20, 66)
-	selected_label.size = Vector2(240, 20)
-	selected_label.add_theme_font_size_override("font_size", 13)
+	selected_label.position = Vector2(12, 58)
+	selected_label.size = Vector2(208, 18)
+	selected_label.add_theme_font_size_override("font_size", 11)
 	selected_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
 	add_child(selected_label)
 
 	# --- 分隔线 ---
 	var sep2 := ColorRect.new()
-	sep2.position = Vector2(16, 88)
-	sep2.size = Vector2(248, 1)
+	sep2.position = Vector2(12, 78)
+	sep2.size = Vector2(208, 1)
 	sep2.color = Color(0.0, 0.7, 0.9, 0.15)
 	sep2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep2)
@@ -158,18 +163,18 @@ func _build_ui() -> void:
 	# --- 操作按钮区 ---
 	roll_button = Button.new()
 	roll_button.text = "掷 骰"
-	roll_button.position = Vector2(16, 96)
-	roll_button.size = Vector2(248, 38)
-	roll_button.add_theme_font_size_override("font_size", 15)
+	roll_button.position = Vector2(12, 84)
+	roll_button.size = Vector2(208, 34)
+	roll_button.add_theme_font_size_override("font_size", 14)
 	roll_button.pressed.connect(_on_roll_pressed)
 	CyberStyle.style_button(roll_button, "orange")
 	add_child(roll_button)
 
 	end_turn_button = Button.new()
 	end_turn_button.text = "结束回合"
-	end_turn_button.position = Vector2(16, 140)
-	end_turn_button.size = Vector2(248, 36)
-	end_turn_button.add_theme_font_size_override("font_size", 14)
+	end_turn_button.position = Vector2(12, 122)
+	end_turn_button.size = Vector2(208, 32)
+	end_turn_button.add_theme_font_size_override("font_size", 13)
 	end_turn_button.disabled = true
 	end_turn_button.pressed.connect(_on_end_turn_pressed)
 	CyberStyle.style_button(end_turn_button, "cyan")
@@ -177,27 +182,27 @@ func _build_ui() -> void:
 
 	var path_button := Button.new()
 	path_button.text = "召唤（需选中+显化）"
-	path_button.position = Vector2(16, 182)
-	path_button.size = Vector2(248, 32)
-	path_button.add_theme_font_size_override("font_size", 12)
+	path_button.position = Vector2(12, 158)
+	path_button.size = Vector2(208, 28)
+	path_button.add_theme_font_size_override("font_size", 11)
 	path_button.pressed.connect(_on_spawn_path_pressed)
 	CyberStyle.style_button(path_button, "cyan")
 	add_child(path_button)
 
 	var card_test_button := Button.new()
 	card_test_button.text = "测试战斗"
-	card_test_button.position = Vector2(16, 218)
-	card_test_button.size = Vector2(120, 32)
-	card_test_button.add_theme_font_size_override("font_size", 12)
+	card_test_button.position = Vector2(12, 190)
+	card_test_button.size = Vector2(100, 28)
+	card_test_button.add_theme_font_size_override("font_size", 11)
 	card_test_button.pressed.connect(_on_test_card_battle_pressed)
 	CyberStyle.style_button(card_test_button, "orange")
 	add_child(card_test_button)
 
 	var deck_view_button := Button.new()
 	deck_view_button.text = "查看牌组"
-	deck_view_button.position = Vector2(142, 218)
-	deck_view_button.size = Vector2(122, 32)
-	deck_view_button.add_theme_font_size_override("font_size", 12)
+	deck_view_button.position = Vector2(118, 190)
+	deck_view_button.size = Vector2(102, 28)
+	deck_view_button.add_theme_font_size_override("font_size", 11)
 	deck_view_button.pressed.connect(_on_deck_view_pressed)
 	CyberStyle.style_button(deck_view_button, "cyan")
 	add_child(deck_view_button)
@@ -205,35 +210,35 @@ func _build_ui() -> void:
 	# --- Crest 使用按钮（护持/术式/机巧） ---
 	var defend_btn := Button.new()
 	defend_btn.text = "护持(DEF+1)"
-	defend_btn.position = Vector2(16, 256)
-	defend_btn.size = Vector2(78, 28)
-	defend_btn.add_theme_font_size_override("font_size", 10)
+	defend_btn.position = Vector2(12, 222)
+	defend_btn.size = Vector2(68, 26)
+	defend_btn.add_theme_font_size_override("font_size", 9)
 	defend_btn.pressed.connect(_on_defend_crest_pressed)
 	CyberStyle.style_button(defend_btn, "orange")
 	add_child(defend_btn)
 
 	var skill_btn := Button.new()
 	skill_btn.text = "术式(HP+2)"
-	skill_btn.position = Vector2(100, 256)
-	skill_btn.size = Vector2(78, 28)
-	skill_btn.add_theme_font_size_override("font_size", 10)
+	skill_btn.position = Vector2(84, 222)
+	skill_btn.size = Vector2(68, 26)
+	skill_btn.add_theme_font_size_override("font_size", 9)
 	skill_btn.pressed.connect(_on_skill_crest_pressed)
 	CyberStyle.style_button(skill_btn, "cyan")
 	add_child(skill_btn)
 
 	var trick_btn := Button.new()
 	trick_btn.text = "机巧(转化)"
-	trick_btn.position = Vector2(184, 256)
-	trick_btn.size = Vector2(80, 28)
-	trick_btn.add_theme_font_size_override("font_size", 10)
+	trick_btn.position = Vector2(156, 222)
+	trick_btn.size = Vector2(64, 26)
+	trick_btn.add_theme_font_size_override("font_size", 9)
 	trick_btn.pressed.connect(_on_trick_crest_pressed)
 	CyberStyle.style_button(trick_btn, "cyan")
 	add_child(trick_btn)
 
 	# --- 分隔线 ---
 	var sep3 := ColorRect.new()
-	sep3.position = Vector2(16, 290)
-	sep3.size = Vector2(248, 1)
+	sep3.position = Vector2(12, 254)
+	sep3.size = Vector2(208, 1)
 	sep3.color = Color(0.0, 0.7, 0.9, 0.15)
 	sep3.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep3)
@@ -241,10 +246,10 @@ func _build_ui() -> void:
 	# --- 掷骰结果 ---
 	roll_label = Label.new()
 	roll_label.text = "上次掷骰：-"
-	roll_label.position = Vector2(16, 296)
-	roll_label.size = Vector2(248, 40)
+	roll_label.position = Vector2(12, 260)
+	roll_label.size = Vector2(208, 36)
 	roll_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	roll_label.add_theme_font_size_override("font_size", 13)
+	roll_label.add_theme_font_size_override("font_size", 12)
 	roll_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	add_child(roll_label)
 
@@ -252,55 +257,55 @@ func _build_ui() -> void:
 
 	# --- Crest 资源池 ---
 	crest_label = RichTextLabel.new()
-	crest_label.position = Vector2(16, 340)
-	crest_label.size = Vector2(248, 140)
+	crest_label.position = Vector2(12, 300)
+	crest_label.size = Vector2(208, 130)
 	crest_label.scroll_active = false
-	crest_label.add_theme_font_size_override("normal_font_size", 13)
+	crest_label.add_theme_font_size_override("normal_font_size", 12)
 	add_child(crest_label)
 
 	# --- 敌方意图 ---
 	enemy_intent_label = Label.new()
 	enemy_intent_label.text = ""
-	enemy_intent_label.position = Vector2(16, 486)
-	enemy_intent_label.size = Vector2(248, 40)
+	enemy_intent_label.position = Vector2(12, 436)
+	enemy_intent_label.size = Vector2(208, 36)
 	enemy_intent_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	enemy_intent_label.add_theme_font_size_override("font_size", 13)
+	enemy_intent_label.add_theme_font_size_override("font_size", 12)
 	enemy_intent_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	add_child(enemy_intent_label)
 
 	# --- 版本标记 ---
 	var ver_label := Label.new()
-	ver_label.text = "v0.1.50"
-	ver_label.position = Vector2(210, 554)
-	ver_label.size = Vector2(60, 16)
+	ver_label.text = "v0.1.59"
+	ver_label.position = Vector2(170, 680)
+	ver_label.size = Vector2(50, 14)
 	ver_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	ver_label.add_theme_font_size_override("font_size", 10)
+	ver_label.add_theme_font_size_override("font_size", 9)
 	ver_label.add_theme_color_override("font_color", CyberStyle.TEXT_MUTED)
 	add_child(ver_label)
 
 	# --- 遭遇战斗占位面板（默认隐藏） ---
 	encounter_panel = Panel.new()
-	encounter_panel.position = Vector2(8, 96)
-	encounter_panel.size = Vector2(264, 140)
+	encounter_panel.position = Vector2(6, 84)
+	encounter_panel.size = Vector2(220, 120)
 	encounter_panel.visible = false
 	encounter_panel.add_theme_stylebox_override("panel", CyberStyle.make_encounter_panel_bg())
 	add_child(encounter_panel)
 
 	encounter_title_label = Label.new()
 	encounter_title_label.text = ""
-	encounter_title_label.position = Vector2(10, 12)
-	encounter_title_label.size = Vector2(244, 50)
+	encounter_title_label.position = Vector2(8, 10)
+	encounter_title_label.size = Vector2(204, 44)
 	encounter_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	encounter_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	encounter_title_label.add_theme_font_size_override("font_size", 17)
+	encounter_title_label.add_theme_font_size_override("font_size", 15)
 	encounter_title_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
 	encounter_panel.add_child(encounter_title_label)
 
 	encounter_resolve_button = Button.new()
 	encounter_resolve_button.text = "卡牌战斗进行中..."
-	encounter_resolve_button.position = Vector2(22, 80)
-	encounter_resolve_button.size = Vector2(220, 42)
-	encounter_resolve_button.add_theme_font_size_override("font_size", 15)
+	encounter_resolve_button.position = Vector2(16, 66)
+	encounter_resolve_button.size = Vector2(188, 38)
+	encounter_resolve_button.add_theme_font_size_override("font_size", 14)
 	encounter_resolve_button.disabled = true
 	CyberStyle.style_button(encounter_resolve_button, "orange")
 	encounter_panel.add_child(encounter_resolve_button)

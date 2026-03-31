@@ -1,5 +1,32 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.59 - 2026-03-31
+
+### 新增
+- **全屏等距棋盘 + 叠层 UI + 高起贴图 + 角色放大**
+- 8张 AI 生成高起贴图（Nano Banana Pro）：高台/遭遇/回复/商店/宝箱/道具/事件/传送门
+- IsoTileRenderer 高起渲染：TILE_ELEVATED_H=192 + ELEVATION_OFFSET=48，特殊格自动堆叠突起
+- IsoTileRenderer 新增贴图路径：event_tile.png / portal_tile.png（事件格和传送门专属贴图）
+- IsoTileRenderer._get_tile_key 新增 portal/event 优先级分支
+
+### 修改
+- IsoTileRenderer 等距参数放大 2x：TILE_W 72→144, TILE_H_HALF 18→36, TILE_FULL_H 72→144
+- BoardView 全屏化：size 576×350 → 1280×720, iso_origin (288,30)→(640,72)
+- BoardView 叠层简化：事件格/传送门已有专属贴图，移除程序化菱形叠层
+- BoardView 反馈飘字字号放大（18→22/24），偏移适配大格子
+- UnitRenderer 等距角色放大：scale 0.55→0.9，HP条宽 40→60，选中环半径 16→24
+- Main.gd 布局重构：棋盘 (0,0) 全屏，DiceDebugPanel 右侧半透明叠加 (1040,8)
+- Main.gd 移除标题/副标题/提示条（全屏棋盘无需占位标题栏）
+- DiceDebugPanel 半透明叠加模式：宽度 280→232，StyleBoxFlat bg_color alpha=0.75
+- DiceDebugPanel 版本标记更新 v0.1.50→v0.1.59
+- CyberBackground 覆盖全屏 (0,0)→(1280,720)
+- 掷骰演出中心 (328,382)→(640,360)
+
+### 备注
+- 旧平面贴图文件保留在 Assets/Tiles/ 但不再被引用（trap 除外）
+- BoardCellRenderer 不再被 BoardView 引用
+- DiceDebugPanel 使用独立 StyleBoxFlat 代替 CyberStyle.make_panel_bg 以实现半透明
+
 ## v0.1.58 - 2026-03-31
 
 ### 新增

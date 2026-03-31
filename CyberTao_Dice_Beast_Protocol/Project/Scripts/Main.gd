@@ -46,52 +46,24 @@ func _ready() -> void:
 
 func _build_debug_view() -> void:
 	var cyber_bg := CyberBackground.new()
-	cyber_bg.set_board_rect(Vector2(40, 94), Vector2(576, 350))
+	cyber_bg.set_board_rect(Vector2(0, 0), Vector2(1280, 720))
 	add_child(cyber_bg)
 
-	var title := Label.new()
-	title.text = "CyberTao：骰兽协议"
-	title.position = Vector2(0, 4)
-	title.size = Vector2(1280, 42)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(title)
-
-	var subtitle := Label.new()
-	subtitle.text = "原型战斗沙盒 — 掷骰 / 移动 / 攻击 / 遭遇 / 卡牌战斗"
-	subtitle.position = Vector2(0, 44)
-	subtitle.size = Vector2(1280, 22)
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 14)
-	subtitle.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
-	subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(subtitle)
-
-	var hint := Label.new()
-	hint.text = "青色=移动 红色=攻击 紫色=召唤 | 金色=高台 暗红=陷阱 绿色=道具 橙红=遭遇 深红=BOSS 蓝白=回复 黄紫=事件 青绿=商店 金琥珀=宝箱 | *=适性激活"
-	hint.position = Vector2(0, 66)
-	hint.size = Vector2(1280, 20)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size", 12)
-	hint.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(hint)
-
+	# 棋盘占满全屏
 	_board_view = BoardView.new()
-	_board_view.position = Vector2(40, 94)
+	_board_view.position = Vector2(0, 0)
 	add_child(_board_view)
 
+	# 右侧操作面板（半透明叠加在棋盘上方）
 	_dice_panel = DiceDebugPanel.new()
-	_dice_panel.position = Vector2(660, 94)
+	_dice_panel.position = Vector2(1040, 8)
 	add_child(_dice_panel)
 
 	var settings_btn := Button.new()
 	settings_btn.text = "设置"
-	settings_btn.position = Vector2(1180, 4)
-	settings_btn.size = Vector2(80, 32)
-	settings_btn.add_theme_font_size_override("font_size", 13)
+	settings_btn.position = Vector2(8, 8)
+	settings_btn.size = Vector2(72, 28)
+	settings_btn.add_theme_font_size_override("font_size", 12)
 	settings_btn.pressed.connect(_on_settings_pressed)
 	CyberStyle.style_button(settings_btn, "cyan")
 	add_child(settings_btn)
@@ -115,19 +87,19 @@ func _build_debug_view() -> void:
 	add_child(_deck_view_panel)
 
 	_result_label = Label.new()
-	_result_label.position = Vector2(0, 44)
-	_result_label.size = Vector2(1280, 40)
+	_result_label.position = Vector2(0, 320)
+	_result_label.size = Vector2(1280, 60)
 	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_result_label.add_theme_font_size_override("font_size", 32)
+	_result_label.add_theme_font_size_override("font_size", 36)
 	_result_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_result_label.visible = false
 	add_child(_result_label)
 
 	_restart_btn = Button.new()
 	_restart_btn.text = "重新开始"
-	_restart_btn.position = Vector2(560, 4)
-	_restart_btn.size = Vector2(160, 36)
-	_restart_btn.add_theme_font_size_override("font_size", 14)
+	_restart_btn.position = Vector2(540, 384)
+	_restart_btn.size = Vector2(200, 40)
+	_restart_btn.add_theme_font_size_override("font_size", 16)
 	_restart_btn.visible = false
 	_restart_btn.pressed.connect(_on_restart_pressed)
 	CyberStyle.style_button(_restart_btn, "orange")
@@ -135,7 +107,7 @@ func _build_debug_view() -> void:
 
 	# 掷骰演出（全屏居中等距 3D 骰子，覆盖在最上层）
 	_dice_anim = DiceRollAnimation.new()
-	_dice_anim.set_board_center(Vector2(328, 382))
+	_dice_anim.set_board_center(Vector2(640, 360))
 	add_child(_dice_anim)
 
 	# 百叶窗过渡动画（CanvasLayer 10，覆盖一切）
