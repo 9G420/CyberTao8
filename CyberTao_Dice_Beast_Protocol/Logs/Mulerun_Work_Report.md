@@ -54,6 +54,13 @@
 - BFC 中敌方全部行动完毕后，先等 0.6 秒再发射 enemy_turn_ended 信号，再等 1.2 秒才推进到下一个玩家回合
 - 总共约 2.6 秒的缓冲（0.6 + 0.8 + 1.2），避免生硬跳转
 
+### 3. 敌方掷骰等待动画完成
+
+- 新增 `dice_animation_done` 信号到 BFC
+- Main.gd 连接 `_dice_anim.animation_finished` → 转发 `_battle_flow.dice_animation_done.emit()`
+- BFC._start_enemy_turn() 中掷骰后改为 `await dice_animation_done` + 0.3s 短缓冲，替代原来固定 0.8 秒等待
+- 修复了敌方掷骰动画（约 4 秒）还没播完就开始执行敌方行动的问题
+
 ### 3. 相机过渡速度降低
 
 - CAMERA_LERP_SPEED 从 8.0 降至 4.5
@@ -64,7 +71,7 @@
 
 ## 接口变更
 
-- 无新增接口
+- 新增 `BattleFlowController.dice_animation_done` 信号（无参数），由 Main 在掷骰动画结束后转发
 - BattleFlowController._execute_enemy_actions() 现在在敌方移动后发射已有的 move_completed 信号
 
 ---

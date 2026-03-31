@@ -27,6 +27,7 @@ signal boss_unlocked(cell: Vector2i)
 signal portal_spawned(cell: Vector2i)
 signal hero_warped(unit_id: String, target_cell: Vector2i)
 signal enemy_turn_starting(first_enemy_id: String)
+signal dice_animation_done
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -261,7 +262,9 @@ func _start_enemy_turn() -> void:
 	current_phase = BattlePhase.ENEMY_ROLL
 	emit_signal("phase_changed", _phase_name(current_phase))
 	dice_manager.roll_turn_dice()
-	await get_tree().create_timer(0.8).timeout
+	# v0.1.65：等待掷骰动画真正结束（由 Main 转发 dice_animation_done 信号）
+	await dice_animation_done
+	await get_tree().create_timer(0.3).timeout
 	if is_battle_over():
 		return
 	_execute_enemy_actions()

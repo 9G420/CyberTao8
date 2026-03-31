@@ -149,6 +149,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.hero_warped.connect(_on_hero_warped)
 	# v0.1.64：敌方回合开始前将相机给到敌方单位
 	_battle_flow.enemy_turn_starting.connect(_on_enemy_turn_starting)
+	# v0.1.65：掷骰动画结束后通知 BFC 可以继续
+	_dice_anim.animation_finished.connect(_on_dice_anim_finished_forward)
 	# 移动完成后更新相机（v0.1.60）
 	_battle_flow.move_completed.connect(_on_move_completed_camera)
 	# 卡牌战斗控制器信号
@@ -473,6 +475,10 @@ func _on_deck_view_requested() -> void:
 ## 掷骰音效回调
 func _on_dice_rolled_sfx(_results: Array[String], _crest_pool: Dictionary) -> void:
 	_audio.play_sfx("dice_roll")
+
+## v0.1.65：掷骰动画结束后转发信号给 BFC，以便敌方回合等待动画完成
+func _on_dice_anim_finished_forward(_results: Array[String], _crest_pool: Dictionary) -> void:
+	_battle_flow.dice_animation_done.emit()
 
 ## 卡牌层音效回调
 func _on_card_played_sfx(_card_index: int, _card_name: String, _effect_text: String) -> void:
