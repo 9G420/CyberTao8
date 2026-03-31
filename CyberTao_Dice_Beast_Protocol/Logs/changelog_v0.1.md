@@ -1,5 +1,28 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.68 - 2026-03-31
+
+### 新增
+- **卡牌拖拽出牌系统**：替代原有点击出牌，mousedown 开始拖拽 → mousemove 跟随手指 → mouseup 在上半区（y<380）释放即打出
+- **出牌区视觉提示**：拖拽时顶部出现半透明蓝色区域 + "拖到此处出牌" 文字，卡牌进入区域时高亮加深
+- **即时伤害反馈**：每次出牌后立即刷新 HP 条（不再等到结束回合），同时显示伤害/治疗飘字
+- **伤害飘字系统**：`_spawn_effect_popup()` 方法，红色上浮 "-X" 伤害 / 绿色 "+X" 治疗，0.7s Tween 动画后自动消失
+- **敌方行动即时反馈**：敌方行动后也立即刷新 HP 条 + 伤害飘字
+
+### 修改
+- CardBattlePanel._create_battle_card: 移除 callback 参数，gui_input 从直接调用 play_card 改为启动拖拽
+- CardBattlePanel._on_card_played: 新增 `_refresh_status()` 调用 + HP 差值比对 + 飘字生成
+- CardBattlePanel._on_hand_changed: 新增 `_cancel_drag()` 防止手牌重建时拖拽残留
+- CardBattlePanel._on_enemy_acted: 新增即时 HP 刷新 + 飘字
+- CardBattlePanel._on_battle_started: 初始化 HP 追踪变量
+- CardBattlePanel hover 回调: 拖拽进行时抑制 hover 缩放动画
+- DiceDebugPanel: 版本标记 → v0.1.68
+
+### 备注
+- 拖拽使用 `_input()` override 而非 `_gui_input`，确保鼠标离开卡牌区域后仍能跟踪
+- HP 追踪变量 `_hp_before_enemy/_hp_before_player` 在出牌前快照、出牌后比对，用于计算飘字数值
+- 敌方行动后也更新追踪变量，防止连续行动时飘字数值累积错误
+
 ## v0.1.67 - 2026-03-31
 
 ### 新增

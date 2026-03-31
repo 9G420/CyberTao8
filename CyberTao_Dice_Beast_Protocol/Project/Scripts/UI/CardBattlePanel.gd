@@ -28,6 +28,18 @@ var _char_draw_layer: Control  # 角色绘制层（用 _draw 渲染角色）
 var _pulse_time: float = 0.0
 var _current_encounter_id: String = ""
 
+# v0.1.68：拖拽出牌系统
+var _drag_index: int = -1
+var _drag_widget: Panel = null
+var _drag_offset: Vector2 = Vector2.ZERO
+var _drag_origin_pos: Vector2 = Vector2.ZERO
+var _drag_origin_rot: float = 0.0
+var _play_zone: ColorRect = null
+const PLAY_ZONE_Y: float = 380.0
+# v0.1.68：即时 HP 追踪（用于伤害飘字）
+var _hp_before_enemy: int = 0
+var _hp_before_player: int = 0
+
 # --- 扇形手牌参数 ---
 const FAN_RADIUS: float = 700.0
 const FAN_CARD_ANGLE: float = 6.0
@@ -75,6 +87,8 @@ func bind_controller(controller: CardBattleController) -> void:
 
 func _on_battle_started(player_hp: int, enemy_hp: int, enemy_name: String) -> void:
 	_current_encounter_id = _controller.encounter_id if _controller else ""
+	_hp_before_player = player_hp
+	_hp_before_enemy = enemy_hp
 	_log_label.text = "遭遇 " + enemy_name + "！抽牌并选择出牌。"
 	_end_turn_button.disabled = false
 	_flee_button.disabled = false
@@ -86,15 +100,40 @@ func _on_battle_started(player_hp: int, enemy_hp: int, enemy_name: String) -> vo
 	_refresh_status()
 
 func _on_hand_changed(new_hand: Array, cur_energy: int, max_e: int) -> void:
+	_cancel_drag()
 	_rebuild_fan_cards(new_hand, cur_energy)
 	_rebuild_container(_energy_container, CardRenderer.create_energy_dots(cur_energy, max_e))
 	_deck_label.text = "牌堆 " + str(_controller.get_draw_count()) + " | 弃牌 " + str(_controller.get_discard_count())
 
 func _on_card_played(_card_index: int, _card_name: String, effect_text: String) -> void:
 	_log_label.text = effect_text
+	# v0.1.68：即时刷新 HP + 伤害飘字
+	_refresh_status()
+	if _controller:
+		var enemy_dmg: int = _hp_before_enemy - _controller.enemy_hp
+		var player_dmg: int = _hp_before_player - _controller.player_hp
+		if enemy_dmg > 0:
+			_spawn_effect_popup("-" + str(enemy_dmg), Color(1.0, 0.3, 0.2), Vector2(1040, 60))
+		elif enemy_dmg < 0:
+			_spawn_effect_popup("+" + str(-enemy_dmg), Color(0.3, 1.0, 0.5), Vector2(1040, 60))
+		if player_dmg > 0:
+			_spawn_effect_popup("-" + str(player_dmg), Color(1.0, 0.3, 0.2), Vector2(160, 430))
+		elif player_dmg < 0:
+			_spawn_effect_popup("+" + str(-player_dmg), Color(0.3, 1.0, 0.5), Vector2(160, 430))
 
 func _on_enemy_acted(action_text: String) -> void:
 	_log_label.text = _log_label.text + "\n" + action_text
+	# v0.1.68：即时刷新 + 敌方行动伤害飘字
+	_refresh_status()
+	if _controller:
+		var player_dmg: int = _hp_before_player - _controller.player_hp
+		if player_dmg > 0:
+			_spawn_effect_popup("-" + str(player_dmg), Color(1.0, 0.3, 0.2), Vector2(160, 430))
+		elif player_dmg < 0:
+			_spawn_effect_popup("+" + str(-player_dmg), Color(0.3, 1.0, 0.5), Vector2(160, 430))
+		# 更新追踪值
+		_hp_before_player = _controller.player_hp
+		_hp_before_enemy = _controller.enemy_hp
 
 func _on_enemy_intent_changed(intent_text: String) -> void:
 	var icon: String = ""
@@ -139,11 +178,77 @@ func _on_victory_reward(reward_text: String) -> void:
 func _on_energy_grown(old_max: int, new_max: int) -> void:
 	_log_label.text = _log_label.text + "\n能量上限提升！" + str(old_max) + " → " + str(new_max)
 
-# --- 按钮回调 ---
+# --- 拖拽出牌系统 (v0.1.68) ---
 
-func _on_card_pressed(index: int) -> void:
-	if _controller:
-		_controller.play_card(index)
+func _input(event: InputEvent) -> void:
+	if not visible or _drag_index < 0:
+		return
+	if event is InputEventMouseMotion:
+		if is_instance_valid(_drag_widget):
+			_drag_widget.global_position = event.global_position - _drag_offset
+			# 进入出牌区高亮
+			if _play_zone:
+				_play_zone.visible = true
+				if event.global_position.y < PLAY_ZONE_Y:
+					_play_zone.color = Color(0.0, 0.85, 1.0, 0.12)
+				else:
+					_play_zone.color = Color(0.0, 0.85, 1.0, 0.04)
+	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.global_position.y < PLAY_ZONE_Y:
+			_end_drag()
+		else:
+			_cancel_drag()
+
+func _start_card_drag(index: int, widget: Panel, mouse_pos: Vector2) -> void:
+	_drag_index = index
+	_drag_widget = widget
+	_drag_offset = mouse_pos - widget.global_position
+	_drag_origin_pos = widget.position
+	_drag_origin_rot = widget.rotation_degrees
+	widget.rotation_degrees = 0.0
+	widget.scale = Vector2(1.15, 1.15)
+	widget.z_index = 20
+	if _play_zone:
+		_play_zone.visible = true
+
+func _end_drag() -> void:
+	if _drag_index < 0 or _controller == null:
+		_cancel_drag()
+		return
+	var idx: int = _drag_index
+	# 记录出牌前 HP，用于伤害飘字
+	_hp_before_enemy = _controller.enemy_hp
+	_hp_before_player = _controller.player_hp
+	_drag_index = -1
+	_drag_widget = null
+	if _play_zone:
+		_play_zone.visible = false
+	_controller.play_card(idx)
+
+func _cancel_drag() -> void:
+	if _drag_index >= 0 and is_instance_valid(_drag_widget):
+		_drag_widget.position = _drag_origin_pos
+		_drag_widget.rotation_degrees = _drag_origin_rot
+		_drag_widget.scale = Vector2.ONE
+		_drag_widget.z_index = 0
+	_drag_index = -1
+	_drag_widget = null
+	if _play_zone:
+		_play_zone.visible = false
+
+func _spawn_effect_popup(text: String, color: Color, base_pos: Vector2) -> void:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.position = base_pos
+	lbl.add_theme_font_size_override("font_size", 22)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.z_index = 50
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl)
+	var tw: Tween = lbl.create_tween()
+	tw.tween_property(lbl, "position:y", base_pos.y - 60, 0.7).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(lbl, "modulate:a", 0.0, 0.7).set_ease(Tween.EASE_IN).set_delay(0.3)
+	tw.tween_callback(lbl.queue_free)
 
 func _on_end_turn_pressed() -> void:
 	if _controller:
@@ -174,7 +279,7 @@ func _rebuild_fan_cards(new_hand: Array, cur_energy: int) -> void:
 		var target_x: float = FAN_CENTER_X + sin(angle_rad) * FAN_RADIUS - BATTLE_CARD_W / 2.0
 		var target_y: float = CARD_Y_BASE + (1.0 - cos(angle_rad)) * FAN_RADIUS * 0.06
 		var target_rot: float = angle_deg * 0.5
-		var widget: Panel = _create_battle_card(card, can_play, i, _on_card_pressed)
+		var widget: Panel = _create_battle_card(card, can_play, i)
 		widget.position = Vector2(target_x, target_y)
 		widget.rotation_degrees = target_rot
 		widget.pivot_offset = Vector2(BATTLE_CARD_W / 2.0, BATTLE_CARD_H)
@@ -189,7 +294,7 @@ func _clear_card_widgets() -> void:
 
 # --- 战斗用卡牌创建（比标准卡牌稍大） ---
 
-func _create_battle_card(card: Dictionary, can_play: bool, index: int, callback: Callable) -> Panel:
+func _create_battle_card(card: Dictionary, can_play: bool, index: int) -> Panel:
 	var panel := Panel.new()
 	panel.size = Vector2(BATTLE_CARD_W, BATTLE_CARD_H)
 	panel.custom_minimum_size = Vector2(BATTLE_CARD_W, BATTLE_CARD_H)
@@ -278,19 +383,24 @@ func _create_battle_card(card: Dictionary, can_play: bool, index: int, callback:
 		var idx: int = index
 		panel.gui_input.connect(func(event: InputEvent):
 			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				callback.call(idx)
+				_start_card_drag(idx, panel, event.global_position)
 		)
+		var saved_y: float = 0.0  # 占位，实际 y 在 mouse_entered 捕获
 		panel.mouse_entered.connect(func():
+			if _drag_index >= 0:
+				return
+			saved_y = panel.position.y
 			var tw: Tween = panel.create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 			tw.tween_property(panel, "scale", Vector2(1.12, 1.12), 0.1)
-			tw.parallel().tween_property(panel, "position:y", panel.position.y - 20, 0.1)
+			tw.parallel().tween_property(panel, "position:y", saved_y - 20, 0.1)
 			panel.z_index = 10
 		)
 		panel.mouse_exited.connect(func():
+			if _drag_index >= 0:
+				return
 			var tw: Tween = panel.create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 			tw.tween_property(panel, "scale", Vector2.ONE, 0.1)
-			# 恢复 Y 位置由扇形布局决定，此处还原 +20
-			tw.parallel().tween_property(panel, "position:y", panel.position.y + 20, 0.1)
+			tw.parallel().tween_property(panel, "position:y", saved_y, 0.1)
 			panel.z_index = 0
 		)
 	return panel
@@ -485,6 +595,25 @@ func _build_ui() -> void:
 	_log_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	_log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_log_label)
+
+	# === 出牌区域提示（拖拽时显示） ===
+	_play_zone = ColorRect.new()
+	_play_zone.position = Vector2(0, 0)
+	_play_zone.size = Vector2(1280, PLAY_ZONE_Y)
+	_play_zone.color = Color(0.0, 0.85, 1.0, 0.04)
+	_play_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_play_zone.visible = false
+	add_child(_play_zone)
+
+	var play_zone_lbl := Label.new()
+	play_zone_lbl.text = "拖到此处出牌"
+	play_zone_lbl.position = Vector2(0, PLAY_ZONE_Y - 30)
+	play_zone_lbl.size = Vector2(1280, 24)
+	play_zone_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	play_zone_lbl.add_theme_font_size_override("font_size", 14)
+	play_zone_lbl.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0, 0.5))
+	play_zone_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_play_zone.add_child(play_zone_lbl)
 
 	# === 手牌容器（底部扇形区域） ===
 	_card_container = Control.new()
