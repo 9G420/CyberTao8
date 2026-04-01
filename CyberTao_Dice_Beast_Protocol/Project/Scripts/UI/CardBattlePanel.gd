@@ -191,24 +191,27 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		if is_instance_valid(_drag_widget):
-			_drag_widget.global_position = event.global_position - _drag_offset
+			var local_mouse: Vector2 = _card_container.get_local_mouse_position()
+			_drag_widget.position = local_mouse - _drag_offset
 			# 进入出牌区高亮
 			if _play_zone:
 				_play_zone.visible = true
-				if event.global_position.y < PLAY_ZONE_Y:
+				if local_mouse.y < PLAY_ZONE_Y:
 					_play_zone.color = Color(0.0, 0.85, 1.0, 0.12)
 				else:
 					_play_zone.color = Color(0.0, 0.85, 1.0, 0.04)
 	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.global_position.y < PLAY_ZONE_Y:
+		var local_mouse: Vector2 = _card_container.get_local_mouse_position()
+		if local_mouse.y < PLAY_ZONE_Y:
 			_end_drag()
 		else:
 			_cancel_drag()
 
-func _start_card_drag(index: int, widget: Panel, mouse_pos: Vector2) -> void:
+func _start_card_drag(index: int, widget: Panel) -> void:
 	_drag_index = index
 	_drag_widget = widget
-	_drag_offset = mouse_pos - widget.global_position
+	var local_mouse: Vector2 = _card_container.get_local_mouse_position()
+	_drag_offset = local_mouse - widget.position
 	_drag_origin_pos = widget.position
 	_drag_origin_rot = widget.rotation_degrees
 	widget.rotation_degrees = 0.0
@@ -233,10 +236,12 @@ func _end_drag() -> void:
 
 func _cancel_drag() -> void:
 	if _drag_index >= 0 and is_instance_valid(_drag_widget):
-		_drag_widget.position = _drag_origin_pos
-		_drag_widget.rotation_degrees = _drag_origin_rot
-		_drag_widget.scale = Vector2.ONE
-		_drag_widget.z_index = 0
+		var widget: Panel = _drag_widget
+		var tw: Tween = widget.create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		tw.tween_property(widget, "position", _drag_origin_pos, 0.12)
+		tw.parallel().tween_property(widget, "rotation_degrees", _drag_origin_rot, 0.12)
+		tw.parallel().tween_property(widget, "scale", Vector2.ONE, 0.12)
+		widget.z_index = 0
 	_drag_index = -1
 	_drag_widget = null
 	if _play_zone:
@@ -287,6 +292,7 @@ func _rebuild_fan_cards(new_hand: Array, cur_energy: int) -> void:
 		var target_rot: float = angle_deg * 0.5
 		var widget: Panel = _create_battle_card(card, can_play, i)
 		widget.position = Vector2(target_x, target_y)
+		widget.set_meta("base_pos", widget.position)
 		widget.rotation_degrees = target_rot
 		widget.pivot_offset = Vector2(BATTLE_CARD_W / 2.0, BATTLE_CARD_H)
 		_card_container.add_child(widget)
@@ -389,24 +395,24 @@ func _create_battle_card(card: Dictionary, can_play: bool, index: int) -> Panel:
 		var idx: int = index
 		panel.gui_input.connect(func(event: InputEvent):
 			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				_start_card_drag(idx, panel, event.global_position)
+				_start_card_drag(idx, panel)
 		)
-		var saved_y: float = 0.0  # 占位，实际 y 在 mouse_entered 捕获
 		panel.mouse_entered.connect(func():
 			if _drag_index >= 0:
 				return
-			saved_y = panel.position.y
+			var base_pos: Vector2 = panel.get_meta("base_pos", panel.position)
 			var tw: Tween = panel.create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 			tw.tween_property(panel, "scale", Vector2(1.12, 1.12), 0.1)
-			tw.parallel().tween_property(panel, "position:y", saved_y - 20, 0.1)
+			tw.parallel().tween_property(panel, "position:y", base_pos.y - 20, 0.1)
 			panel.z_index = 10
 		)
 		panel.mouse_exited.connect(func():
 			if _drag_index >= 0:
 				return
+			var base_pos: Vector2 = panel.get_meta("base_pos", panel.position)
 			var tw: Tween = panel.create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 			tw.tween_property(panel, "scale", Vector2.ONE, 0.1)
-			tw.parallel().tween_property(panel, "position:y", saved_y, 0.1)
+			tw.parallel().tween_property(panel, "position:y", base_pos.y, 0.1)
 			panel.z_index = 0
 		)
 	return panel

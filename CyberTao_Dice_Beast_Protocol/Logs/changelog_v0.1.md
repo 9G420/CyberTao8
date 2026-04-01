@@ -1,5 +1,21 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.84 - 2026-04-02
+
+### 修改（卡牌战斗手感回调：拖拽坐标系与悬停稳定性）
+- `CardBattlePanel.gd`：拖拽坐标从 `global_position` 改为 `_card_container` 本地坐标，避免窗口位置/输入坐标系差异导致卡牌瞬移到顶部
+- `CardBattlePanel.gd`：出牌判定区域改用本地鼠标 Y 值判断（`local_mouse.y < PLAY_ZONE_Y`），与 UI 视觉区域一致
+- `CardBattlePanel.gd`：悬停动画改为基于固定 `base_pos` 元数据，不再依赖临时 `saved_y`，避免悬停抖动与累计漂移
+- `CardBattlePanel.gd`：取消拖拽改为 0.12s tween 回弹（位置/旋转/缩放同步），提升“丝滑感”
+
+### 修复
+- **BUG**：部分场景下拖拽手牌会“自动飞到顶部/偏移异常” —— 根因是全局坐标与本地坐标混用（`event.global_position` vs card container 本地坐标）
+- **手感问题**：悬停/取消拖拽存在生硬跳变，已改为基于基准位置的稳定动画
+
+### 备注
+- 本轮仅调整 `CardBattlePanel` 表现层交互，不改动 `CardBattleController` 卡牌结算逻辑
+- 目标为先对齐旧项目“可控、稳定、顺滑”的拖拽手感
+
 ## v0.1.83 - 2026-04-02
 
 ### 新增
