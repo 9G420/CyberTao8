@@ -1,14 +1,14 @@
 # CyberTao: Dice Beast Protocol — 交接包
 
-**生成时间**: 2026-03-31
-**当前版本**: v0.1.71
+**生成时间**: 2026-04-01
+**当前版本**: v0.1.72
 **分支**: codex/dice-beast-protocol
 
 ---
 
 ## 1. 此刻的精确状态（一句话）
 
-v0.1.71 完成 3D 渐进迁移 P0：新增完整 3D 表现层（GridMapper3D + TileMeshFactory3D + UnitMeshFactory3D + BoardView3D），通过 SubViewport 嵌入 2D UI 树，F5 切换 2D/3D 视图，Main.gd 全部回调通过 _active_view() duck typing 路由，核心逻辑文件零改动，下一步是 3D 反馈系统或商店格扩展。
+v0.1.72 完成 3D 交互手感修复：拖拽即时响应（绝对偏移计算替代逐帧增量累积）、镜头跟随速度对齐2D体验（CAMERA_LERP_SPEED 4.5→8.0）、边界限制（棋盘世界半径±50%）、缩放以鼠标为轴心（射线交叉补偿）。3D 渐进迁移 P0+交互修复均已完成，核心逻辑文件零改动，下一步是 3D 反馈系统或商店格扩展。
 
 ---
 
@@ -21,39 +21,31 @@ v0.1.71 完成 3D 渐进迁移 P0：新增完整 3D 表现层（GridMapper3D + T
 | v0.1.69 | 顶部单位头像 HUD | 完成 |
 | v0.1.70 | 玩家角色精灵动画（4方向 spritesheet 集成） | 完成 |
 | v0.1.71 | 3D 渐进迁移 P0（BoardView3D + SubViewport + F5 切换） | 完成 |
+| v0.1.72 | 3D 交互手感修复（拖拽+镜头跟随+边界限制+缩放轴心） | 完成 |
 
 ---
 
 ## 3. 最后版本关键变更
 
-**版本号**: v0.1.71
-
-**新增文件（4个）**:
-- `Scripts/UI3D/GridMapper3D.gd` — 格坐标↔3D世界坐标双向转换（CELL_SIZE=2.0）
-- `Scripts/UI3D/TileMeshFactory3D.gd` — 9种格子 BoxMesh + StandardMaterial3D 工厂
-- `Scripts/UI3D/UnitMeshFactory3D.gd` — 玩家 CapsuleMesh + 敌方 CylinderMesh + billboard HP 条
-- `Scripts/UI3D/BoardView3D.gd` — 完整 3D 棋盘视图（extends Node3D，信号接口对齐 BoardView）
+**版本号**: v0.1.72
 
 **修改文件**:
-- `Scripts/Main.gd` — 新增 _use_3d + _active_view() + _setup_3d_view() + toggle_3d_view() + _input() F5
-- `Scripts/UI/DiceDebugPanel.gd` — 版本标记 v0.1.71
+- `Scripts/UI3D/BoardView3D.gd` — 重写拖拽/缩放/相机逻辑，新增边界限制+缩放轴心+绝对偏移计算
+- `Scripts/UI/DiceDebugPanel.gd` — 版本标记 v0.1.71 → v0.1.72
 
 **新增接口**:
-- `GridMapper3D.cell_to_world(cell, grid_size) -> Vector3` — 格坐标→世界坐标
-- `GridMapper3D.world_to_cell(world_pos, grid_size) -> Vector2i` — 世界坐标→格坐标
-- `TileMeshFactory3D.create_tile(tile_key, cell, grid_size) -> MeshInstance3D` — 创建格子网格
-- `TileMeshFactory3D.create_highlight(cell, color, grid_size) -> MeshInstance3D` — 创建高亮
-- `UnitMeshFactory3D.create_unit_node(unit, cell, grid_size) -> Node3D` — 创建单位节点
-- `UnitMeshFactory3D.update_hp_bar(node, hp, max_hp, is_player)` — 更新 HP 条
-- `BoardView3D` — 全部信号和方法与 BoardView 对齐（见 BoardView3D.gd 头部声明）
-- `Main.toggle_3d_view()` — 切换 2D/3D
-- `Main._active_view()` — 返回当前活动视图（duck typing）
-- `Main._input()` — F5 快捷键 + 3D 鼠标事件转发
+- `BoardView3D._clamp_drag_offset()` — 拖拽偏移边界限制（内部方法）
+- `BoardView3D._apply_zoom(delta_dist, mouse_pos)` — 鼠标轴心缩放（内部方法）
+- `BoardView3D._screen_to_ground(screen_pos, cam_dist)` — 屏幕坐标→地面交点（内部方法）
+- `BoardView3D._drag_start_offset: Vector3` — 拖拽起始快照变量
+- `BoardView3D.ZOOM_STEP: float = 1.5` — 缩放步长常量
+- 无公开接口变更，信号/方法签名不变
 
 **遗留问题**:
-- 3D 反馈方法（攻击闪光/飘字/粒子）暂为桩函数
-- 3D 单位使用简单几何体，未接入精灵/模型
-- DiceDebugPanel 仍绑定 2D BoardView（3D 模式下骰子面板无交互适配）
+- 3D 反馈方法（攻击闪光/飘字/粒子）暂为桩函数（v0.1.71 遗留）
+- 3D 单位使用简单几何体，未接入精灵/模型（v0.1.71 遗留）
+- DiceDebugPanel 仍绑定 2D BoardView（v0.1.71 遗留）
+- _screen_to_ground() 在相机 lerp 未到位时存在微小偏差（可接受）
 - spritesheet 背景透明度（v0.1.70 遗留）仍需用户确认
 
 ---
@@ -61,12 +53,12 @@ v0.1.71 完成 3D 渐进迁移 P0：新增完整 3D 表现层（GridMapper3D + T
 ## 4. 下一步任务（精确到可以直接开始）
 
 **立刻要做的**:
-用户测试 3D 视图效果，根据反馈调整：
-- 按 F5 切换到 3D → 确认棋盘格/单位/相机/点击是否正常
-- 如果 3D 效果不满意，可回退到 2D（再按 F5）
+根据用户指派的任务方向选择：
+- 3D 反馈系统实现（粒子特效/3D 飘字替代 2D BattleEffects）
+- 商店格扩展（多选商品 + 独立 UI 面板）
 
 **任务队列**:
-1. 3D 反馈系统实现（粒子特效/3D 飘字替代 2D BattleEffects）
+1. 3D 反馈系统实现（粒子特效/3D 飘字）
 2. 商店格扩展（多选商品 + 独立 UI 面板）
 3. 阵亡单位跨层复活机制
 4. BattleFlowController 瘦身
@@ -83,7 +75,8 @@ v0.1.71 完成 3D 渐进迁移 P0：新增完整 3D 表现层（GridMapper3D + T
 | spritesheet 背景透明度待确认 | 中 | 否 | 用户测试后处理 |
 | 阵亡单位跨层不复活 | 低 | 否 | 数值调优轮次 |
 | CardRewardPanel 未使用 CardRenderer 风格 | 低 | 否 | UI 统一轮次 |
-| BattleFlowController ~710行 | 中 | 否 | 下次大功能前 |
+| BattleFlowController ~693行 | 中 | 否 | 下次大功能前 |
+| _screen_to_ground() 相机 lerp 未到位时微小偏差 | 低 | 否 | 可接受，暂不处理 |
 
 ---
 
@@ -117,3 +110,5 @@ git pull origin codex/dice-beast-protocol
 - 高台格在 3D 中抬高 0.4 世界单位（HIGH_GROUND_LIFT），陷阱格不下沉
 - 环境格子（棋盘外暗色填充）在 3D 中未实现，棋盘外为纯黑背景
 - F5 切换不保留选中状态（切换时不自动同步 selected_unit_id）
+- v0.1.72 拖拽改用绝对偏移（_drag_start_offset 快照），不再逐帧增量累积，长距离拖拽无漂移
+- v0.1.72 缩放轴心依赖 _screen_to_ground() 射线交叉，相机 lerp 未完全到位时有微小偏差（可接受）

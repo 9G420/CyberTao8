@@ -1,7 +1,7 @@
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
-**更新时间**: 2026-03-31
-**当前版本**: v0.1.71
+**更新时间**: 2026-04-01
+**当前版本**: v0.1.72
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要开发分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
@@ -26,7 +26,7 @@
 - 每轮任务完成后必须更新三件套：`Mulerun_Work_Report.md` + `changelog_v0.1.md` + `AI_Employee_Guide_v3.md`
 - 每次任务前确认：服务于棋盘走位层 or 卡牌战斗层，两者都不是则不优先做
 
-**当前阶段状态：双层玩法结构完整闭环，卡牌战斗层第一版完成并持续深化，美化 Phase 1~6 全部完成，等距贴图棋盘+相机跟随+鼠标拖拽+缩放+角色形象重构+逐格移动动画+卡牌拖拽出牌+头像HUD+玩家精灵动画已实现。3D 渐进迁移 P0 完成（BoardView3D+SubViewport+F5切换双视图）。下一阶段聚焦 3D 反馈系统或商店格扩展。**
+**当前阶段状态：双层玩法结构完整闭环，卡牌战斗层第一版完成并持续深化，美化 Phase 1~6 全部完成，等距贴图棋盘+相机跟随+鼠标拖拽+缩放+角色形象重构+逐格移动动画+卡牌拖拽出牌+头像HUD+玩家精灵动画已实现。3D 渐进迁移 P0 完成（BoardView3D+SubViewport+F5切换双视图），v0.1.72 完成 3D 交互手感修复（拖拽+镜头跟随+边界限制+缩放轴心）。下一阶段聚焦 3D 反馈系统或商店格扩展。**
 
 ---
 
@@ -52,7 +52,7 @@
 
 ---
 
-## 2. 当前已完成内容（v0.1.0 → v0.1.71）
+## 2. 当前已完成内容（v0.1.0 → v0.1.72）
 
 ### 棋盘走位层（外层 — 全部稳定）
 
@@ -105,6 +105,7 @@
 | 顶部单位头像 HUD | v0.1.69 | 稳定 |
 | 玩家角色精灵动画（4方向 spritesheet） | v0.1.70 | 稳定 |
 | 3D 渐进迁移 P0（BoardView3D+SubViewport+F5切换双视图） | v0.1.71 | 稳定 |
+| 3D 交互手感修复（拖拽+镜头跟随+边界限制+缩放轴心） | v0.1.72 | 稳定 |
 
 ### 卡牌战斗层（内层 — 第一版完成，持续深化）
 
@@ -149,9 +150,9 @@
 | GridMapper3D 格坐标↔3D世界坐标转换 | v0.1.71 | 稳定 |
 | TileMeshFactory3D 9种格子 BoxMesh+StandardMaterial3D 工厂 | v0.1.71 | 稳定 |
 | UnitMeshFactory3D 单位 CapsuleMesh/CylinderMesh+billboard HP 条 | v0.1.71 | 稳定 |
-| BoardView3D 完整 3D 棋盘视图（信号接口对齐 BoardView） | v0.1.71 | 稳定 |
+| BoardView3D 完整 3D 棋盘视图（信号接口对齐 BoardView） | v0.1.71/72 | 稳定 |
 
-### 双层闭环完整流程（v0.1.71）
+### 双层闭环完整流程（v0.1.72）
 
 ```
 棋盘走位层                              卡牌战斗层
@@ -283,7 +284,7 @@ UI3D/（v0.1.71 新增 — 3D 渐进迁移表现层）
 ├── GridMapper3D         — 格坐标↔3D世界坐标转换（class_name，纯数学工具）  ~40行 ✅ v0.1.71 新增
 ├── TileMeshFactory3D    — 9种格子 BoxMesh+StandardMaterial3D 工厂（class_name）  ~120行 ✅ v0.1.71 新增
 ├── UnitMeshFactory3D    — 单位 CapsuleMesh/CylinderMesh+billboard HP 条（class_name）  ~130行 ✅ v0.1.71 新增
-└── BoardView3D          — 完整 3D 棋盘视图（SubViewport 嵌入+信号接口对齐 BoardView）  ~340行 ✅ v0.1.71 新增
+└── BoardView3D          — 完整 3D 棋盘视图（SubViewport 嵌入+信号接口对齐 BoardView）  ~380行 ✅ v0.1.71 新增 / v0.1.72 交互修复
 
 System/
 ├── AudioManager         — 音效管理器（class_name注册，多通道SFX+BGM）  ~120行 ✅ v0.1.56 新增
@@ -394,7 +395,7 @@ CardBattleController:
 
 ### 当前阶段核心方向：体验打磨 + 功能扩展
 
-v0.1.31~v0.1.71 完成了卡牌深化、全面美化（Phase 1~6）、等距棋盘+相机系统+鼠标拖拽+角色形象重构+逐格移动动画+卡牌拖拽出牌+头像HUD+玩家精灵动画+3D 渐进迁移 P0。
+v0.1.31~v0.1.72 完成了卡牌深化、全面美化（Phase 1~6）、等距棋盘+相机系统+鼠标拖拽+角色形象重构+逐格移动动画+卡牌拖拽出牌+头像HUD+玩家精灵动画+3D 渐进迁移 P0+3D 交互手感修复。
 
 ### 🔴 高优先级
 
@@ -462,7 +463,7 @@ v0.1.31~v0.1.71 完成了卡牌深化、全面美化（Phase 1~6）、等距棋�
 | `UI3D/GridMapper3D.gd` | 格坐标↔3D世界坐标转换（纯数学工具类） | ~40 行 |
 | `UI3D/TileMeshFactory3D.gd` | 9种格子 BoxMesh+StandardMaterial3D 工厂 | ~120 行 |
 | `UI3D/UnitMeshFactory3D.gd` | 单位 CapsuleMesh/CylinderMesh+billboard HP 条 | ~130 行 |
-| `UI3D/BoardView3D.gd` | 3D 棋盘视图（SubViewport 嵌入+信号接口对齐 BoardView） | ~340 行 |
+| `UI3D/BoardView3D.gd` | 3D 棋盘视图（SubViewport 嵌入+信号接口对齐 BoardView） | ~380 行 |
 | `System/AudioManager.gd` | 音效管理器（多通道SFX+BGM） | ~120 行 |
 | `System/SFXGenerator.gd` | 程序化音频引擎（28种SFX+4种BGM） | ~1100 行 |
 | `Main.gd` | 场景组合 + 信号中转 + 音效触发 + 相机跟随 + 3D视图路由 | ~670 行 |
@@ -502,9 +503,10 @@ v0.1.31~v0.1.71 完成了卡牌深化、全面美化（Phase 1~6）、等距棋�
 | v0.1.61~v0.1.66 | 程序化棋盘回退+鼠标拖拽相机+12x12扩展+大世界填充+镜头优化+角色重构+音效设置 |
 | v0.1.67~v0.1.70 | 逐格移动动画+卡牌拖拽出牌+即时伤害反馈+头像HUD+玩家精灵动画 |
 | v0.1.71 | 3D 渐进迁移 P0（BoardView3D+SubViewport+F5切换双视图+3D相机/射线检测/高亮/移动动画） |
+| v0.1.72 | 3D 交互手感修复（拖拽即时响应+镜头跟随速度+边界限制+缩放轴心对齐2D体验） |
 
 ---
 
 ## 8. 一句话状态
 
-**v0.1.71 双层玩法完整闭环+卡牌深化第一版完成。棋盘走位层（9种格子+随机生成+3层推进+Boss锁定传送门+单位精简+层间难度缩放+逐格移动动画+头像HUD）和卡牌战斗层（14种牌+升级+6种敌方+Boss+能量成长+持久牌组+奖励选牌+拖拽出牌+即时伤害反馈）全部稳定。等距程序化棋盘（IsoTileRenderer）+鼠标拖拽相机+缩放+12x12棋盘+角色形象重构（咩咩启示录风格）+玩家精灵动画（4方向spritesheet）+音效系统+全屏独立卡牌战斗界面+角色立绘+宝可梦式百叶窗过渡+赛博朋克全面美化（Phase 1~6）已完成。3D 渐进迁移 P0 完成（BoardView3D+SubViewport+F5切换+3D相机/射线检测/高亮/移动动画，反馈方法暂为桩函数）。下一步：3D 反馈系统或商店格扩展。**
+**v0.1.72 双层玩法完整闭环+卡牌深化第一版完成。棋盘走位层（9种格子+随机生成+3层推进+Boss锁定传送门+单位精简+层间难度缩放+逐格移动动画+头像HUD）和卡牌战斗层（14种牌+升级+6种敌方+Boss+能量成长+持久牌组+奖励选牌+拖拽出牌+即时伤害反馈）全部稳定。等距程序化棋盘（IsoTileRenderer）+鼠标拖拽相机+缩放+12x12棋盘+角色形象重构（咩咩启示录风格）+玩家精灵动画（4方向spritesheet）+音效系统+全屏独立卡牌战斗界面+角色立绘+宝可梦式百叶窗过渡+赛博朋克全面美化（Phase 1~6）已完成。3D 渐进迁移 P0 完成（BoardView3D+SubViewport+F5切换+3D相机/射线检测/高亮/移动动画），v0.1.72 完成 3D 交互手感修复（拖拽即时响应+镜头跟随速度+边界限制+缩放轴心对齐2D体验，反馈方法暂为桩函数）。下一步：3D 反馈系统或商店格扩展。**
