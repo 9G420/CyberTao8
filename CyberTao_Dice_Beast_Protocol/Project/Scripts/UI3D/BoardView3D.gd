@@ -407,7 +407,12 @@ func rebuild_board() -> void:
 			var tile_key: String = _get_tile_key(cell) if in_board else ("normal_dark" if (gx + gy) % 2 == 0 else "normal_light")
 			var tile_node: MeshInstance3D = TileMeshFactory3D.create_tile(tile_key, cell, _grid_size)
 			if not in_board:
-				tile_node.modulate = Color(0.55, 0.58, 0.7, 0.75)
+				var ambient_mat: StandardMaterial3D = tile_node.material_override as StandardMaterial3D
+				if ambient_mat:
+					var dim_mat: StandardMaterial3D = ambient_mat.duplicate()
+					dim_mat.albedo_color = dim_mat.albedo_color.darkened(0.35)
+					dim_mat.emission_energy_multiplier *= 0.35
+					tile_node.material_override = dim_mat
 			_tiles_root.add_child(tile_node)
 			_tile_nodes[cell] = tile_node
 	_refresh_units()

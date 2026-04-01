@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.96 - 2026-04-02
+
+### 修复（3D 外环地台运行时崩溃）
+- `BoardView3D.gd`：移除对 `MeshInstance3D.modulate` 的非法赋值（Godot 4 中该属性不可用）
+- 改为通过复制 `StandardMaterial3D` 并下调 `albedo_color/emission_energy_multiplier` 实现外环暗化
+
+### 根因
+- 外环 ambient tile 暗化使用了 `tile_node.modulate = Color(...)`，触发：
+  `Invalid assignment of property or key 'modulate' on a base object of type 'MeshInstance3D'`
+
 ## v0.1.95 - 2026-04-02
 
 ### 修改（2D中键视角 + 3D沉浸外场 + 远距可见性加强）
