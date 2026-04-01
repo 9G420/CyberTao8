@@ -93,7 +93,13 @@ func _ready() -> void:
 	# v0.1.82：精灵动画器已移除（全程序化渲染�?
 
 func _on_anim_tick() -> void:
-	# 平滑插值相机位置（v0.1.62�?
+	# v0.1.101：选中单位时持续跟随中心，避免棋盘偏到角落
+	if not _drag_active and selected_unit_id != "" and unit_manager != null:
+		var su: Dictionary = unit_manager.get_unit(selected_unit_id)
+		if not su.is_empty():
+			camera_cell = su["cell"]
+			_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
+			_drag_offset = _drag_offset.lerp(Vector2.ZERO, 0.1)
 	if not _drag_active:
 		var target: Vector2 = _iso_origin_target + _drag_offset
 		var diff: Vector2 = target - iso_origin

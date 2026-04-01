@@ -99,7 +99,7 @@ static func draw_board(canvas: CanvasItem, origin: Vector2, board_mgr: Node, pul
 
 ## 绘制棋盘外“舞台背景区”（与主棋盘区分开）
 static func _draw_board_platform_bg(canvas: CanvasItem, origin: Vector2, gs: Vector2i, zoom: float, pulse: float) -> void:
-	var pad: int = int(4 + ceil(float(AMBIENT_PAD) / zoom))
+	var pad: int = int(5 + ceil(float(AMBIENT_PAD) / zoom))
 	var min_x: int = -pad
 	var min_y: int = -pad
 	var max_x: int = gs.x - 1 + pad
@@ -109,12 +109,18 @@ static func _draw_board_platform_bg(canvas: CanvasItem, origin: Vector2, gs: Vec
 	var p2: Vector2 = grid_to_screen_zoom(max_x + 1, max_y + 1, origin, zoom)
 	var p3: Vector2 = grid_to_screen_zoom(min_x, max_y + 1, origin, zoom)
 	var ring: PackedVector2Array = PackedVector2Array([p0, p1, p2, p3])
-	var base_col: Color = Color(0.12, 0.14, 0.18, 0.92)
+	var base_col: Color = Color(0.16, 0.18, 0.22, 0.95)
 	canvas.draw_colored_polygon(ring, base_col)
 	# 边框高光
-	var edge: Color = Color(0.25, 0.58, 0.82, 0.34 + pulse * 0.10)
+	var edge: Color = Color(0.35, 0.72, 0.92, 0.38 + pulse * 0.12)
 	for i in range(4):
-		canvas.draw_line(ring[i], ring[(i + 1) % 4], edge, 2.0)
+		canvas.draw_line(ring[i], ring[(i + 1) % 4], edge, 2.5)
+	# 外场警示斜线（轻量）
+	for i in range(11):
+		var t_warn: float = float(i) / 10.0
+		var wa: Vector2 = p0.lerp(p3, t_warn)
+		var wb: Vector2 = p1.lerp(p2, t_warn)
+		canvas.draw_line(wa + Vector2(-18, 0), wb + Vector2(18, 0), Color(0.75, 0.42, 0.25, 0.10), 1.2)
 	# 轻微分层扫描线
 	for i in range(9):
 		var t: float = float(i) / 8.0
