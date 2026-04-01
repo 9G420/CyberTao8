@@ -1,14 +1,14 @@
 # CyberTao: Dice Beast Protocol — 交接包
 
 **生成时间**: 2026-04-01
-**当前版本**: v0.1.72
+**当前版本**: v0.1.73
 **分支**: codex/dice-beast-protocol
 
 ---
 
 ## 1. 此刻的精确状态（一句话）
 
-v0.1.72 完成 3D 交互手感修复：拖拽即时响应（绝对偏移计算替代逐帧增量累积）、镜头跟随速度对齐2D体验（CAMERA_LERP_SPEED 4.5→8.0）、边界限制（棋盘世界半径±50%）、缩放以鼠标为轴心（射线交叉补偿）。3D 渐进迁移 P0+交互修复均已完成，核心逻辑文件零改动，下一步是 3D 反馈系统或商店格扩展。
+v0.1.73 完成商店格扩展：新增独立 ShopPanel UI 面板（5种商品池随机3选，使用 crest 资源购买，支持多次购买），替代旧版自动回复机制。信号链从 `shop_cell_triggered`（自动购买）重构为 `shop_panel_requested`（打开面板）。3D 渐进迁移 P0+交互修复均已完成。下一步是 3D 反馈系统或阵亡单位跨层复活。
 
 ---
 
@@ -16,37 +16,39 @@ v0.1.72 完成 3D 交互手感修复：拖拽即时响应（绝对偏移计算�
 
 | 版本 | 任务 | 状态 |
 |------|------|------|
-| v0.1.67 | 移动逐格行走动画+敌方移动动画+我方回合镜头切回优化 | 完成 |
-| v0.1.68 | 卡牌拖拽出牌+即时伤害反馈 | 完成 |
-| v0.1.69 | 顶部单位头像 HUD | 完成 |
-| v0.1.70 | 玩家角色精灵动画（4方向 spritesheet 集成） | 完成 |
-| v0.1.71 | 3D 渐进迁移 P0（BoardView3D + SubViewport + F5 切换） | 完成 |
-| v0.1.72 | 3D 交互手感修复（拖拽+镜头跟随+边界限制+缩放轴心） | 完成 |
+| v0.1.73 | 商店格扩展（ShopPanel独立面板+5种商品池+crest货币+多次购买） | 完成 |
 
 ---
 
 ## 3. 最后版本关键变更
 
-**版本号**: v0.1.72
+**版本号**: v0.1.73
+
+**新增文件**:
+- `Scripts/UI/ShopPanel.gd` — 独立商店 UI 面板（~240行，class_name ShopPanel），5种商品池随机3选，crest 支付，CyberStyle 风格化
 
 **修改文件**:
-- `Scripts/UI3D/BoardView3D.gd` — 重写拖拽/缩放/相机逻辑，新增边界限制+缩放轴心+绝对偏移计算
-- `Scripts/UI/DiceDebugPanel.gd` — 版本标记 v0.1.71 → v0.1.72
+- `Scripts/BattleV2/CellEffectHandler.gd` — 删除 `check_shop_cell()`，新增 `has_valid_shop_cell()`（纯校验，不自动购买）
+- `Scripts/BattleV2/BattleFlowController.gd` — 信号 `shop_cell_triggered` → `shop_panel_requested`，`_check_shop_cell` 改为仅发信号
+- `Scripts/Main.gd` — 新增 ShopPanel 导入/实例化/信号连接 + `_on_shop_panel_requested`/`_on_shop_closed` 回调
+- `Scripts/UI/DiceDebugPanel.gd` — 版本标记 → v0.1.73 + 信号绑定更新
 
 **新增接口**:
-- `BoardView3D._clamp_drag_offset()` — 拖拽偏移边界限制（内部方法）
-- `BoardView3D._apply_zoom(delta_dist, mouse_pos)` — 鼠标轴心缩放（内部方法）
-- `BoardView3D._screen_to_ground(screen_pos, cam_dist)` — 屏幕坐标→地面交点（内部方法）
-- `BoardView3D._drag_start_offset: Vector3` — 拖拽起始快照变量
-- `BoardView3D.ZOOM_STEP: float = 1.5` — 缩放步长常量
-- 无公开接口变更，信号/方法签名不变
+- `ShopPanel.open_shop(unit_id, dice_mgr, unit_mgr, card_battle_ctrl)` — 打开商店面板
+- `ShopPanel.shop_closed` 信号 — 面板关闭时发射
+- `CellEffectHandler.has_valid_shop_cell(unit_id, cell) -> bool` — 检查商店格存在+玩家身份
+- `BFC.shop_panel_requested(unit_id, cell)` 信号 — 替代旧 `shop_cell_triggered`
+
+**删除接口**:
+- `CellEffectHandler.check_shop_cell()` — 旧的自动购买方法
+- `BFC.shop_cell_triggered` 信号 — 旧信号（grep 确认零引用）
 
 **遗留问题**:
 - 3D 反馈方法（攻击闪光/飘字/粒子）暂为桩函数（v0.1.71 遗留）
-- 3D 单位使用简单几何体，未接入精灵/模型（v0.1.71 遗留）
+- 3D 单位使用简单几何体（v0.1.71 遗留）
 - DiceDebugPanel 仍绑定 2D BoardView（v0.1.71 遗留）
-- _screen_to_ground() 在相机 lerp 未到位时存在微小偏差（可接受）
-- spritesheet 背景透明度（v0.1.70 遗留）仍需用户确认
+- spritesheet 背景透明度（v0.1.70 遗留）
+- ATK/DEF 商品提升直接改 unit dict（本层永久，跨层重建自动重置），未走 BuffManager
 
 ---
 
@@ -54,14 +56,14 @@ v0.1.72 完成 3D 交互手感修复：拖拽即时响应（绝对偏移计算�
 
 **立刻要做的**:
 根据用户指派的任务方向选择：
-- 3D 反馈系统实现（粒子特效/3D 飘字替代 2D BattleEffects）
-- 商店格扩展（多选商品 + 独立 UI 面板）
+- 3D 反馈系统实现：在 `Scripts/UI3D/BoardView3D.gd` 中实现 `play_attack_feedback`/`play_heal_feedback` 等桩函数，用 GPUParticles3D 或 Label3D 替代 2D BattleEffects
+- 阵亡单位跨层复活机制：在 `BattleFlowController.advance_to_next_floor()` 中添加伙伴复活逻辑
 
 **任务队列**:
 1. 3D 反馈系统实现（粒子特效/3D 飘字）
-2. 商店格扩展（多选商品 + 独立 UI 面板）
-3. 阵亡单位跨层复活机制
-4. BattleFlowController 瘦身
+2. 阵亡单位跨层复活机制
+3. BattleFlowController 瘦身（当前约 693 行）
+4. 商品池扩展（加新牌/移除诅咒/随机 crest 等）
 
 ---
 
@@ -77,6 +79,7 @@ v0.1.72 完成 3D 交互手感修复：拖拽即时响应（绝对偏移计算�
 | CardRewardPanel 未使用 CardRenderer 风格 | 低 | 否 | UI 统一轮次 |
 | BattleFlowController ~693行 | 中 | 否 | 下次大功能前 |
 | _screen_to_ground() 相机 lerp 未到位时微小偏差 | 低 | 否 | 可接受，暂不处理 |
+| 商店 ATK/DEF 提升未走 BuffManager | 低 | 否 | 如需回合限制时改 |
 
 ---
 
@@ -101,14 +104,13 @@ git pull origin codex/dice-beast-protocol
 
 ## 7. 给下一个账号的备注
 
+- v0.1.73 商店信号链已重构：旧 `shop_cell_triggered`（自动扣资源+回血）已删除，新 `shop_panel_requested`（仅通知打开面板）。如果 grep 到旧信号名说明有遗漏
+- ShopPanel 通过 open_shop() 接收 dice_manager/unit_manager/card_battle_ctrl 引用，购买逻辑在面板内部完成，不经过 BFC
+- 商品池是 ShopPanel.SHOP_ITEM_POOL（const Array），扩展商品只需在这里追加 + 在 _execute_purchase 中加 match 分支
+- ATK/DEF 提升直接改 unit dict 而非走 BuffManager——因为是"本层永久"效果，跨层时 unit 重建自动重置。如果需要回合限制就改走 BuffManager
+- 能量核心直接改 CardBattleController.max_energy（该值设计上跨战斗持久），上限卡 5
 - _active_view() 返回 Variant（GDScript duck typing），无编译时类型检查，依赖方法名匹配
 - BoardView3D 在 SubViewport 中运行，SubViewport 不自动接收父级输入事件，需要 Main._input() 手动转发
 - 3D 模式下 DiceDebugPanel.bind_board_view() 仍传入 2D BoardView，如需 3D 适配需额外处理
 - BoardView3D.rebuild_board() 是全量重建（清除+重建所有 MeshInstance3D），大棋盘可考虑增量更新
-- 3D 相机使用 _process(delta) 插值，2D 相机使用 Timer（50ms）插值，两者独立运行
-- TileMeshFactory3D 和 UnitMeshFactory3D 是静态方法工厂，不持有状态
-- 高台格在 3D 中抬高 0.4 世界单位（HIGH_GROUND_LIFT），陷阱格不下沉
-- 环境格子（棋盘外暗色填充）在 3D 中未实现，棋盘外为纯黑背景
 - F5 切换不保留选中状态（切换时不自动同步 selected_unit_id）
-- v0.1.72 拖拽改用绝对偏移（_drag_start_offset 快照），不再逐帧增量累积，长距离拖拽无漂移
-- v0.1.72 缩放轴心依赖 _screen_to_ground() 射线交叉，相机 lerp 未完全到位时有微小偏差（可接受）
