@@ -149,20 +149,31 @@ func _gui_input(event: InputEvent) -> void:
 			_apply_zoom(-ZOOM_STEP, mb.position)
 			accept_event()
 			return
-	# 右键拖拽平移
+	# 右键拖拽平移 / 中键视角（兼容 Alt/Shift+右键）
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_RIGHT:
+			var want_orbit: bool = Input.is_key_pressed(KEY_ALT) or Input.is_key_pressed(KEY_SHIFT)
 			if mb.pressed:
-				_drag_active = true
-				_drag_start_pos = mb.position
-				_drag_start_origin = iso_origin
+				if want_orbit:
+					_orbit_active = true
+					_orbit_start_pos = mb.position
+					_orbit_start_zoom = _zoom
+					_orbit_start_pitch = _view_pitch_offset
+					_orbit_start_yaw = _view_yaw_offset
+					_drag_active = false
+				else:
+					_drag_active = true
+					_drag_start_pos = mb.position
+					_drag_start_origin = iso_origin
 			else:
-				_drag_active = false
-				_drag_offset = iso_origin - _iso_origin_target
+				if _drag_active:
+					_drag_active = false
+					_drag_offset = iso_origin - _iso_origin_target
+				_orbit_active = false
 			accept_event()
 			return
-		# v0.1.95：中键拖拽调2D视角（上�?俯仰/左右=缩放�?
+		# 中键优先视角调整
 		if mb.button_index == MOUSE_BUTTON_MIDDLE:
 			if mb.pressed:
 				_orbit_active = true
@@ -170,6 +181,7 @@ func _gui_input(event: InputEvent) -> void:
 				_orbit_start_zoom = _zoom
 				_orbit_start_pitch = _view_pitch_offset
 				_orbit_start_yaw = _view_yaw_offset
+				_drag_active = false
 			else:
 				_orbit_active = false
 			accept_event()
@@ -368,6 +380,8 @@ func _draw() -> void:
 
 # Layer 1: 等距程序化菱形网格（含环境填充）
 func _draw_layer_grid(pulse: float) -> void:
+	# v0.1.98：先铺底色，避免棋盘外出现纯黑
+	draw_rect(Rect2(0, 0, 1280, 720), Color(0.04, 0.06, 0.09, 0.96), true)
 	IsoTileRenderer.draw_board(self, iso_origin, board_manager, pulse, _zoom)
 
 # Layer 2: 叠层符号（高起贴图已区分格类型，此层仅补充文�?特殊标记�?
@@ -633,7 +647,7 @@ func _draw_edge_vignette() -> void:
 	var steps: int = 8
 	for i in range(steps):
 		var ratio: float = float(i) / float(steps)
-		var a: float = 0.55 * (1.0 - ratio)
+		var a: float = 0.18 * (1.0 - ratio)
 		var col: Color = Color(0.01, 0.01, 0.03, a)
 		var t: float = band * ratio
 		# �?
