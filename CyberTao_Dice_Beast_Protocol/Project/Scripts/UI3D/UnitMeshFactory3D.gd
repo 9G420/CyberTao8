@@ -319,120 +319,120 @@ static func _gen_enemy_default() -> ImageTexture:
 	_fill_rect_l(img, 18, 21, 19, 23, body)
 	return _finalize(img, Color(1.0, 0.3, 0.2))
 
-# --- encounter_01 异常哨兵：红色方形机器人，天线+方形头 ---
+# --- encounter_01 异常哨兵（GBA风重绘）：大头机甲兵 ---
 static func _gen_enc01_sentinel() -> ImageTexture:
 	var img: Image = _new_canvas()
-	var body: Color = Color(0.65, 0.12, 0.1)
-	var hi: Color = Color(0.9, 0.25, 0.15)
-	var metal: Color = Color(0.45, 0.45, 0.5)
-	var eye: Color = Color(1.0, 0.9, 0.1)
-	# 天线
-	_px(img, 16, 2, metal); _px(img, 16, 3, metal); _px(img, 16, 4, Color(1, 0.2, 0.1))
-	# 方头
-	_fill_rect_l(img, 12, 5, 20, 11, body)
-	_fill_rect_l(img, 13, 6, 19, 10, hi)
-	# 眼部视窗
-	_fill_rect_l(img, 13, 7, 15, 9, Color(0.1, 0.1, 0.15))
-	_fill_rect_l(img, 17, 7, 19, 9, Color(0.1, 0.1, 0.15))
-	_px(img, 14, 8, eye); _px(img, 18, 8, eye)
-	# 躯干
-	_fill_rect_l(img, 13, 12, 19, 20, metal)
-	_fill_rect_l(img, 14, 13, 18, 19, body)
-	# 胸甲标记
-	_fill_rect_l(img, 15, 14, 17, 16, eye)
+	var body: Color = Color(0.56, 0.12, 0.1)
+	var hi: Color = Color(0.86, 0.24, 0.2)
+	var armor: Color = Color(0.34, 0.36, 0.42)
+	var shade: Color = Color(0.2, 0.08, 0.08)
+	var eye: Color = Color(1.0, 0.9, 0.3)
+	# 头部（更大，GBA比例）
+	_fill_rect_l(img, 11, 4, 21, 11, body)
+	_fill_rect_l(img, 12, 5, 20, 10, hi)
+	_fill_rect_l(img, 11, 4, 21, 4, armor)
+	# 面甲
+	_fill_rect_l(img, 13, 7, 19, 10, shade)
+	_px(img, 14, 8, eye); _px(img, 15, 8, eye)
+	_px(img, 17, 8, eye); _px(img, 18, 8, eye)
+	# 天线与肩甲
+	_px(img, 16, 2, armor); _px(img, 16, 3, armor); _px(img, 16, 1, eye)
+	_fill_rect_l(img, 8, 12, 11, 15, armor)
+	_fill_rect_l(img, 21, 12, 24, 15, armor)
+	# 躯干与核心
+	_fill_rect_l(img, 12, 12, 20, 21, body)
+	_fill_rect_l(img, 13, 13, 19, 20, hi)
+	_fill_rect_l(img, 15, 15, 17, 17, eye)
+	_fill_rect_l(img, 15, 18, 17, 18, shade)
 	# 手臂
-	_fill_rect_l(img, 10, 13, 12, 18, metal)
-	_fill_rect_l(img, 20, 13, 22, 18, metal)
+	_fill_rect_l(img, 9, 14, 11, 20, armor)
+	_fill_rect_l(img, 21, 14, 23, 20, armor)
 	# 腿
-	_fill_rect_l(img, 13, 21, 15, 25, metal)
-	_fill_rect_l(img, 17, 21, 19, 25, metal)
+	_fill_rect_l(img, 13, 22, 15, 26, armor)
+	_fill_rect_l(img, 17, 22, 19, 26, armor)
+	_fill_rect_l(img, 12, 27, 16, 27, shade)
+	_fill_rect_l(img, 16, 27, 20, 27, shade)
 	return _finalize(img, Color(1.0, 0.2, 0.15))
 
-# --- encounter_02 赛博游魂：紫色飘浮幽灵，无腿 ---
+# --- encounter_02 赛博游魂（GBA风重绘）：斗篷幽灵 ---
 static func _gen_enc02_ghost() -> ImageTexture:
 	var img: Image = _new_canvas()
-	var body: Color = Color(0.4, 0.15, 0.65)
-	var hi: Color = Color(0.6, 0.3, 0.9)
-	var glow: Color = Color(0.7, 0.4, 1.0)
-	var eye: Color = Color(1.0, 0.3, 0.9)
-	# 头（大圆）
-	_fill_ellipse_l(img, 16, 9, 6, 5, body)
+	var body: Color = Color(0.36, 0.16, 0.62)
+	var hi: Color = Color(0.58, 0.33, 0.92)
+	var dark: Color = Color(0.14, 0.08, 0.24)
+	var eye: Color = Color(1.0, 0.45, 0.95)
+	# 头与兜帽
+	_fill_ellipse_l(img, 16, 8, 6, 5, body)
 	_fill_ellipse_l(img, 16, 8, 5, 4, hi)
-	# 眼睛（诡异斜眼）
-	_fill_rect_l(img, 13, 8, 14, 9, eye)
-	_fill_rect_l(img, 18, 8, 19, 9, eye)
-	_px(img, 13, 8, Color.WHITE); _px(img, 18, 8, Color.WHITE)
-	# 嘴
-	_fill_rect_l(img, 14, 11, 18, 11, Color(0.2, 0.05, 0.35))
-	# 飘浮身体（逐渐变窄变透明）
-	_fill_rect_l(img, 12, 14, 20, 17, Color(body.r, body.g, body.b, 0.85))
-	_fill_rect_l(img, 13, 18, 19, 20, Color(body.r, body.g, body.b, 0.6))
-	_fill_rect_l(img, 14, 21, 18, 23, Color(body.r, body.g, body.b, 0.35))
-	_fill_rect_l(img, 15, 24, 17, 25, Color(body.r, body.g, body.b, 0.15))
-	# 飘浮手臂
-	_fill_rect_l(img, 9, 13, 11, 15, Color(glow.r, glow.g, glow.b, 0.6))
-	_fill_rect_l(img, 21, 13, 23, 15, Color(glow.r, glow.g, glow.b, 0.6))
+	_fill_rect_l(img, 12, 10, 20, 12, dark)
+	# 眼与嘴
+	_fill_rect_l(img, 13, 9, 14, 10, eye)
+	_fill_rect_l(img, 18, 9, 19, 10, eye)
+	_px(img, 14, 9, Color.WHITE); _px(img, 19, 9, Color.WHITE)
+	_fill_rect_l(img, 14, 12, 18, 12, Color(0.3, 0.1, 0.45))
+	# 飘带身体（更像GBA幽灵系）
+	_fill_rect_l(img, 11, 13, 21, 18, Color(body.r, body.g, body.b, 0.9))
+	_fill_rect_l(img, 12, 19, 20, 21, Color(body.r, body.g, body.b, 0.65))
+	_fill_rect_l(img, 13, 22, 19, 24, Color(body.r, body.g, body.b, 0.4))
+	_fill_rect_l(img, 14, 25, 18, 26, Color(body.r, body.g, body.b, 0.25))
+	# 飘浮小手
+	_fill_rect_l(img, 8, 14, 10, 17, Color(hi.r, hi.g, hi.b, 0.55))
+	_fill_rect_l(img, 22, 14, 24, 17, Color(hi.r, hi.g, hi.b, 0.55))
 	return _finalize(img, Color(0.6, 0.2, 1.0))
 
-# --- encounter_03 暗网爬虫：绿色多腿蜘蛛型 ---
+# --- encounter_03 暗网爬虫（GBA风重绘）：甲壳蛛 ---
 static func _gen_enc03_crawler() -> ImageTexture:
 	var img: Image = _new_canvas()
-	var body: Color = Color(0.08, 0.55, 0.2)
-	var hi: Color = Color(0.15, 0.75, 0.35)
-	var dark: Color = Color(0.04, 0.3, 0.1)
-	var eye: Color = Color(1.0, 0.2, 0.2)
-	# 身体（扁椭圆）
-	_fill_ellipse_l(img, 16, 14, 7, 4, body)
-	_fill_ellipse_l(img, 16, 13, 5, 3, hi)
-	# 头部（小圆突出）
-	_fill_ellipse_l(img, 16, 9, 3, 2, body)
-	_fill_ellipse_l(img, 16, 9, 2, 1, hi)
-	# 眼睛（多眼）
-	_px(img, 14, 8, eye); _px(img, 18, 8, eye)
+	var body: Color = Color(0.1, 0.5, 0.22)
+	var hi: Color = Color(0.2, 0.72, 0.35)
+	var dark: Color = Color(0.06, 0.24, 0.11)
+	var eye: Color = Color(1.0, 0.26, 0.22)
+	# 前头与躯干
+	_fill_ellipse_l(img, 16, 10, 4, 3, body)
+	_fill_ellipse_l(img, 16, 10, 3, 2, hi)
+	_fill_ellipse_l(img, 16, 16, 7, 5, body)
+	_fill_ellipse_l(img, 16, 15, 5, 4, hi)
+	# 眼睛
+	_px(img, 14, 10, eye); _px(img, 18, 10, eye)
 	_px(img, 15, 9, eye); _px(img, 17, 9, eye)
-	# 腿（4对）
-	for pair in [[8, 11], [7, 14], [8, 17], [10, 19]]:
+	# 甲壳纹
+	_fill_rect_l(img, 15, 14, 17, 14, dark)
+	_fill_rect_l(img, 14, 16, 18, 16, dark)
+	# 八足
+	for pair in [[8, 12], [7, 15], [8, 18], [10, 20]]:
 		_px(img, pair[0], pair[1], dark); _px(img, pair[0] - 1, pair[1] + 1, dark)
-		var mirror_x: int = 31 - pair[0]
-		_px(img, mirror_x, pair[1], dark); _px(img, mirror_x + 1, pair[1] + 1, dark)
-	# 腹部纹路
-	_px(img, 16, 14, dark); _px(img, 15, 15, dark); _px(img, 17, 15, dark)
+		var mx: int = 31 - pair[0]
+		_px(img, mx, pair[1], dark); _px(img, mx + 1, pair[1] + 1, dark)
 	return _finalize(img, Color(0.1, 0.9, 0.3))
 
-# --- encounter_04 脉冲猎手：橙色尖头猎食者，流线型 ---
+# --- encounter_04 脉冲猎手（GBA风重绘）：迅捷利爪兽 ---
 static func _gen_enc04_hunter() -> ImageTexture:
 	var img: Image = _new_canvas()
-	var body: Color = Color(0.85, 0.45, 0.05)
-	var hi: Color = Color(1.0, 0.65, 0.15)
-	var dark: Color = Color(0.55, 0.25, 0.02)
-	var eye: Color = Color(1.0, 1.0, 0.0)
-	# 尖头（三角形顶部）
-	_px(img, 16, 3, hi)
-	_fill_rect_l(img, 15, 4, 17, 4, hi)
-	_fill_rect_l(img, 14, 5, 18, 5, body)
-	# 头部
-	_fill_rect_l(img, 13, 6, 19, 10, body)
-	_fill_rect_l(img, 14, 7, 18, 9, hi)
-	# 锐利眼睛
+	var body: Color = Color(0.82, 0.42, 0.08)
+	var hi: Color = Color(1.0, 0.62, 0.2)
+	var dark: Color = Color(0.48, 0.22, 0.03)
+	var eye: Color = Color(1.0, 0.95, 0.2)
+	# 头部与背鳍
+	_fill_rect_l(img, 12, 5, 20, 10, body)
+	_fill_rect_l(img, 13, 6, 19, 9, hi)
+	_px(img, 16, 3, hi); _px(img, 15, 4, hi); _px(img, 17, 4, hi)
+	# 眼睛
 	_fill_rect_l(img, 14, 7, 15, 8, eye)
 	_fill_rect_l(img, 17, 7, 18, 8, eye)
-	_px(img, 15, 7, Color(1, 0.5, 0)); _px(img, 17, 7, Color(1, 0.5, 0))
-	# 流线型身体
-	_fill_rect_l(img, 12, 11, 20, 18, body)
-	_fill_rect_l(img, 13, 12, 19, 17, hi)
-	# 速度纹路
+	# 身体
+	_fill_rect_l(img, 11, 11, 21, 18, body)
+	_fill_rect_l(img, 12, 12, 20, 17, hi)
 	_fill_rect_l(img, 13, 13, 13, 16, dark)
 	_fill_rect_l(img, 19, 13, 19, 16, dark)
-	# 利爪手臂
-	_fill_rect_l(img, 9, 12, 11, 14, dark)
-	_px(img, 9, 15, eye)
-	_fill_rect_l(img, 21, 12, 23, 14, dark)
-	_px(img, 23, 15, eye)
-	# 腿
+	# 利爪
+	_fill_rect_l(img, 8, 12, 10, 15, dark)
+	_fill_rect_l(img, 22, 12, 24, 15, dark)
+	_px(img, 8, 16, eye); _px(img, 24, 16, eye)
+	# 腿与尾
 	_fill_rect_l(img, 13, 19, 14, 23, body)
 	_fill_rect_l(img, 18, 19, 19, 23, body)
-	_px(img, 12, 24, dark); _px(img, 15, 24, dark)
-	_px(img, 17, 24, dark); _px(img, 20, 24, dark)
+	_fill_rect_l(img, 21, 16, 24, 18, dark)
+	_px(img, 25, 17, hi)
 	return _finalize(img, Color(1.0, 0.6, 0.1))
 
 # --- encounter_05 数据幽灵：灰蓝色兜帽幽影 ---
