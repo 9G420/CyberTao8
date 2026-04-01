@@ -128,6 +128,29 @@ static func _draw_board_platform_bg(canvas: CanvasItem, origin: Vector2, gs: Vec
 		var b: Vector2 = p1.lerp(p2, t)
 		canvas.draw_line(a, b, Color(0.12, 0.2, 0.3, 0.08), 1.0)
 
+	# v0.1.102：外场有画面（角落面板+能量节点+远景条带）
+	var corners: Array[Vector2] = [p0, p1, p2, p3]
+	for cpos in corners:
+		var panel_size: Vector2 = Vector2(110, 56) * zoom
+		var panel_rect: Rect2 = Rect2(cpos - panel_size * 0.5, panel_size)
+		canvas.draw_rect(panel_rect, Color(0.18, 0.24, 0.3, 0.35), true)
+		canvas.draw_rect(panel_rect, Color(0.35, 0.75, 0.95, 0.28), false, 1.8)
+		for li in range(3):
+			var yy: float = panel_rect.position.y + 10.0 * zoom + li * 12.0 * zoom
+			canvas.draw_line(Vector2(panel_rect.position.x + 10.0 * zoom, yy), Vector2(panel_rect.position.x + panel_rect.size.x - 10.0 * zoom, yy), Color(0.45, 0.85, 1.0, 0.16), 1.0)
+
+	var mid_l: Vector2 = p0.lerp(p3, 0.5)
+	var mid_r: Vector2 = p1.lerp(p2, 0.5)
+	for npos in [mid_l, mid_r]:
+		canvas.draw_circle(npos, 12.0 * zoom, Color(0.25, 0.65, 0.9, 0.22 + pulse * 0.08))
+		canvas.draw_arc(npos, 16.0 * zoom, 0, TAU, 20, Color(0.35, 0.85, 1.0, 0.35 + pulse * 0.12), 2.0)
+
+	for bi in range(5):
+		var tb: float = float(bi) / 4.0
+		var la: Vector2 = p0.lerp(p1, tb)
+		var lb: Vector2 = p3.lerp(p2, tb)
+		canvas.draw_line(la + Vector2(0, -22 * zoom), lb + Vector2(0, -22 * zoom), Color(0.2, 0.35, 0.5, 0.09), 1.2)
+
 ## 获取棋盘尺寸（优先从 board_mgr 取，否则用默认值）
 static func _get_grid_size(board_mgr: Node) -> Vector2i:
 	if board_mgr != null and board_mgr.board_size != Vector2i.ZERO:

@@ -1,17 +1,18 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.101
+**版本**: v0.1.102
 **分支**: `codex/dice-beast-protocol`
 
-## 本轮修复
-- 2D 选中单位持续居中跟随（防止角色跑边角）
-- 选中状态下回收拖拽偏移（避免棋盘回正到奇怪位置）
-- 棋盘外场底色提亮+警示斜线（明确与棋盘区分）
+## 本轮目标
+- 按用户要求：棋盘外背景要“有画面”，不要纯空白
 
-## 修改文件
-- `Project/Scripts/UI/BoardView.gd`
-- `Project/Scripts/UI/IsoTileRenderer.gd`
-- `Logs/changelog_v0.1.md`
-- `Logs/Mulerun_Work_Report.md`
-- `Logs/AI_Employee_Guide_v3.md`
+## 实现
+- `IsoTileRenderer.gd` 外场平台新增装饰：
+  - 四角赛博信息面板（边框+内部细线）
+  - 左右能量节点（发光圆环）
+  - 远景横向条带（低透明度）
+
+## 结果
+- 棋盘外区域从“空/黑”变为可感知背景场景
+- 棋盘区与外场区分更明确
