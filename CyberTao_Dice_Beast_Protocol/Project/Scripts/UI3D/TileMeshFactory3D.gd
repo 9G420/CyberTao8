@@ -30,6 +30,7 @@ static func create_tile(tile_key: String, cell: Vector2i, grid_size: int = 12) -
 	var y_offset: float = -TILE_THICKNESS * 0.5 + _get_tile_lift(tile_key)
 	mesh_inst.position = Vector3(world_pos.x, y_offset, world_pos.z)
 	mesh_inst.name = "Tile_%d_%d" % [cell.x, cell.y]
+	_add_feature_marker(mesh_inst, tile_key)
 	return mesh_inst
 
 ## 创建高亮覆盖层（半透明薄片，叠在格子上方）
@@ -53,6 +54,44 @@ static func create_highlight(cell: Vector2i, color: Color, grid_size: int = 12) 
 	mesh_inst.position = Vector3(world_pos.x, 0.05, world_pos.z)
 	mesh_inst.name = "Highlight_%d_%d" % [cell.x, cell.y]
 	return mesh_inst
+
+static func _add_feature_marker(parent: MeshInstance3D, tile_key: String) -> void:
+	var color: Color = _get_emission_color(tile_key)
+	match tile_key:
+		"shop", "chest", "item", "heal", "event", "trap", "encounter", "portal":
+			var marker := MeshInstance3D.new()
+			var mesh: PrimitiveMesh
+			if tile_key == "chest" or tile_key == "shop":
+				var box := BoxMesh.new()
+				box.size = Vector3(0.55, 0.45, 0.55)
+				mesh = box
+			elif tile_key == "portal":
+				var cyl := CylinderMesh.new()
+				cyl.top_radius = 0.3
+				cyl.bottom_radius = 0.5
+				cyl.height = 0.5
+				mesh = cyl
+			else:
+				var prism := PrismMesh.new()
+				prism.left_to_right = 0.0
+				prism.size = Vector3(0.42, 0.52, 0.42)
+				mesh = prism
+			marker.mesh = mesh
+			var m := StandardMaterial3D.new()
+			m.albedo_color = Color(color.r, color.g, color.b, 0.9)
+			m.emission_enabled = true
+			m.emission = color
+			m.emission_energy_multiplier = 0.8
+			m.roughness = 0.45
+			m.metallic = 0.15
+			marker.material_override = m
+			marker.position = Vector3(0, TILE_THICKNESS * 0.5 + 0.28, 0)
+			if tile_key == "portal":
+				marker.position.y += 0.12
+				marker.rotation_degrees = Vector3(0, 0, 0)
+			parent.add_child(marker)
+		_:
+			pass
 
 ## 根据 tile_key 返回额外高度（提升功能格立体感）
 static func _get_tile_lift(tile_key: String) -> float:

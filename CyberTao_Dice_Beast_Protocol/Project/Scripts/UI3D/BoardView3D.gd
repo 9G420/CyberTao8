@@ -29,8 +29,11 @@ var camera_cell: Vector2i = Vector2i(0, 0)
 var _camera: Camera3D = null
 var _camera_target: Vector3 = Vector3.ZERO
 const CAMERA_HEIGHT: float = 18.0
-const CAMERA_ANGLE_DEG: float = 55.0
-const CAMERA_LERP_SPEED: float = 8.0		# v0.1.72：提高至 8.0（原 4.5 在 60fps 下过慢）
+const CAMERA_LERP_SPEED: float = 8.0
+const CAMERA_ANGLE_MIN: float = 30.0
+const CAMERA_ANGLE_MAX: float = 75.0
+var _camera_angle_deg: float = 55.0
+var _camera_yaw_deg: float = 0.0		# v0.1.72：提高至 8.0（原 4.5 在 60fps 下过慢）
 const ZOOM_MIN: float = 10.0
 const ZOOM_MAX: float = 30.0
 const ZOOM_STEP: float = 1.5
@@ -53,6 +56,12 @@ var _drag_start_pos: Vector2 = Vector2.ZERO
 var _drag_start_offset: Vector3 = Vector3.ZERO		# v0.1.72：拖拽开始时的累积偏移快照
 var _drag_offset: Vector3 = Vector3.ZERO
 var _drag_offset_accumulated: Vector3 = Vector3.ZERO
+
+# --- 中键视角旋转 ---
+var _orbit_active: bool = false
+var _orbit_start_pos: Vector2 = Vector2.ZERO
+var _orbit_start_angle: float = 55.0
+var _orbit_start_yaw: float = 0.0
 
 # --- 移动动画（与 BoardView 对齐）---
 var _move_anim_unit: String = ""
@@ -134,8 +143,10 @@ func _process(delta: float) -> void:
 	# 平滑相机插值（v0.1.72：拖拽期间也更新相机，消除滞后感）
 	if _camera:
 		var target_pos: Vector3 = _camera_target + _drag_offset_accumulated
-		var angle_rad: float = deg_to_rad(CAMERA_ANGLE_DEG)
+		var angle_rad: float = deg_to_rad(_camera_angle_deg)
+		var yaw_rad: float = deg_to_rad(_camera_yaw_deg)
 		var cam_offset := Vector3(0, sin(angle_rad) * _camera_distance, cos(angle_rad) * _camera_distance)
+		cam_offset = cam_offset.rotated(Vector3.UP, yaw_rad)
 		var desired_pos: Vector3 = target_pos + cam_offset
 		if _drag_active:
 			# 拖拽中：高速追踪，接近即时响应
@@ -210,7 +221,7 @@ func _update_move_animation() -> void:
 
 func _update_unit_readability_scale() -> void:
 	var t: float = inverse_lerp(ZOOM_MIN, ZOOM_MAX, _camera_distance)
-	var scale_factor: float = lerpf(1.0, 1.45, clampf(t, 0.0, 1.0))
+	var scale_factor: float = lerpf(1.0, 2.2, clampf(t, 0.0, 1.0))
 	for uid in _unit_nodes.keys():
 		var node: Node3D = _unit_nodes[uid]
 		if node == null:
@@ -492,10 +503,10 @@ func handle_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			_apply_zoom(ZOOM_STEP, mb.position)
 			return
-	# 拖拽（v0.1.72：改用起始位置 + 差值映射，消除增量累积漂移）
+	# 右键平移 / 中键旋转视角
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
+		if mb.button_index == MOUSE_BUTTON_RIGHT:
 			if mb.pressed:
 				_drag_active = true
 				_drag_start_pos = mb.position
@@ -503,12 +514,26 @@ func handle_input(event: InputEvent) -> void:
 			else:
 				_drag_active = false
 			return
+		if mb.button_index == MOUSE_BUTTON_MIDDLE:
+			if mb.pressed:
+				_orbit_active = true
+				_orbit_start_pos = mb.position
+				_orbit_start_angle = _camera_angle_deg
+				_orbit_start_yaw = _camera_yaw_deg
+			else:
+				_orbit_active = false
+			return
 	if event is InputEventMouseMotion and _drag_active:
 		var mm: InputEventMouseMotion = event as InputEventMouseMotion
 		var delta_px: Vector2 = mm.position - _drag_start_pos
-		# v0.1.72：基于起始位置计算绝对偏移（非增量累积）
 		var world_scale: float = _camera_distance / 350.0
 		_drag_offset_accumulated = _drag_start_offset + Vector3(-delta_px.x * world_scale, 0, -delta_px.y * world_scale)
+		return
+	if event is InputEventMouseMotion and _orbit_active:
+		var mm: InputEventMouseMotion = event as InputEventMouseMotion
+		var d: Vector2 = mm.position - _orbit_start_pos
+		_camera_angle_deg = clampf(_orbit_start_angle + d.y * 0.12, CAMERA_ANGLE_MIN, CAMERA_ANGLE_MAX)
+		_camera_yaw_deg = _orbit_start_yaw - d.x * 0.16
 		return
 	# 点击
 	if event is InputEventMouseButton:
@@ -667,8 +692,10 @@ func _screen_to_ground(screen_pos: Vector2, cam_dist: float) -> Vector3:
 		return Vector3.ZERO
 	# 临时计算该距离下的相机位置
 	var target_pos: Vector3 = _camera_target + _drag_offset_accumulated
-	var angle_rad: float = deg_to_rad(CAMERA_ANGLE_DEG)
+	var angle_rad: float = deg_to_rad(_camera_angle_deg)
+	var yaw_rad: float = deg_to_rad(_camera_yaw_deg)
 	var cam_offset := Vector3(0, sin(angle_rad) * cam_dist, cos(angle_rad) * cam_dist)
+	cam_offset = cam_offset.rotated(Vector3.UP, yaw_rad)
 	var cam_pos: Vector3 = target_pos + cam_offset
 	# 使用相机的投影方向（近似：从 cam_pos 看向 target_pos 的方向偏移）
 	var from: Vector3 = _camera.project_ray_origin(screen_pos)
@@ -683,8 +710,10 @@ func _screen_to_ground(screen_pos: Vector2, cam_dist: float) -> Vector3:
 func _update_camera_transform() -> void:
 	if _camera == null:
 		return
-	var angle_rad: float = deg_to_rad(CAMERA_ANGLE_DEG)
+	var angle_rad: float = deg_to_rad(_camera_angle_deg)
+	var yaw_rad: float = deg_to_rad(_camera_yaw_deg)
 	var cam_offset := Vector3(0, sin(angle_rad) * _camera_distance, cos(angle_rad) * _camera_distance)
+	cam_offset = cam_offset.rotated(Vector3.UP, yaw_rad)
 	_camera.position = _camera_target + cam_offset
 	_camera.look_at(_camera_target, Vector3.UP)
 
