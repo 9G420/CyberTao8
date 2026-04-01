@@ -109,10 +109,10 @@ static func _draw_board_platform_bg(canvas: CanvasItem, origin: Vector2, gs: Vec
 	var p2: Vector2 = grid_to_screen_zoom(max_x + 1, max_y + 1, origin, zoom)
 	var p3: Vector2 = grid_to_screen_zoom(min_x, max_y + 1, origin, zoom)
 	var ring: PackedVector2Array = PackedVector2Array([p0, p1, p2, p3])
-	var base_col: Color = Color(0.06, 0.07, 0.1, 0.88)
+	var base_col: Color = Color(0.12, 0.14, 0.18, 0.92)
 	canvas.draw_colored_polygon(ring, base_col)
 	# 边框高光
-	var edge: Color = Color(0.15, 0.45, 0.7, 0.28 + pulse * 0.08)
+	var edge: Color = Color(0.25, 0.58, 0.82, 0.34 + pulse * 0.10)
 	for i in range(4):
 		canvas.draw_line(ring[i], ring[(i + 1) % 4], edge, 2.0)
 	# 轻微分层扫描线

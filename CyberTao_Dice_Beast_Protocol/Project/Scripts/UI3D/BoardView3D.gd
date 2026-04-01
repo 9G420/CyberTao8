@@ -138,6 +138,9 @@ func _setup_lighting() -> void:
 
 func _process(delta: float) -> void:
 	_pulse_time += delta
+	# v0.1.99：非操作状态下缓慢回正，避免长时漂移
+	if not _drag_active and not _orbit_active:
+		_drag_offset_accumulated = _drag_offset_accumulated.lerp(Vector3.ZERO, clampf(delta * 0.8, 0.0, 1.0))
 	# v0.1.72：边界限制 — 将拖拽偏移夹紧到棋盘世界范围
 	_clamp_drag_offset()
 	# 平滑相机插值（v0.1.72：拖拽期间也更新相机，消除滞后感）
@@ -399,6 +402,7 @@ func rebuild_board() -> void:
 	if board_manager == null:
 		return
 	_grid_size = _get_grid_size()
+	_build_stage_environment()
 	var ambient_pad: int = 8
 	for gx in range(-ambient_pad, _grid_size + ambient_pad):
 		for gy in range(-ambient_pad, _grid_size + ambient_pad):
@@ -422,6 +426,53 @@ func _clear_tiles() -> void:
 	for child in _tiles_root.get_children():
 		child.queue_free()
 	_tile_nodes.clear()
+
+func _build_stage_environment() -> void:
+	var board_world: float = float(_grid_size) * GridMapper3D.CELL_SIZE
+	# 舞台底板（比棋盘大）
+	var stage := MeshInstance3D.new()
+	var stage_mesh := BoxMesh.new()
+	stage_mesh.size = Vector3(board_world * 1.9, 0.5, board_world * 1.9)
+	stage.mesh = stage_mesh
+	var stage_mat := StandardMaterial3D.new()
+	stage_mat.albedo_color = Color(0.08, 0.1, 0.14, 0.95)
+	stage_mat.emission_enabled = true
+	stage_mat.emission = Color(0.1, 0.25, 0.35)
+	stage_mat.emission_energy_multiplier = 0.25
+	stage_mat.roughness = 0.85
+	stage_mat.metallic = 0.12
+	stage.material_override = stage_mat
+	stage.position = Vector3(0, -0.45, 0)
+	_tiles_root.add_child(stage)
+
+	# 四面背景景片（低饱和，区分棋盘外区域）
+	for i in range(4):
+		var wall := MeshInstance3D.new()
+		var plane := PlaneMesh.new()
+		plane.size = Vector2(board_world * 2.2, board_world * 0.9)
+		wall.mesh = plane
+		var wall_mat := StandardMaterial3D.new()
+		wall_mat.albedo_color = Color(0.07, 0.09, 0.12, 0.9)
+		wall_mat.emission_enabled = true
+		wall_mat.emission = Color(0.08, 0.18, 0.28)
+		wall_mat.emission_energy_multiplier = 0.18
+		wall_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		wall_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		wall.material_override = wall_mat
+		match i:
+			0:
+				wall.position = Vector3(0, board_world * 0.18, -board_world * 1.05)
+				wall.rotation_degrees = Vector3(80, 0, 0)
+			1:
+				wall.position = Vector3(0, board_world * 0.18, board_world * 1.05)
+				wall.rotation_degrees = Vector3(80, 180, 0)
+			2:
+				wall.position = Vector3(-board_world * 1.05, board_world * 0.18, 0)
+				wall.rotation_degrees = Vector3(80, 90, 0)
+			3:
+				wall.position = Vector3(board_world * 1.05, board_world * 0.18, 0)
+				wall.rotation_degrees = Vector3(80, -90, 0)
+		_tiles_root.add_child(wall)
 
 func _get_grid_size() -> int:
 	if board_manager != null and board_manager.board_size != Vector2i.ZERO:

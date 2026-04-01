@@ -91,8 +91,10 @@ func _ready() -> void:
 	# v0.1.82：精灵动画器已移除（全程序化渲染�?
 
 func _on_anim_tick() -> void:
-	# 平滑插值相机位置（v0.1.62�?
-	if not _drag_active:
+	# 平滑插值相机位置（v0.1.62）
+	if not _drag_active and not _orbit_active:
+		# v0.1.99：缓慢衰减手动偏移，防止长时漂移
+		_drag_offset = _drag_offset.lerp(Vector2.ZERO, 0.03)
 		var target: Vector2 = _iso_origin_target + _drag_offset
 		var diff: Vector2 = target - iso_origin
 		if diff.length() > 0.5:

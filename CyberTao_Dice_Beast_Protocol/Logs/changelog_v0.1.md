@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.99 - 2026-04-02
+
+### 修复（2D视角控制兼容 + 棋盘中心漂移 + 外场仍偏黑）
+- `BoardView.gd`：空闲时对 `_drag_offset` 做缓慢衰减，降低长时间游玩后棋盘偏离中心问题
+- `BoardView3D.gd`：空闲时对 `_drag_offset_accumulated` 做缓慢回正，减少 3D 漂移
+- `IsoTileRenderer.gd`：外场平台底色与边缘高光亮度提高，增强“棋盘外背景区分”可见性
+
+### 说明
+- 2D 中键事件在部分鼠标上仍可能不稳定，已保留 `Alt/Shift + 右键` 视角控制备用路径
+
 ## v0.1.98 - 2026-04-02
 
 ### 修复（2D中键无反应 + 棋盘外仍显黑边）
