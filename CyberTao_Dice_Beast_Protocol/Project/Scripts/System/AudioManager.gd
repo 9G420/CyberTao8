@@ -8,8 +8,8 @@ class_name AudioManager
 
 # --- 配置 ---
 const SFX_CHANNELS: int = 6
-const BGM_VOLUME_DB: float = -12.0
-const SFX_VOLUME_DB: float = -6.0
+const BGM_VOLUME_DB: float = -18.0
+const SFX_VOLUME_DB: float = -12.0
 
 # --- 内部状态 ---
 var _cache: Dictionary = {}
@@ -47,11 +47,12 @@ func _precache_sfx() -> void:
 	_cache["heal"] = SFXGenerator.generate_heal_sfx()
 	_cache["summon"] = SFXGenerator.generate_summon_sfx()
 	_cache["encounter"] = SFXGenerator.generate_transition_sfx()
-	_cache["dice_roll"] = SFXGenerator.generate_cyber_glitch_sfx()
-	_cache["player_hurt"] = SFXGenerator.generate_player_hurt_sfx()
+	# v0.1.86：柔化高刺耳音效（保留事件语义，降低“炸耳”感）
+	_cache["dice_roll"] = SFXGenerator.generate_draw_sfx()
+	_cache["player_hurt"] = SFXGenerator.generate_enemy_hurt_sfx()
 	_cache["enemy_hurt"] = SFXGenerator.generate_enemy_hurt_sfx()
 	_cache["turn_start"] = SFXGenerator.generate_turn_start_sfx()
-	_cache["boss_attack"] = SFXGenerator.generate_boss_attack_sfx()
+	_cache["boss_attack"] = SFXGenerator.generate_attack_sfx()
 	_cache["pickup"] = SFXGenerator.generate_click_sfx()
 	_cache["chest"] = SFXGenerator.generate_resonance_sfx()
 	_cache["shop"] = SFXGenerator.generate_bell_sfx()

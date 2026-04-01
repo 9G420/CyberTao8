@@ -472,12 +472,12 @@ static func generate_battle_bgm_loop() -> AudioStreamWAV:
 		var six_pos: float = fmod(sixteenth_f, 1.0)
 		var beat_idx: int = int(beat_f) % bass.size()
 		var mix: float = 0.0
-		# --- Square melody (25% duty, classic NES lead) ---
+		# --- Melody（由硬方波改为三角波，降低刺耳感） ---
 		var mf: float = mel[six_idx]
 		if mf > 0.0:
 			phase_mel += mf / float(SR)
 			var mel_env: float = _adsr(six_pos * sixteenth, sixteenth, 0.003, 0.02, 0.7, 0.02)
-			mix += _square(phase_mel, 0.25) * mel_env * 0.18
+			mix += _tri(phase_mel) * mel_env * 0.14
 		# --- Triangle bass ---
 		var bf: float = bass[beat_idx]
 		phase_bass += bf / float(SR)
@@ -499,14 +499,14 @@ static func generate_battle_bgm_loop() -> AudioStreamWAV:
 			mix += _tri(phase_kick) * kick_env
 		# Snare on 2 and 4
 		if (beat_idx % 2 == 1) and beat_pos < 0.10:
-			var snr_env: float = exp(-beat_pos * 30.0) * 0.10
+			var snr_env: float = exp(-beat_pos * 30.0) * 0.06
 			mix += _noise_from_index(i) * snr_env
 		# Hi-hat on every 8th
 		var eighth_pos: float = fmod(beat_f * 2.0, 1.0)
-		var hh_env: float = exp(-eighth_pos * 60.0) * 0.03
+		var hh_env: float = exp(-eighth_pos * 60.0) * 0.015
 		mix += _noise_from_index(i + 7777) * hh_env
 		# --- Clean output ---
-		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.55)
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.38)
 	return _make_stream(data, true)
 
 # ============================================================
@@ -546,12 +546,12 @@ static func generate_title_bgm_loop() -> AudioStreamWAV:
 		var epos: float = fmod(eighth_f, 1.0)
 		var bass_idx: int = int(beat_f) % bass_notes.size()
 		var mix: float = 0.0
-		# --- Square melody (12.5% duty = thin, haunting NES sound) ---
+		# --- Melody（由窄脉冲改为更柔和三角波） ---
 		var mf: float = mel[ei]
 		if mf > 0.0:
 			phase_mel += mf / float(SR)
 			var mel_env: float = _adsr(epos * eighth, eighth, 0.005, 0.04, 0.6, 0.04)
-			mix += _square(phase_mel, 0.125) * mel_env * 0.16
+			mix += _tri(phase_mel) * mel_env * 0.12
 		# --- Triangle bass ---
 		phase_bass += bass_notes[bass_idx] / float(SR)
 		var bass_env: float = _adsr(beat_pos * beat_len, beat_len, 0.005, 0.05, 0.7, 0.05)
@@ -559,11 +559,11 @@ static func generate_title_bgm_loop() -> AudioStreamWAV:
 		# --- Quiet pad: Am chord (A3=220, C4=261.6) with slow pulse ---
 		phase_pad1 += 220.0 / float(SR)
 		phase_pad2 += 261.6 / float(SR)
-		var pad_vol: float = 0.03 + 0.015 * sin(t * 0.8 * TWO_PI)
+		var pad_vol: float = 0.02 + 0.01 * sin(t * 0.8 * TWO_PI)
 		mix += _pulse(phase_pad1, 0.125) * pad_vol
 		mix += _pulse(phase_pad2, 0.125) * pad_vol * 0.7
 		# --- Clean output ---
-		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.50)
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.34)
 	return _make_stream(data, true)
 
 # ============================================================
@@ -600,12 +600,12 @@ static func generate_map_bgm_loop() -> AudioStreamWAV:
 		var epos: float = fmod(eighth_f, 1.0)
 		var bass_idx: int = int(beat_f) % bass.size()
 		var mix: float = 0.0
-		# --- Square melody ---
+		# --- Melody（改为三角波，减少齿音） ---
 		var mf: float = mel[ei]
 		if mf > 0.0:
 			phase_mel += mf / float(SR)
 			var mel_env: float = _adsr(epos * eighth, eighth, 0.005, 0.03, 0.65, 0.04)
-			mix += _square(phase_mel, 0.25) * mel_env * 0.14
+			mix += _tri(phase_mel) * mel_env * 0.11
 		# --- Triangle bass ---
 		phase_bass += bass[bass_idx] / float(SR)
 		var bass_env: float = _adsr(beat_pos * beat_len, beat_len, 0.005, 0.04, 0.7, 0.04)
@@ -616,10 +616,10 @@ static func generate_map_bgm_loop() -> AudioStreamWAV:
 		var harm_env: float = _adsr(beat_pos * beat_len, beat_len, 0.01, 0.05, 0.3, 0.05)
 		mix += _pulse(phase_harm, 0.125) * harm_env * 0.04
 		# --- Minimal percussion: soft hi-hat on 8ths ---
-		var hh_env: float = exp(-epos * 50.0) * 0.025
+		var hh_env: float = exp(-epos * 50.0) * 0.012
 		mix += _noise_from_index(i + 3333) * hh_env
 		# --- Clean output ---
-		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.50)
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.34)
 	return _make_stream(data, true)
 
 # ============================================================
@@ -667,12 +667,12 @@ static func generate_boss_bgm_loop() -> AudioStreamWAV:
 		var eighth_pos: float = fmod(eighth_f, 1.0)
 		var beat_idx: int = int(beat_f) % 8
 		var mix: float = 0.0
-		# --- Square melody (25% duty, loud) ---
+		# --- Melody（从硬方波改为三角波，保留紧张感但减刺耳） ---
 		var mf: float = mel[six_idx]
 		if mf > 0.0:
 			phase_mel += mf / float(SR)
 			var mel_env: float = _adsr(six_pos * sixteenth, sixteenth, 0.002, 0.015, 0.75, 0.015)
-			mix += _square(phase_mel, 0.25) * mel_env * 0.18
+			mix += _tri(phase_mel) * mel_env * 0.14
 		# --- Triangle bass (8th note rhythm) ---
 		phase_bass += bass[eighth_idx] / float(SR)
 		var bass_env: float = _adsr(eighth_pos * beat_len * 0.5, beat_len * 0.5, 0.003, 0.02, 0.8, 0.02)
@@ -689,13 +689,13 @@ static func generate_boss_bgm_loop() -> AudioStreamWAV:
 			phase_kick += kf / float(SR)
 			mix += _tri(phase_kick) * kick_env
 		if (beat_idx % 2 == 1) and beat_pos < 0.08:
-			var snr_env: float = exp(-beat_pos * 25.0) * 0.12
+			var snr_env: float = exp(-beat_pos * 25.0) * 0.07
 			mix += _noise_from_index(i) * snr_env
 		# Hi-hat 16th notes
-		var hh_env: float = exp(-six_pos * 70.0) * 0.025
+		var hh_env: float = exp(-six_pos * 70.0) * 0.012
 		mix += _noise_from_index(i + 5555) * hh_env
 		# --- Clean output ---
-		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.55)
+		data[i] = _to_byte(clampf(mix, -0.95, 0.95) * 0.40)
 	return _make_stream(data, true)
 
 # ============================================================

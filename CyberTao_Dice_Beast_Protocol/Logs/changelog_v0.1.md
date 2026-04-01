@@ -1,5 +1,26 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.86 - 2026-04-02
+
+### 修改（BGM/SFX 听感柔化，降低刺耳度）
+- `AudioManager.gd`：默认音量下调（BGM -12dB → -18dB，SFX -6dB → -12dB）
+- `SettingsPanel.gd`：音量滑块默认值下调（BGM 25% → 18%，SFX 50% → 35%），重置默认同步下调
+- `AudioManager.gd`：替换高刺耳缓存映射：
+  - `dice_roll` 从 `generate_cyber_glitch_sfx()` 改为更柔和的 `generate_draw_sfx()`
+  - `boss_attack` 从 `generate_boss_attack_sfx()` 改为 `generate_attack_sfx()`
+  - `player_hurt` 改用较温和的 `generate_enemy_hurt_sfx()`
+- `SFXGenerator.gd`：4 条主 BGM 回路（battle/title/map/boss）降硬度处理：
+  - 主旋律从方波/窄脉冲改为三角波（降低齿音）
+  - 鼓组噪声（snare/hat）音量下调
+  - 总输出增益下调（battle/title/map/boss）
+
+### 修复
+- **体验问题**：程序化 BGM/SFX 高频成分和整体响度过高，长期听感刺耳疲劳；本轮通过波形/噪声/增益三层降噪处理缓解“炸耳”问题
+
+### 备注
+- 本轮未引入外部音频素材，仍保持“纯程序化生成”架构
+- 如需进一步接近商用听感，下一步建议支持可选外部 BGM 资源包（保留程序化 fallback）
+
 ## v0.1.85 - 2026-04-02
 
 ### 修改（3D 模式棋盘拖拽自由度修正）

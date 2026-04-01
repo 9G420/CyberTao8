@@ -114,7 +114,7 @@ func _build_ui() -> void:
 	_bgm_slider.min_value = 0.0
 	_bgm_slider.max_value = 100.0
 	_bgm_slider.step = 1.0
-	_bgm_slider.value = 25.0
+	_bgm_slider.value = 18.0
 	_style_slider(_bgm_slider)
 	_bgm_slider.value_changed.connect(_on_bgm_slider_changed)
 	add_child(_bgm_slider)
@@ -134,7 +134,7 @@ func _build_ui() -> void:
 	_sfx_slider.min_value = 0.0
 	_sfx_slider.max_value = 100.0
 	_sfx_slider.step = 1.0
-	_sfx_slider.value = 50.0
+	_sfx_slider.value = 35.0
 	_style_slider(_sfx_slider)
 	_sfx_slider.value_changed.connect(_on_sfx_slider_changed)
 	add_child(_sfx_slider)
@@ -272,13 +272,13 @@ func _on_reset_pressed() -> void:
 		_sync_from_settings()
 		display_settings.apply_settings()
 		display_settings.save_settings()
-	_bgm_slider.value = 25.0
-	_sfx_slider.value = 50.0
+	_bgm_slider.value = 18.0
+	_sfx_slider.value = 35.0
 	_bgm_toggle.button_pressed = true
 	_sfx_toggle.button_pressed = true
 	if audio_manager != null:
-		audio_manager.set_bgm_volume(0.25)
-		audio_manager.set_sfx_volume(0.50)
+		audio_manager.set_bgm_volume(0.18)
+		audio_manager.set_sfx_volume(0.35)
 		audio_manager.set_bgm_enabled(true)
 		audio_manager.set_sfx_enabled(true)
 
