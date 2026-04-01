@@ -1,22 +1,22 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-01
-**版本**: v0.1.74
+**版本**: v0.1.75
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.74：3D 反馈系统实现（9 个桩函数全部替换为 Label3D 漂浮文字 + CPUParticles3D 命中粒子 + PlaneMesh 格子闪光 + 相机震动）
+- v0.1.75：阵亡单位跨层复活机制 + 存活单位跨层回复
 
 ---
 
 ## 根因目标
 
-v0.1.71 引入 3D 棋盘视图后，所有 9 个反馈方法（攻击/拾取/预警/遭遇/治疗/事件/商店/宝箱/敌方移动指示）均为 `pass` 桩函数。3D 模式下任何战斗交互都没有视觉反馈，体验空白。本轮实现完整 3D 反馈系统，与 2D 版功能对齐。
+v0.1.42 引入多层地图后，存活单位 HP 跨层保留，但阵亡单位永久消失（`_spawn_player_units_with_hp` 跳过不在 HP 快照中的单位）。当前只有 1 个永久单位（刀盾狗/英雄），英雄阵亡即 DEFEAT，所以阵亡复活尚未实际触发。但存活单位可能以极低 HP 进入后续层（"死亡螺旋"），且机制未为未来多永久单位场景做准备。本轮实现：阵亡复活（50% HP）+ 存活回复（+30% HP），同时为未来扩展多永久单位预留。
 
-服务层：棋盘走位层（3D 表现层完善）
+服务层：棋盘走位层（多层地图数值调优）
 
 ---
 
@@ -24,55 +24,43 @@ v0.1.71 引入 3D 棋盘视图后，所有 9 个反馈方法（攻击/拾取/预
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI3D/BoardView3D.gd` | 9 个桩函数替换为完整 3D 实现 + 4 个辅助方法（~130 行新增）+ `_feedback_root` 容器 + `_shake_offset` 相机震动变量 |
-| `Scripts/UI/DiceDebugPanel.gd` | 版本标记 v0.1.73 → v0.1.74 |
+| `Scripts/BattleV2/BattleFlowController.gd` | 新增 `REVIVE_HP_RATIO`/`FLOOR_HEAL_RATIO` 常量；重写 `_spawn_player_units_with_hp()`（阵亡复活+存活回复）；`_snapshot_player_hp()` 追加 `alive` 字段 |
+| `Scripts/UI/DiceDebugPanel.gd` | 版本标记 v0.1.74 → v0.1.75 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.74 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步版本号 + §2.2/§3.1/§5/§6 更新 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.75 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步版本号 + §2.2/§5/§6 更新 |
 
 ---
 
 ## 实现内容
 
-### 3D 反馈系统（4 个辅助方法 + 9 个公开方法）
+### 跨层复活与回复机制
 
-**辅助方法**：
+**进入下一层时的 HP 计算规则**：
 
-| 方法 | 技术 | 说明 |
-|------|------|------|
-| `_spawn_float_text_3d()` | Label3D + billboard + Tween | 带黑色描边的 3D 漂浮文字，上升 + 渐隐 + 自动释放，支持延迟参数 |
-| `_spawn_cell_flash_3d()` | PlaneMesh + StandardMaterial3D + emission | 半透明发光平面叠在目标格子上方，自发光渐隐后释放 |
-| `_shake_camera_3d()` | Tween + _shake_offset | 6 步衰减抖动，通过变量驱动在 _process 中叠加到相机位置 |
-| `_spawn_hit_particles_3d()` | CPUParticles3D + SphereMesh | 球形粒子向上爆散，颜色渐变透明，击杀时增强 |
+| 单位状态 | HP 计算 | 示例（max_hp=8） |
+|----------|---------|-------------------|
+| 存活（HP > 0） | 保留 HP + 回复 30% max_hp（不超过 max_hp） | HP=2 → 2+3=5；HP=7 → 7+3→上限8 |
+| 阵亡（HP ≤ 0 / 不在快照中） | 复活，HP = 50% max_hp（向上取整，至少 1） | max_hp=8 → HP=4；max_hp=1 → HP=1 |
 
-**反馈方法对齐表**：
-
-| 方法 | 3D 效果 |
-|------|---------|
-| `play_attack_feedback` | 闪光 + 震动 + 粒子 + 伤害飘字 + 击杀文字（5 层效果） |
-| `play_pickup_feedback` | 绿色漂浮文字 |
-| `play_enemy_warning` | 红色双次脉冲闪光 |
-| `play_enemy_move_indicator` | 橙色漂浮文字 |
-| `play_encounter_feedback` | 橙色大号漂浮文字 |
-| `play_heal_feedback` | 蓝色漂浮文字 |
-| `play_event_feedback` | 金色/红色漂浮文字（根据 is_positive） |
-| `play_shop_feedback` | 青色漂浮文字 |
-| `play_chest_feedback` | 金色大号漂浮文字 |
+**常量**：
+- `REVIVE_HP_RATIO = 0.5` — 复活 HP 比例
+- `FLOOR_HEAL_RATIO = 0.3` — 存活跨层回复比例
 
 **设计取舍**：
-- 使用 CPUParticles3D 而非 GPUParticles3D，因为项目使用 gl_compatibility 渲染器
-- Label3D 设置 `no_depth_test = true` 确保文字不被格子遮挡
-- 相机震动通过 `_shake_offset` 变量间接驱动（不直接修改 camera.position 动画目标，避免与 lerp 跟随冲突）
-- 所有临时节点统一挂载到 `_feedback_root`，与格子/单位/高亮层分离
-- `play_enemy_warning` 用 `get_tree().create_timer()` 实现第二次延迟闪烁，并通过 `is_instance_valid(self)` 安全检查
+- 召唤伙伴（tagged "summoned"）仍为层内临时单位，不参与跨层复活（设计意图：召唤是战术资源，不是永久伙伴）
+- 复活比例 50% 选择理由：太低（如 25%）复活后立刻阵亡，太高（如 100%）失去惩罚意义
+- 跨层回复 30% 选择理由：3 层推进中，英雄以 50% HP 进入下层时可回到 80%，不至于满血但也不至于太脆弱
+- 数值未经平衡测试，后续可直接修改常量调整
 
 ---
 
 ## 接口变更
 
-- **无新增/删除公开接口**：9 个方法签名与 v0.1.71 桩函数完全一致，仅内部实现变化
-- **新增内部方法**：`_spawn_float_text_3d()`、`_spawn_cell_flash_3d()`、`_shake_camera_3d()`、`_spawn_hit_particles_3d()`
-- **新增变量**：`_feedback_root: Node3D`、`_shake_offset: Vector3`
+- **无新增/删除公开接口**
+- **新增常量**：`REVIVE_HP_RATIO: float = 0.5`、`FLOOR_HEAL_RATIO: float = 0.3`
+- **修改内部方法**：`_spawn_player_units_with_hp()` 逻辑变更（不再跳过阵亡单位）
+- **修改内部方法**：`_snapshot_player_hp()` 字典新增 `alive: true` 字段（向前兼容）
 
 ---
 
@@ -83,39 +71,36 @@ v0.1.71 引入 3D 棋盘视图后，所有 9 个反馈方法（攻击/拾取/预
 | 测试项 | 结果 |
 |--------|------|
 | 掷骰 → 移动 → 攻击 → 召唤 | ✅ 不涉及本次修改 |
-| 敌方回合 → 镜头跟随 | ✅ 不涉及（_shake_offset 在震动结束后归零） |
+| 敌方回合 → 镜头跟随 | ✅ 不涉及 |
 | 遭遇触发 → 卡牌战斗 → 选牌奖励 → HP同步回棋盘 | ✅ 不涉及 |
-| 重新开始 | ✅ _feedback_root 子节点 Tween 结束自动 queue_free |
+| 重新开始（restart_battle） | ✅ 不调用 _spawn_player_units_with_hp，走 _spawn_player_units 全新生成 |
 | 胜负判定 | ✅ 不涉及 |
-| 3D 攻击反馈：闪光+震动+粒子+飘字 | ✅ play_attack_feedback 调用 4 个辅助方法 |
-| 3D 击杀反馈：增强闪光+大震动+更多粒子+金色飘字+KILL文字 | ✅ is_kill 分支全部增强 |
-| 3D 治疗/拾取/事件/商店/宝箱/遭遇飘字 | ✅ 各方法调用 _spawn_float_text_3d 配不同颜色/大小 |
-| 3D 敌方预警：双次红色脉冲 | ✅ timer 延迟 + is_instance_valid 安全检查 |
-| 2D 模式零影响 | ✅ 仅修改 BoardView3D.gd |
-| duck typing 路由兼容 | ✅ 方法签名不变，Main._active_view() 路由无需修改 |
-| gl_compatibility 渲染器兼容 | ✅ CPUParticles3D + Label3D + StandardMaterial3D 均兼容 |
+| 跨层 HP 保留 + 回复 | ✅ 存活单位 HP + ceil(max_hp * 0.3)，clamp 到 max_hp |
+| 阵亡单位复活 | ✅ 不在快照中的单位以 ceil(max_hp * 0.5) HP 生成 |
+| 召唤伙伴跨层消失 | ✅ 召唤单位不在 spawn_data 列表中，不会被重新生成 |
+| 多永久单位场景 | ✅ spawn_data 为 Array，可扩展追加更多永久单位 |
 
 ---
 
 ## 剩余问题
 
-- 3D 单位仍为简单几何体（CapsuleMesh/CylinderMesh）（v0.1.71 遗留）
+- 3D 单位仍为简单几何体（v0.1.71 遗留）
 - DiceDebugPanel 仍绑定 2D BoardView（v0.1.71 遗留）
 - spritesheet 背景透明度（v0.1.70 遗留）
-- ATK/DEF 商店提升未走 BuffManager（v0.1.73 设计取舍，跨层重建自动重置）
+- ATK/DEF 商店提升未走 BuffManager（v0.1.73 设计取舍）
 - BoardView3D.rebuild_board() 全量重建（大棋盘性能开销）
+- 复活/回复数值未经平衡测试
 
 ---
 
 ## 建议下一步
 
-1. 阵亡单位跨层复活机制
-2. BattleFlowController 瘦身（当前约 693 行）
-3. 3D 单位精灵化（billboard sprite 或低多边形模型）
-4. 商品池扩展（加新牌/移除诅咒/随机 crest 等）
+1. BattleFlowController 瘦身（当前约 695 行）
+2. 3D 单位精灵化（billboard sprite 或低多边形模型）
+3. 商品池扩展（加新牌/移除诅咒/随机 crest 等）
 
 ## Codex 复审标注（可选）
 
-- 相机震动使用 `_shake_offset` 变量而非直接 tween `_camera.position`，这是因为 `_process()` 每帧都通过 lerp 更新相机位置，直接 tween position 会被 lerp 覆盖。_shake_offset 在 _process 中叠加到最终位置，两套系统互不冲突。
-- Label3D 的 `font_size` 使用 `int(font_size * 64.0)` 缩放系数，是因为 Label3D.font_size 以像素为单位，配合 `pixel_size = 0.01` 使文字在 3D 空间中有合理的视觉大小。
-- CPUParticles3D 的速度/大小参数（3~7 世界单位/秒）是基于 GridMapper3D.CELL_SIZE = 2.0 调校的，确保粒子扩散范围在 1~2 个格子内。
+- REVIVE_HP_RATIO 和 FLOOR_HEAL_RATIO 为 const，调整数值只需改这两个常量，无需修改逻辑代码。
+- 当前只有 1 个永久单位（blade_shield_dog），英雄阵亡会触发 DEFEAT（不会走到 advance_to_next_floor），所以复活逻辑暂时不会在实际游戏中触发。但机制已为未来多永久单位场景（如增加第二个永久伙伴）预留。
+- 跨层回复是"进入下一层"时的一次性回复，不是每回合回复，不会破坏层内战斗平衡。

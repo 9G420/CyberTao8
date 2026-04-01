@@ -1,5 +1,26 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.75 - 2026-04-01
+
+### 新增
+- **阵亡单位跨层复活机制**：永久玩家单位（非召唤）在进入下一层时自动复活，HP = 50% max_hp（向上取整，至少 1）
+- **存活单位跨层回复**：存活单位在进入下一层时额外回复 30% max_hp（不超过 max_hp），防止低 HP 死亡螺旋
+- **常量 `REVIVE_HP_RATIO`**：阵亡复活 HP 比例，默认 0.5（50%）
+- **常量 `FLOOR_HEAL_RATIO`**：存活跨层回复比例，默认 0.3（30%）
+
+### 修改
+- BattleFlowController.gd: `_spawn_player_units_with_hp()` 从"跳过阵亡单位"改为"阵亡单位复活 + 存活单位回复"
+- BattleFlowController.gd: `_snapshot_player_hp()` 新增 `alive` 字段（向前兼容，不影响现有逻辑）
+- BattleFlowController.gd: `advance_to_next_floor()` 注释更新
+- DiceDebugPanel.gd: 版本标记 → v0.1.75
+
+### 备注
+- 仅修改 BattleFlowController.gd 和 DiceDebugPanel.gd，UI 层零改动
+- 召唤伙伴（tagged "summoned"）仍为层内临时单位，跨层时消失（设计意图）
+- 复活/回复比例（50%/30%）为初始数值，未经平衡测试，后续可调整常量
+- 当前只有 1 个永久单位（blade_shield_dog），机制已为多永久单位扩展预留
+- `restart_battle()` 不受影响（完全重置，不调用 `_spawn_player_units_with_hp`）
+
 ## v0.1.74 - 2026-04-01
 
 ### 新增

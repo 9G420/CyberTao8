@@ -59,6 +59,8 @@ enum BattlePhase {
 
 const MAX_FLOOR: int = 3
 const BOARD_SIZE: Vector2i = Vector2i(12, 12)	# v0.1.62 扩展棋盘
+const REVIVE_HP_RATIO: float = 0.5				# v0.1.75 阵亡单位复活时 HP 比例（50% max_hp）
+const FLOOR_HEAL_RATIO: float = 0.3				# v0.1.75 存活单位跨层回复比例（30% max_hp）
 
 var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
@@ -759,10 +761,11 @@ func _snapshot_player_hp() -> Dictionary:
 	for uid in player_ids:
 		var unit: Dictionary = unit_manager.get_unit(uid)
 		if not unit.is_empty() and int(unit.get("hp", 0)) > 0:
-			snapshot[uid] = {"hp": int(unit["hp"]), "max_hp": int(unit["max_hp"])}
+			snapshot[uid] = {"hp": int(unit["hp"]), "max_hp": int(unit["max_hp"]), "alive": true}
 	return snapshot
 
 ## 进入下一层：保留存活单位 HP，重新生成棋盘
+## v0.1.75：阵亡单位复活 + 存活单位回复
 func advance_to_next_floor() -> void:
 	if current_phase != BattlePhase.FLOOR_CLEAR:
 		return
@@ -781,7 +784,7 @@ func advance_to_next_floor() -> void:
 	_encounter_cell = Vector2i(-1, -1)
 	# 递增层数
 	current_floor += 1
-	# 重新生成玩家单位（仅存活的，恢复保存的 HP）
+	# 重新生成玩家单位（含阵亡复活 + 存活回复）
 	_spawn_player_units_with_hp(hp_snapshot)
 	# 生成新棋盘布局（传入 current_floor 用于难度缩放）
 	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, current_floor)
@@ -791,7 +794,9 @@ func advance_to_next_floor() -> void:
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
 
-## 带 HP 快照生成玩家单位（跳过已阵亡单位）
+## 带 HP 快照生成玩家单位（v0.1.75：阵亡单位复活 + 存活单位跨层回复）
+## - 存活单位：保留 HP + 回复 FLOOR_HEAL_RATIO * max_hp（不超过 max_hp）
+## - 阵亡单位：复活，HP = REVIVE_HP_RATIO * max_hp（向上取整，至少 1）
 func _spawn_player_units_with_hp(hp_snapshot: Dictionary) -> void:
 	var spawn_data: Array[Dictionary] = [
 		{"path": "res://Data/Units/blade_shield_dog.tres", "cell": Vector2i(0, 10)},
@@ -800,20 +805,27 @@ func _spawn_player_units_with_hp(hp_snapshot: Dictionary) -> void:
 		var data := load(String(entry["path"])) as UnitData
 		if data == null:
 			continue
-		# 跳过已阵亡单位（不在快照中）
-		if not hp_snapshot.has(data.unit_id):
-			continue
-		var saved: Dictionary = hp_snapshot[data.unit_id]
+		var spawn_hp: int = 0
+		var spawn_max_hp: int = data.max_hp
+		if hp_snapshot.has(data.unit_id):
+			# 存活单位：保留 HP + 跨层回复
+			var saved: Dictionary = hp_snapshot[data.unit_id]
+			spawn_max_hp = int(saved["max_hp"])
+			var heal_amount: int = int(ceil(float(spawn_max_hp) * FLOOR_HEAL_RATIO))
+			spawn_hp = mini(int(saved["hp"]) + heal_amount, spawn_max_hp)
+		else:
+			# 阵亡单位：复活，HP = REVIVE_HP_RATIO * max_hp
+			spawn_hp = maxi(int(ceil(float(spawn_max_hp) * REVIVE_HP_RATIO)), 1)
 		unit_manager.spawn_unit(data.unit_id, {
-			"max_hp": int(saved["max_hp"]), "atk": data.atk, "def": data.def,
+			"max_hp": spawn_max_hp, "atk": data.atk, "def": data.def,
 			"move_range": data.move_range, "attack_range": data.attack_range,
 			"owner": "player", "tags": data.meme_tags,
 			"terrain_affinity": data.terrain_affinity, "display_name": data.unit_name,
 		}, entry["cell"])
-		# 覆盖 HP 为保存值
+		# 覆盖 HP 为计算值
 		var unit: Dictionary = unit_manager.get_unit(data.unit_id)
 		if not unit.is_empty():
-			unit["hp"] = int(saved["hp"])
+			unit["hp"] = spawn_hp
 			unit_manager.units_by_id[data.unit_id] = unit
 
 func get_current_floor() -> int:
