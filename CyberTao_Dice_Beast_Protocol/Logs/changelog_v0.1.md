@@ -1,5 +1,21 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.82 - 2026-04-01
+
+### 修改（2D 渲染路径 spritesheet 移除 — 修复默认模式仍显示旧插图 BUG）
+- **BoardView.gd**：移除 PlayerSpriteAnimator 依赖（_sprite_animator 变量/初始化/tick/方向设置/停止/draw 分支），玩家单位改为与敌方相同的 UnitRenderer 程序化渲染路径
+- 移除 `_draw_player_sprite()` 方法（spritesheet 纹理区域渲染+HP条+选中光环）
+- `play_move_step()` / `_on_move_step_finished()` 精简：不再设置/停止精灵动画
+- DiceDebugPanel.gd: 版本标记 → v0.1.82
+
+### 修复
+- **BUG**: 默认 2D 模式下玩家角色仍显示 spritesheet 插图而非程序化像素风格 — v0.1.81 仅修改了 3D 渲染路径（UnitMeshFactory3D），遗漏了 2D 渲染路径（BoardView+PlayerSpriteAnimator）
+
+### 备注
+- PlayerSpriteAnimator.gd 文件仍存在但已无任何引用方（可在后续清理轮次安全删除）
+- 2D 模式现使用 UnitRenderer 程序化渲染（咩咩启示录 Q 版风格），3D 模式使用 UnitMeshFactory3D 程序化渲染（BGA 宝可梦像素风格）
+- 两种模式均无外部美术资源依赖
+
 ## v0.1.81 - 2026-04-01
 
 ### 修改（全单位程序化 BGA 宝可梦像素风格重构）

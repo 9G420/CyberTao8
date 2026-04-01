@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.81
+**当前版本**: v0.1.82
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -145,6 +145,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 卡牌战斗层深化（4种新卡牌+2种新敌方行为+2个新遭遇） | v0.1.79 | 稳定 |
 | 数值平衡调优（能量虹吸/毒素/反击/脉冲猎手/赛博巫医/赛博彩票） | v0.1.80 | 稳定 |
 | 全单位程序化像素风格（BGA宝可梦风格，移除spritesheet，12种生物生成器） | v0.1.81 | 稳定 |
+| 2D渲染路径spritesheet移除（BoardView全程序化，修复默认模式BUG） | v0.1.82 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -252,7 +253,7 @@ UI层
 ├── BattleCharRenderer  — 战斗角色立绘渲染（class_name注册）   ~180行 ✅ v0.1.54 新增
 ├── UITransitions       — UI过渡动画工具类（class_name注册）    ~60行 ✅ v0.1.55 新增
 ├── UnitPortraitHUD    — 顶部单位头像 HUD（class_name注册）    ~130行 ✅ v0.1.69 新增
-├── PlayerSpriteAnimator — 玩家精灵动画管理器（class_name注册）  ~70行 ✅ v0.1.70 新增
+├── PlayerSpriteAnimator — 玩家精灵动画管理器（class_name注册）  ~70行 ✅ v0.1.70 新增 ⚠️ v0.1.82 后已无引用方，可安全删除
 ├── ShopPanel          — 商店面板（class_name注册，9种商品池+crest货币）  ~370行 ✅ v0.1.78 扩展
 └── SettingsPanel        — 显示设置
 
@@ -399,6 +400,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 | 任务 | 版本 |
 |------|------|
 | 全单位程序化像素风格（BGA宝可梦风格，移除spritesheet，12种程序化生物） | v0.1.81 |
+| 2D渲染路径spritesheet移除（BoardView全程序化，修复默认模式仍显示旧插图BUG） | v0.1.82 |
 | 数值平衡调优（能量虹吸/毒素/反击/脉冲猎手/赛博巫医/赛博彩票） | v0.1.80 |
 | 卡牌战斗层深化（4种新卡牌+2种新敌方行为+2个新遭遇） | v0.1.79 |
 | 商品池扩展（9种商品：加牌/移除牌/随机crest/最大HP+/原有5种） | v0.1.78 |
