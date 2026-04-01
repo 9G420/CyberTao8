@@ -1,21 +1,23 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.99
+**版本**: v0.1.100
 **分支**: `codex/dice-beast-protocol`
 
-## 本轮修复
-- 继续处理用户反馈：2D中键体感弱、棋盘会漂移、棋盘外仍偏黑
+## 用户反馈
+- 2D 棋盘角度歪，不方正
+- 拖拽后会自动回正到奇怪位置
 
-## 具体改动
+## 处理策略
+- 2D 暂停伪视角功能，优先恢复稳定、方正、可控构图
+
+## 修改
 - `BoardView.gd`
-  - `_on_anim_tick`：非拖拽/非视角模式时，`_drag_offset` 缓慢回归 0，避免长时偏移累积
-- `BoardView3D.gd`
-  - `_process`：非拖拽/非orbit时，`_drag_offset_accumulated` 缓慢回正
-- `IsoTileRenderer.gd`
-  - `_draw_board_platform_bg`：外场平台底色和边缘高光整体提亮，确保与纯黑背景明显区分
+  - 禁用 2D orbit 输入路径（中键/Alt+右键）
+  - 保留右键平移
+  - 启动时重置 `_view_pitch_offset/_view_yaw_offset`
+  - `_on_anim_tick` 改为仅依据 `_drag_active` 控制插值
 
 ## 结果
-- 2D/3D 棋盘中心稳定性提升
-- 棋盘外背景区更容易看出“平台外场”而非纯黑
-- 2D 视角控制保留：中键拖拽 + Alt/Shift+右键拖拽（兼容路径）
+- 2D 构图恢复方正
+- 拖拽后不会再回到“奇怪倾斜位置”

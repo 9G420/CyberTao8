@@ -80,7 +80,9 @@ func _ready() -> void:
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# 初始相机位置
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(_view_yaw_offset, _view_pitch_offset), _zoom)
+	_view_pitch_offset = 0.0
+	_view_yaw_offset = 0.0
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
 	iso_origin = _iso_origin_target
 	# 动画刷新定时器（50ms=20fps，驱动呼�?脉冲效果�?
 	_anim_timer = Timer.new()
@@ -91,10 +93,8 @@ func _ready() -> void:
 	# v0.1.82：精灵动画器已移除（全程序化渲染�?
 
 func _on_anim_tick() -> void:
-	# 平滑插值相机位置（v0.1.62）
-	if not _drag_active and not _orbit_active:
-		# v0.1.99：缓慢衰减手动偏移，防止长时漂移
-		_drag_offset = _drag_offset.lerp(Vector2.ZERO, 0.03)
+	# 平滑插值相机位置（v0.1.62�?
+	if not _drag_active:
 		var target: Vector2 = _iso_origin_target + _drag_offset
 		var diff: Vector2 = target - iso_origin
 		if diff.length() > 0.5:
@@ -106,7 +106,7 @@ func _on_anim_tick() -> void:
 ## 设置相机跟随目标格子（v0.1.63：平滑过�?缩放�?
 func set_camera_target(cell: Vector2i) -> void:
 	camera_cell = cell
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(_view_yaw_offset, _view_pitch_offset), _zoom)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
 	queue_redraw()
 
 func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
@@ -151,56 +151,22 @@ func _gui_input(event: InputEvent) -> void:
 			_apply_zoom(-ZOOM_STEP, mb.position)
 			accept_event()
 			return
-	# 右键拖拽平移 / 中键视角（兼容 Alt/Shift+右键）
+	# 右键拖拽平移（v0.1.100：禁用2D伪视角，回归稳定构图）
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_RIGHT:
-			var want_orbit: bool = Input.is_key_pressed(KEY_ALT) or Input.is_key_pressed(KEY_SHIFT)
 			if mb.pressed:
-				if want_orbit:
-					_orbit_active = true
-					_orbit_start_pos = mb.position
-					_orbit_start_zoom = _zoom
-					_orbit_start_pitch = _view_pitch_offset
-					_orbit_start_yaw = _view_yaw_offset
-					_drag_active = false
-				else:
-					_drag_active = true
-					_drag_start_pos = mb.position
-					_drag_start_origin = iso_origin
+				_drag_active = true
+				_drag_start_pos = mb.position
+				_drag_start_origin = iso_origin
 			else:
-				if _drag_active:
-					_drag_active = false
-					_drag_offset = iso_origin - _iso_origin_target
-				_orbit_active = false
-			accept_event()
-			return
-		# 中键优先视角调整
-		if mb.button_index == MOUSE_BUTTON_MIDDLE:
-			if mb.pressed:
-				_orbit_active = true
-				_orbit_start_pos = mb.position
-				_orbit_start_zoom = _zoom
-				_orbit_start_pitch = _view_pitch_offset
-				_orbit_start_yaw = _view_yaw_offset
 				_drag_active = false
-			else:
-				_orbit_active = false
+				_drag_offset = iso_origin - _iso_origin_target
 			accept_event()
 			return
 	if event is InputEventMouseMotion and _drag_active:
 		var mm: InputEventMouseMotion = event as InputEventMouseMotion
 		iso_origin = _drag_start_origin + (mm.position - _drag_start_pos)
-		queue_redraw()
-		accept_event()
-		return
-	if event is InputEventMouseMotion and _orbit_active:
-		var mm: InputEventMouseMotion = event as InputEventMouseMotion
-		var d: Vector2 = mm.position - _orbit_start_pos
-		_view_pitch_offset = clampf(_orbit_start_pitch + d.y * 0.9, -140.0, 120.0)
-		_view_yaw_offset = clampf(_orbit_start_yaw + d.x * 0.8, -220.0, 220.0)
-		_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(_view_yaw_offset, _view_pitch_offset), _zoom)
-		_drag_offset = iso_origin - _iso_origin_target
 		queue_redraw()
 		accept_event()
 		return
@@ -245,7 +211,7 @@ func _apply_zoom(delta: float, mouse_pos: Vector2) -> void:
 	# 保持鼠标指向的世界位置不�?
 	var ratio: float = _zoom / old_zoom
 	iso_origin = mouse_pos + (iso_origin - mouse_pos) * ratio
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(_view_yaw_offset, _view_pitch_offset), _zoom)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
 	_drag_offset = iso_origin - _iso_origin_target
 	queue_redraw()
 
@@ -382,7 +348,7 @@ func _draw() -> void:
 
 # Layer 1: 等距程序化菱形网格（含环境填充）
 func _draw_layer_grid(pulse: float) -> void:
-	# v0.1.98：先铺底色，避免棋盘外出现纯黑
+	# v0.1.98：先铺底色，避免棋盘外出现纯�?
 	draw_rect(Rect2(0, 0, 1280, 720), Color(0.04, 0.06, 0.09, 0.96), true)
 	IsoTileRenderer.draw_board(self, iso_origin, board_manager, pulse, _zoom)
 
@@ -660,4 +626,5 @@ func _draw_edge_vignette() -> void:
 		draw_rect(Rect2(t, 0, band / float(steps), h), col, true)
 		# �?
 		draw_rect(Rect2(w - t - band / float(steps), 0, band / float(steps), h), col, true)
+
 

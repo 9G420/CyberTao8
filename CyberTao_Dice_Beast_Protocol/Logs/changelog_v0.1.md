@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.100 - 2026-04-02
+
+### 修复（2D棋盘歪斜与自动回正到奇怪位置）
+- `BoardView.gd`：移除 2D 伪视角输入路径（中键/Alt+右键 orbit），恢复稳定等距构图
+- `BoardView.gd`：启动时强制重置 `_view_pitch_offset/_view_yaw_offset = 0`
+- `BoardView.gd`：拖拽逻辑回归“仅右键平移”，避免 orbit 状态干扰导致棋盘倾斜/偏移
+
+### 根因
+- 2D 伪视角 offset 与自动回正/相机跟随叠加，导致棋盘“歪斜 + 松手回到奇怪位置”
+
 ## v0.1.99 - 2026-04-02
 
 ### 修复（2D视角控制兼容 + 棋盘中心漂移 + 外场仍偏黑）
