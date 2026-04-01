@@ -625,11 +625,13 @@ func _on_state_changed() -> void:
 #  工具方法
 # ============================
 
-## v0.1.72：拖拽偏移边界限制（防止相机漂移到棋盘外太远）
+## v0.1.85：拖拽偏移边界限制放宽（对齐 2D 自由拖拽手感）
 func _clamp_drag_offset() -> void:
 	var half_board: float = float(_grid_size) * GridMapper3D.HALF_CELL
-	# 允许偏移超出棋盘边界 50%（给一定余量但不能无限漂移）
-	var max_offset: float = half_board * 0.5
+	# 旧版 half_board * 0.5（12x12 下仅 ±6）过紧，容易出现“拖到某位置就卡住”
+	# 新版按棋盘尺寸 + 相机距离动态放宽，保留安全边界但接近 2D 的自由拖拽
+	var zoom_extra: float = maxf(0.0, _camera_distance - ZOOM_MIN)
+	var max_offset: float = half_board * 2.0 + zoom_extra * 0.8
 	_drag_offset_accumulated.x = clampf(_drag_offset_accumulated.x, -max_offset, max_offset)
 	_drag_offset_accumulated.z = clampf(_drag_offset_accumulated.z, -max_offset, max_offset)
 
