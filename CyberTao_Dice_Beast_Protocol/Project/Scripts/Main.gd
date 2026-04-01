@@ -37,6 +37,7 @@ var _transition: TransitionOverlay
 var _audio: AudioManager
 var _portrait_hud: UnitPortraitHUD
 var _shop_panel: ShopPanel
+var _view_switch_fx: ColorRect = null
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
@@ -114,6 +115,16 @@ func _build_debug_view() -> void:
 	_shop_panel = ShopPanel.new()
 	_shop_panel.position = Vector2(400, 170)
 	add_child(_shop_panel)
+
+	# 2D/3D 切换特效覆盖层（v0.1.88）
+	_view_switch_fx = ColorRect.new()
+	_view_switch_fx.position = Vector2.ZERO
+	_view_switch_fx.size = Vector2(1280, 720)
+	_view_switch_fx.color = Color(0.7, 0.1, 1.0, 0.0)
+	_view_switch_fx.visible = false
+	_view_switch_fx.z_index = 999
+	_view_switch_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_view_switch_fx)
 
 	_result_label = Label.new()
 	_result_label.position = Vector2(0, 320)
@@ -637,6 +648,7 @@ func _reset_drag_offset() -> void:
 
 ## v0.1.71：切换 2D/3D 视图
 func toggle_3d_view() -> void:
+	_play_view_switch_fx()
 	_use_3d = not _use_3d
 	_board_view.visible = not _use_3d
 	_sub_viewport_container.visible = _use_3d
@@ -646,6 +658,20 @@ func toggle_3d_view() -> void:
 	elif not _use_3d:
 		_update_camera_to_player()
 		_board_view.queue_redraw()
+
+func _play_view_switch_fx() -> void:
+	if _view_switch_fx == null:
+		return
+	_view_switch_fx.visible = true
+	var color_a: Color = Color(0.9, 0.1, 1.0, 0.0)
+	var color_b: Color = Color(0.1, 0.9, 1.0, 0.35)
+	var tw: Tween = _view_switch_fx.create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(_view_switch_fx, "color", color_b, 0.12)
+	tw.tween_property(_view_switch_fx, "color", color_a, 0.22)
+	tw.tween_callback(func() -> void:
+		if _view_switch_fx:
+			_view_switch_fx.visible = false
+	)
 
 ## v0.1.71：处理 3D 视图输入转发
 func _input(event: InputEvent) -> void:

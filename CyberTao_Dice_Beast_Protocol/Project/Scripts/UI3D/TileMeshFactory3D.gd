@@ -27,9 +27,7 @@ static func create_tile(tile_key: String, cell: Vector2i, grid_size: int = 12) -
 	mesh_inst.material_override = mat
 
 	var world_pos: Vector3 = GridMapper3D.cell_to_world(cell, grid_size)
-	var y_offset: float = -TILE_THICKNESS * 0.5
-	if tile_key == "high_ground":
-		y_offset += HIGH_GROUND_LIFT
+	var y_offset: float = -TILE_THICKNESS * 0.5 + _get_tile_lift(tile_key)
 	mesh_inst.position = Vector3(world_pos.x, y_offset, world_pos.z)
 	mesh_inst.name = "Tile_%d_%d" % [cell.x, cell.y]
 	return mesh_inst
@@ -55,6 +53,17 @@ static func create_highlight(cell: Vector2i, color: Color, grid_size: int = 12) 
 	mesh_inst.position = Vector3(world_pos.x, 0.05, world_pos.z)
 	mesh_inst.name = "Highlight_%d_%d" % [cell.x, cell.y]
 	return mesh_inst
+
+## 根据 tile_key 返回额外高度（提升功能格立体感）
+static func _get_tile_lift(tile_key: String) -> float:
+	match tile_key:
+		"high_ground":
+			return HIGH_GROUND_LIFT
+		"encounter", "portal":
+			return 0.22
+		"shop", "chest", "item", "event", "heal", "trap":
+			return 0.12
+	return 0.0
 
 ## 根据 tile_key 获取主体颜色（与 IsoTileRenderer/_get_fill_color 对齐）
 static func _get_tile_color(tile_key: String) -> Color:

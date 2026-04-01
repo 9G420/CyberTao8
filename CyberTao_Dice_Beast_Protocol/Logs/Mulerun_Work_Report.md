@@ -1,24 +1,27 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.87
+**版本**: v0.1.88
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.87：启用用户提供外部 BGM，临时替换程序化 BGM
+- v0.1.88：优化 3D 棋盘视觉（功能格立体感 + 单位可见性）并新增 2D/3D 切换炫光特效
 
 ---
 
 ## 根因目标
 
-用户反馈程序化 BGM 仍不理想，要求先使用提供的 MP3 音轨。
+用户反馈：
+1) 3D 模式功能格缺乏立体感；
+2) 场上单位发黑、看不清；
+3) 2D/3D 切换没有炫酷过渡。
 
-目标：快速落地“可听”的 BGM 方案，不改变现有播放调用链。
+目标：先修可用性和辨识度，再加切换视觉反馈。
 
-服务层：系统层（AudioManager 资源加载）
+服务层：3D 表现层（UnitMeshFactory3D/TileMeshFactory3D）+ 主场景切换表现层（Main）
 
 ---
 
@@ -26,9 +29,10 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Audio/bgm_tension_fast.mp3` | 新增用户提供音轨（从 inbound 导入项目） |
-| `Project/Scripts/System/AudioManager.gd` | BGM 改为优先加载外部音轨，失败回退程序化生成；四类 BGM 暂统一映射到该 MP3 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.87 条目 |
+| `Project/Scripts/UI3D/UnitMeshFactory3D.gd` | 放宽 alpha 剪裁阈值；强制白色 modulate；纹理为空时兜底默认敌方纹理，避免黑块不可见 |
+| `Project/Scripts/UI3D/TileMeshFactory3D.gd` | 新增 `_get_tile_lift(tile_key)`，给功能格增加额外高度，增强立体辨识 |
+| `Project/Scripts/Main.gd` | 新增 `_view_switch_fx` 覆盖层和 `_play_view_switch_fx()`，在 `toggle_3d_view()` 中触发迷幻霓虹切换特效 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.88 条目 |
 | `Logs/AI_Employee_Guide_v3.md` | 同步版本号 + §2.2 完成状态 + §6 任务优先级 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
 
@@ -36,29 +40,33 @@
 
 ## 实现内容
 
-### 1) 外部 BGM 资源接入
+### 1) 单位可见性修复（3D）
 
-- 将用户提供文件加入项目：
-  - `res://Audio/bgm_tension_fast.mp3`
+- `alpha_scissor_threshold` 从 `0.4` 调到 `0.25`，减少纹理边缘被过度裁掉导致的黑块感。
+- 强制 `sprite.modulate = Color(1,1,1,1)`，避免受异常色调影响。
+- 新增兜底：若单位纹理为空，直接使用 `_gen_enemy_default()`，确保至少可见。
 
-### 2) AudioManager 加载策略升级
+### 2) 功能格立体感增强
 
-- `_get_or_generate(name)` 改为：
-  1. 先尝试 `_try_load_external_bgm(name)`
-  2. 若加载失败，再按原逻辑回退 `SFXGenerator.generate_*_bgm_loop()`
+在 `TileMeshFactory3D` 增加按 tile_key 的抬升策略：
+- `encounter / portal`：高抬升
+- `shop/chest/item/event/heal/trap`：中抬升
+- normal 保持平面
 
-### 3) 当前映射策略（临时统一）
+效果：功能格不再只是平涂色块，3D 下更容易一眼区分。
 
-- `bgm_battle / bgm_map / bgm_boss / bgm_title` → 统一使用 `bgm_tension_fast.mp3`
+### 3) 2D/3D 切换特效
 
-目的：你现在马上就能摆脱程序化 BGM 的刺耳问题，先保证听感可接受。
+- Main 新增全屏 `ColorRect` 特效层（高 z-index）。
+- 切换时触发 Tween：紫青炫光闪入再淡出（迷幻感过渡）。
+- 不改变原有切换逻辑，仅增强过渡视觉体验。
 
 ---
 
 ## 接口变更
 
-- 无外部 API 变更。
-- `play_bgm("bgm_xxx")` 调用方式不变，仅内部音源选择逻辑变更。
+- 无公开信号/外部 API 变更。
+- 仅内部表现层方法新增：`Main._play_view_switch_fx()`。
 
 ---
 
@@ -66,22 +74,22 @@
 
 | 测试项 | 结果 |
 |--------|------|
-| 外部音轨文件已进入项目目录 | ✅ |
-| AudioManager 优先走外部 BGM 加载 | ✅ |
-| 外部资源缺失时仍会回退程序化 BGM（容错） | ✅ |
-| Main 侧 BGM 切换调用无需改动 | ✅ |
+| 3D 单位纹理为空时不再黑块消失（有兜底纹理） | ✅ |
+| 3D 功能格出现明显高度层次差异 | ✅ |
+| F5 切换 2D/3D 时出现炫光过渡，不影响功能 | ✅ |
+| 2D 视图逻辑与输入不受影响 | ✅ |
 
 ---
 
 ## 剩余问题
 
-- 当前 map/battle/boss/title 使用同一条 BGM，仅作为快速过渡方案。
-- 未实现“每场景独立音轨 + 淡入淡出过渡”优化。
+- 当前切换特效是 ColorRect 级别，尚未上屏幕扭曲/色散 shader。
+- 单位“黑色”若由显卡/驱动渲染差异引起，仍建议在你机器上实测确认。
 
 ---
 
 ## 建议下一步
 
-1. 你再给 2~3 条风格音轨，我帮你按场景拆分：map/battle/boss/title。
-2. 加一个 BGM crossfade（0.4~0.8s）避免切歌突兀。
-3. 设置面板增加“外部BGM优先/程序化优先”切换项。
+1. 若你还想更炫：下一轮上 shader 级切换（色散 + 轻微屏幕扭曲 + 扫描线）。
+2. 给功能格再加顶面图标（shop/chest/event），进一步增强远距辨识。
+3. 单位可见性继续加强：加底部光圈（owner 区分色）和轮廓描边。

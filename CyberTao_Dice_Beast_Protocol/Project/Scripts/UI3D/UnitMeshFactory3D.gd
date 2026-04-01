@@ -141,8 +141,9 @@ static func _create_body_sprite(unit: Dictionary) -> Sprite3D:
 	sprite.shaded = false
 	sprite.double_sided = true
 	sprite.no_depth_test = false
+	sprite.modulate = Color(1, 1, 1, 1)
 	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-	sprite.alpha_scissor_threshold = 0.4
+	sprite.alpha_scissor_threshold = 0.25
 	sprite.pixel_size = SPRITE_PIXEL_SIZE
 	sprite.position.y = SPRITE_Y
 	var owner_str: String = String(unit.get("owner", ""))
@@ -160,6 +161,9 @@ static func _create_body_sprite(unit: Dictionary) -> Sprite3D:
 			sprite.texture = _get_enemy_tex(enc_id)
 		else:
 			sprite.texture = _tex_cache.get("enemy_default", null)
+	# 兜底：防止纹理为空导致黑色不可见
+	if sprite.texture == null:
+		sprite.texture = _gen_enemy_default()
 	return sprite
 
 ## 创建 HP 条

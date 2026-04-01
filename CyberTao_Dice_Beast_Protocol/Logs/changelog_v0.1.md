@@ -1,5 +1,19 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.88 - 2026-04-02
+
+### 修改（3D 可见性与立体感 + 2D/3D 切换特效）
+- `UnitMeshFactory3D.gd`：提高精灵可见性稳定性（`alpha_scissor_threshold` 0.4→0.25，强制白色 modulate，纹理空值兜底为默认敌方纹理）
+- `TileMeshFactory3D.gd`：新增 `_get_tile_lift()`，功能格添加额外抬升（encounter/portal 更高，shop/chest/item/event/heal/trap 中等抬升），增强立体辨识
+- `Main.gd`：新增 2D/3D 视图切换霓虹迷幻闪烁特效层（ColorRect + Tween）
+
+### 修复
+- **BUG**：3D 模式下单位出现黑色不可见/难以识别 —— 增加纹理空值兜底与透明阈值放宽后改善
+- **体验问题**：2D/3D 切换缺少过渡反馈 —— 新增炫光切换特效
+
+### 备注
+- 本轮优先做快速可感知优化，后续可继续升级为屏幕扭曲/色散 shader 级别切换特效
+
 ## v0.1.87 - 2026-04-02
 
 ### 新增
