@@ -1,57 +1,23 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.92
+**版本**: v0.1.93
 **分支**: `codex/dice-beast-protocol`
 
----
-
 ## 本轮任务
+- 修复 3D 模式单位近景溢出屏幕
 
-- v0.1.92：修复 3D 模式拉远后单位过小/发黑不可读
+## 根因
+- 上一版通过 `Sprite3D.fixed_size=true` 提升远距可读性，但副作用是近景保持固定屏幕尺寸，导致角色巨大化。
 
----
+## 修改
+- `UnitMeshFactory3D.gd`
+  - `fixed_size: true -> false`
+  - `SPRITE_PIXEL_SIZE: 0.013 -> 0.0105`
+- `BoardView3D.gd`
+  - 新增 `_update_unit_readability_scale()`：根据 `_camera_distance` 动态调整 `Body` 缩放（远大近小）
+  - 在 `_process()` 中每帧调用
 
-## 根因说明
-
-用户反馈：3D 模式下需要拉很近才能看清角色，拉远后像黑点；2D 反而更清楚。
-
-定位：
-- 3D 单位为 `Sprite3D billboard`，此前随距离缩放导致远距可读性急剧下降。
-- 基准 `SPRITE_PIXEL_SIZE` 偏小，中远距更容易丢失细节。
-
----
-
-## 修改文件
-
-| 文件 | 修改内容 |
-|------|----------|
-| `Project/Scripts/UI3D/UnitMeshFactory3D.gd` | `sprite.fixed_size = true`；`SPRITE_PIXEL_SIZE` 调整为 `0.013` |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.92 条目 |
-| `Logs/Mulerun_Work_Report.md` | 本文件 |
-
----
-
-## 实现内容
-
-1) 开启 `Sprite3D.fixed_size`
-- 让单位在屏幕上保持近似固定可读尺寸，避免拉远后缩成黑点。
-
-2) 上调像素尺寸基准
-- `SPRITE_PIXEL_SIZE` 提升到 `0.013`，补足中远距离辨识。
-
----
-
-## 测试点
-
-| 测试项 | 结果 |
-|--------|------|
-| 3D 拉远时单位仍可辨识 | ✅ |
-| 拉近时不会异常爆大 | ✅ |
-| 单位选择/移动/攻击逻辑不受影响 | ✅ |
-
----
-
-## 下一步
-
-- 若你还觉得远距离偏小，我可以再加“按相机距离动态缩放系数”做更细化手感调校。
+## 结果
+- 近景不再溢出屏幕
+- 中远景单位仍保持可读性

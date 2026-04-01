@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.93 - 2026-04-02
+
+### 修复（3D单位近景溢出屏幕）
+- `UnitMeshFactory3D.gd`：关闭 `Sprite3D.fixed_size`（true→false），避免近景固定屏幕尺寸导致角色巨大化
+- `UnitMeshFactory3D.gd`：`SPRITE_PIXEL_SIZE` 从 0.013 回调到 0.0105
+- `BoardView3D.gd`：新增 `_update_unit_readability_scale()`，按相机距离动态缩放单位（远处更大、近处正常）
+
+### 根因
+- v0.1.92 使用 `fixed_size=true` 虽提升远距可读性，但会在近景造成屏幕级放大，出现角色溢出
+
 ## v0.1.92 - 2026-04-02
 
 ### 修改（3D 远距离单位可读性修复）

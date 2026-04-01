@@ -143,6 +143,8 @@ func _process(delta: float) -> void:
 		else:
 			_camera.position = _camera.position.lerp(desired_pos, clampf(CAMERA_LERP_SPEED * delta, 0.0, 1.0)) + _shake_offset
 		_camera.look_at(target_pos, Vector3.UP)
+	# v0.1.93：按相机距离动态放大单位（远处更清楚，近处不过大）
+	_update_unit_readability_scale()
 	# 移动动画更新
 	_update_move_animation()
 
@@ -205,6 +207,17 @@ func _update_move_animation() -> void:
 		return
 	var pos: Vector3 = _move_anim_from.lerp(_move_anim_to, _move_anim_t)
 	node.position = pos
+
+func _update_unit_readability_scale() -> void:
+	var t: float = inverse_lerp(ZOOM_MIN, ZOOM_MAX, _camera_distance)
+	var scale_factor: float = lerpf(1.0, 1.45, clampf(t, 0.0, 1.0))
+	for uid in _unit_nodes.keys():
+		var node: Node3D = _unit_nodes[uid]
+		if node == null:
+			continue
+		var body: Sprite3D = node.get_node_or_null("Body")
+		if body:
+			body.scale = Vector3(scale_factor, scale_factor, scale_factor)
 
 # --- 反馈方法（v0.1.74 — 3D 反馈系统完整实现）---
 

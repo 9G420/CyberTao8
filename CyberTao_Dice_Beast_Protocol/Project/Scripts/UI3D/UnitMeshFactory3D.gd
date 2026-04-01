@@ -9,7 +9,7 @@ const HP_BAR_WIDTH: float = 1.0
 const HP_BAR_HEIGHT: float = 0.12
 const HP_BAR_OFFSET_Y: float = 1.6
 
-const SPRITE_PIXEL_SIZE: float = 0.013		# v0.1.92：适度放大，改善中远距离可读性
+const SPRITE_PIXEL_SIZE: float = 0.0105		# v0.1.93：回调基准尺寸，避免近景溢出
 const SPRITE_Y: float = 0.65				# 精灵中心 Y
 
 const RES: int = 128						# 纹理分辨率
@@ -138,7 +138,7 @@ static func _create_body_sprite(unit: Dictionary) -> Sprite3D:
 	var sprite: Sprite3D = Sprite3D.new()
 	sprite.name = "Body"
 	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.fixed_size = true		# v0.1.92：屏幕尺寸近似固定，拉远不至于看不清
+	sprite.fixed_size = false		# v0.1.93：取消固定屏幕尺寸，避免近景巨大化
 	sprite.shaded = false
 	sprite.double_sided = true
 	sprite.no_depth_test = false
