@@ -1,10 +1,10 @@
 extends Node
 class_name CardBattleController
 
-## 卡牌战斗状态机（Day 13：构筑成长版）
-## 能量系统 + 双牌堆抽牌 + 3 种敌方行为模式 + 敌方意图预告
+## 卡牌战斗状态机（v0.1.79：卡牌战斗层深化）
+## 能量系统 + 双牌堆抽牌 + 5 种敌方行为模式 + 敌方意图预告
 ## 持久牌组 + 战斗胜利选牌构筑
-## 参考旧项目 Deck.gd 双牌堆结构、CardData.gd 费用模型
+## 新增：毒素/抽牌/反击/连击 4种卡牌 + buff/multi_attack 2种敌方行为 + 2个新遭遇
 
 signal battle_started(player_hp: int, enemy_hp: int, enemy_name: String)
 signal hand_changed(hand: Array, energy: int, max_energy: int)
@@ -51,6 +51,11 @@ var _enemy_pattern: Array[String] = []
 var _enemy_pattern_index: int = 0
 var _enemy_def_bonus: int = 0
 var _next_enemy_intent: String = ""
+
+# --- 状态效果 ---
+var _poison_turns: int = 0		# 敌方中毒剩余回合
+var _poison_dmg: int = 2		# 每回合毒素伤害
+var _counter_dmg: int = 0		# 反击伤害（下次敌方攻击时触发）
 
 # --- 持久牌组（跨战斗保留） ---
 var persistent_deck: Array[Dictionary] = []
@@ -101,6 +106,14 @@ static func _build_reward_pool() -> Array[Dictionary]:
 	pool.append({"name": "强化斩击", "type": "attack", "cost": 1, "value": 4, "upgraded": false})
 	# 双重防御 (cost 1, 防御 3)
 	pool.append({"name": "双重防御", "type": "defend", "cost": 1, "value": 3, "upgraded": false})
+	# 毒素注入 (cost 1, 施加毒素 3 回合)
+	pool.append({"name": "毒素注入", "type": "poison", "cost": 1, "value": 3, "upgraded": false})
+	# 能量虹吸 (cost 0, 抽 2 张牌)
+	pool.append({"name": "能量虹吸", "type": "draw", "cost": 0, "value": 2, "upgraded": false})
+	# 反击 (cost 1, 防御 2 + 反击 3)
+	pool.append({"name": "反击", "type": "counter", "cost": 1, "value": 3, "def_value": 2, "upgraded": false})
+	# 裂空斩 (cost 2, 3 连击各 2 伤害)
+	pool.append({"name": "裂空斩", "type": "combo", "cost": 2, "value": 2, "hits": 3, "upgraded": false})
 	# 初始牌组中的牌也可以作为奖励出现
 	pool.append({"name": "斩击", "type": "attack", "cost": 1, "value": 3, "upgraded": false})
 	pool.append({"name": "重击", "type": "attack", "cost": 2, "value": 5, "upgraded": false})
@@ -140,6 +153,16 @@ static func get_encounter_enemy_data(enc_id: String, current_floor: int = 1) -> 
 				"name": "数据幽灵", "hp": 9, "atk": 2,
 				"pattern": ["attack", "defend_attack", "heavy_attack", "heavy_attack", "attack"],
 			}
+		"encounter_06":
+			base = {
+				"name": "量子分裂体", "hp": 7, "atk": 2,
+				"pattern": ["attack", "buff", "multi_attack", "attack", "heavy_attack"],
+			}
+		"encounter_07":
+			base = {
+				"name": "赛博巫医", "hp": 11, "atk": 2,
+				"pattern": ["buff", "defend_attack", "heal", "heavy_attack", "attack"],
+			}
 		"encounter_boss_01":
 			base = {
 				"name": "零号协议", "hp": 20, "atk": 3, "is_boss": true,
@@ -172,6 +195,8 @@ func start_battle(enc_id: String, p_hp: int, p_max_hp: int, current_floor: int =
 		_enemy_pattern.append(String(p))
 	_enemy_pattern_index = 0
 	_enemy_def_bonus = 0
+	_poison_turns = 0
+	_counter_dmg = 0
 	player_hp = p_hp
 	player_max_hp = p_max_hp
 	def_bonus = 0
@@ -252,6 +277,19 @@ func end_turn() -> void:
 	_discard_hand()
 	# 重置玩家防御
 	def_bonus = 0
+	# 毒素结算（敌方回合开始前）
+	if _poison_turns > 0:
+		enemy_hp = max(0, enemy_hp - _poison_dmg)
+		_poison_turns -= 1
+		var poison_text: String = "毒素发作 → " + str(_poison_dmg) + " 伤害"
+		if _poison_turns > 0:
+			poison_text += "（剩余 " + str(_poison_turns) + " 回合）"
+		else:
+			poison_text += "（毒素消散）"
+		emit_signal("enemy_acted", poison_text)
+		if enemy_hp <= 0:
+			_win()
+			return
 	# 敌方行动
 	state = BattleState.ENEMY_TURN
 	_enemy_act()
@@ -316,6 +354,38 @@ func _resolve_card(card: Dictionary) -> String:
 			var actual: int = min(value, player_max_hp - player_hp)
 			player_hp = min(player_max_hp, player_hp + value)
 			return card_name + " → 回复 " + str(actual) + " HP"
+		"poison":
+			# 毒素：对敌方施加持续伤害（叠加回合数）
+			_poison_turns += value
+			return card_name + " → 施加毒素 " + str(_poison_dmg) + "伤/" + str(_poison_turns) + "回合"
+		"draw":
+			# 抽牌：额外抽牌
+			var drawn: int = 0
+			for _i in range(value):
+				if draw_pile.is_empty():
+					_reshuffle()
+				if draw_pile.is_empty():
+					break
+				hand.append(draw_pile.pop_back())
+				drawn += 1
+			emit_signal("hand_changed", hand, energy, max_energy)
+			return card_name + " → 抽 " + str(drawn) + " 张牌"
+		"counter":
+			# 反击：获得防御 + 设置反击伤害
+			var def_val: int = int(card.get("def_value", 2))
+			def_bonus += def_val
+			_counter_dmg += value
+			return card_name + " → 防御+" + str(def_val) + "，反击蓄力 " + str(_counter_dmg)
+		"combo":
+			# 连击：多次攻击，每次独立计算防御减免
+			var hits: int = int(card.get("hits", 3))
+			var total_dmg: int = 0
+			for _i in range(hits):
+				var hit_dmg: int = max(1, value - _enemy_def_bonus)
+				enemy_hp = max(0, enemy_hp - hit_dmg)
+				total_dmg += hit_dmg
+				_enemy_def_bonus = max(0, _enemy_def_bonus - value)
+			return card_name + " → " + str(hits) + "连击 共 " + str(total_dmg) + " 伤害"
 	return ""
 
 # ======== 敌方行为系统 ========
@@ -330,6 +400,7 @@ func _enemy_act() -> void:
 			text = enemy_name + " 攻击 → " + str(actual_dmg) + " 伤害"
 			if def_bonus > 0:
 				text += "（已减免）"
+			text += _resolve_counter()
 		"heavy_attack":
 			var heavy_dmg: int = enemy_atk * 2
 			var actual_dmg: int = max(1, heavy_dmg - def_bonus)
@@ -337,6 +408,7 @@ func _enemy_act() -> void:
 			text = enemy_name + " 重击 → " + str(actual_dmg) + " 伤害！"
 			if def_bonus > 0:
 				text += "（已减免）"
+			text += _resolve_counter()
 		"defend_attack":
 			_enemy_def_bonus = 2
 			var actual_dmg: int = max(1, enemy_atk - def_bonus)
@@ -344,6 +416,7 @@ func _enemy_act() -> void:
 			text = enemy_name + " 防御+攻击 → " + str(actual_dmg) + " 伤害，敌方防御+2"
 			if def_bonus > 0:
 				text += "（已减免）"
+			text += _resolve_counter()
 		"heal":
 			var heal_val: int = 3
 			var actual_heal: int = min(heal_val, enemy_max_hp - enemy_hp)
@@ -356,7 +429,31 @@ func _enemy_act() -> void:
 			text = enemy_name + " 超载重击 → " + str(actual_dmg) + " 伤害！！"
 			if def_bonus > 0:
 				text += "（已减免）"
+			text += _resolve_counter()
+		"buff":
+			enemy_atk += 1
+			text = enemy_name + " 强化 → ATK+" + str(enemy_atk) + "！"
+		"multi_attack":
+			var hit_atk: int = max(1, int(float(enemy_atk) * 0.6))
+			var total_dmg: int = 0
+			for _i in range(2):
+				var actual_dmg: int = max(1, hit_atk - def_bonus)
+				player_hp = max(0, player_hp - actual_dmg)
+				total_dmg += actual_dmg
+			text = enemy_name + " 连续攻击 → 2击共 " + str(total_dmg) + " 伤害"
+			if def_bonus > 0:
+				text += "（已减免）"
+			text += _resolve_counter()
 	emit_signal("enemy_acted", text)
+
+## 反击结算：如果有反击蓄力且敌方执行了攻击，触发反击
+func _resolve_counter() -> String:
+	if _counter_dmg <= 0:
+		return ""
+	var dmg: int = _counter_dmg
+	enemy_hp = max(0, enemy_hp - dmg)
+	_counter_dmg = 0
+	return "\n反击！→ " + str(dmg) + " 伤害"
 
 func _advance_enemy_pattern() -> void:
 	_enemy_pattern_index = (_enemy_pattern_index + 1) % _enemy_pattern.size()
@@ -374,6 +471,11 @@ func _update_enemy_intent() -> void:
 			_next_enemy_intent = "意图：修复（回复 HP）"
 		"mega_attack":
 			_next_enemy_intent = "意图：超载重击（" + str(enemy_atk * 3) + " 伤害）⚠"
+		"buff":
+			_next_enemy_intent = "意图：强化（ATK+1）"
+		"multi_attack":
+			var hit_atk: int = max(1, int(float(enemy_atk) * 0.6))
+			_next_enemy_intent = "意图：连续攻击（" + str(hit_atk) + "x2）"
 		_:
 			_next_enemy_intent = "意图：未知"
 	emit_signal("enemy_intent_changed", _next_enemy_intent)
@@ -483,6 +585,16 @@ static func get_card_upgrade(card: Dictionary) -> Dictionary:
 			up["value"] = 6
 		"双重防御":
 			up["value"] = 4
+		"毒素注入":
+			up["value"] = 4
+		"能量虹吸":
+			up["value"] = 3
+		"反击":
+			up["value"] = 4
+			up["def_value"] = 3
+		"裂空斩":
+			up["value"] = 3
+			up["hits"] = 3
 		_:
 			# 未知牌：默认 value+1
 			up["value"] = int(card.get("value", 0)) + 1

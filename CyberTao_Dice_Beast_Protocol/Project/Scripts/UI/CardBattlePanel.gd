@@ -144,6 +144,12 @@ func _on_enemy_intent_changed(intent_text: String) -> void:
 	elif "重击" in intent_text:
 		icon = "⚔⚔ "
 		color = Color(1.0, 0.3, 0.15)
+	elif "连续" in intent_text:
+		icon = "⚔⚔ "
+		color = Color(1.0, 0.35, 0.25)
+	elif "强化" in intent_text:
+		icon = "▲ "
+		color = Color(0.85, 0.4, 1.0)
 	elif "防御" in intent_text:
 		icon = "■⚔ "
 		color = Color(0.85, 0.65, 0.2)

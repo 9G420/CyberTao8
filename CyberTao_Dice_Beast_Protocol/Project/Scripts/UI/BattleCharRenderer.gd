@@ -93,6 +93,10 @@ static func draw_enemy(c: CanvasItem, center: Vector2, scale_f: float, pulse: fl
 		_draw_pulse_hunter(c, center, scale_f, pulse)
 	elif encounter_id == "encounter_05":
 		_draw_data_phantom(c, center, scale_f, pulse)
+	elif encounter_id == "encounter_06":
+		_draw_quantum_splitter(c, center, scale_f, pulse)
+	elif encounter_id == "encounter_07":
+		_draw_cyber_shaman(c, center, scale_f, pulse)
 	elif encounter_id == "encounter_boss_01":
 		_draw_boss_zero(c, center, scale_f, pulse)
 	else:
@@ -406,3 +410,68 @@ static func _draw_glow_circle(c: CanvasItem, pos: Vector2, radius: float, col: C
 	# 外层柔和光晕
 	c.draw_circle(pos, radius * 1.4, Color(col.r, col.g, col.b, col.a * 0.3))
 	c.draw_circle(pos, radius, col)
+
+# --- 量子分裂体 Quantum Splitter: 分裂菱形晶体 ---
+
+static func _draw_quantum_splitter(c: CanvasItem, center: Vector2, s: float, pulse: float) -> void:
+	var col: Color = Color(0.6, 0.2, 0.9)
+	var glow: Color = Color(0.8, 0.4, 1.0)
+	# 主菱形体
+	var body_pts: PackedVector2Array = PackedVector2Array([
+		center + Vector2(0, -20 * s),
+		center + Vector2(14 * s, 0),
+		center + Vector2(0, 20 * s),
+		center + Vector2(-14 * s, 0),
+	])
+	c.draw_colored_polygon(body_pts, Color(col.r, col.g, col.b, 0.7))
+	for i in range(4):
+		c.draw_line(body_pts[i], body_pts[(i + 1) % 4], Color(glow.r, glow.g, glow.b, 0.8 + pulse * 0.15), 2.0 * s)
+	# 中心裂缝光
+	c.draw_line(center + Vector2(0, -12 * s), center + Vector2(0, 12 * s), Color(glow.r, glow.g, glow.b, 0.9), 2.5 * s)
+	# 分裂碎片（左右浮动）
+	var offset_x: float = 18 * s + sin(pulse * 3.0) * 3 * s
+	for side in [-1.0, 1.0]:
+		var shard_c: Vector2 = center + Vector2(side * offset_x, 0)
+		var shard_pts: PackedVector2Array = PackedVector2Array([
+			shard_c + Vector2(0, -8 * s),
+			shard_c + Vector2(5 * s, 0),
+			shard_c + Vector2(0, 8 * s),
+			shard_c + Vector2(-5 * s, 0),
+		])
+		c.draw_colored_polygon(shard_pts, Color(col.r, col.g, col.b, 0.5))
+	# 两只眼
+	for side in [-1.0, 1.0]:
+		var eye_pos: Vector2 = center + Vector2(side * 5 * s, -4 * s)
+		_draw_glow_circle(c, eye_pos, 3.5 * s, Color(glow.r, glow.g, glow.b, 0.8 + pulse * 0.15))
+
+# --- 赛博巫医 Cyber Shaman: 兜帽治疗者 ---
+
+static func _draw_cyber_shaman(c: CanvasItem, center: Vector2, s: float, pulse: float) -> void:
+	var col: Color = Color(0.15, 0.7, 0.45)
+	var glow: Color = Color(0.3, 1.0, 0.6)
+	# 兜帽 / 身体 — 三角形
+	var hood_pts: PackedVector2Array = PackedVector2Array([
+		center + Vector2(0, -24 * s),
+		center + Vector2(16 * s, 10 * s),
+		center + Vector2(-16 * s, 10 * s),
+	])
+	c.draw_colored_polygon(hood_pts, Color(col.r, col.g, col.b, 0.6))
+	for i in range(3):
+		c.draw_line(hood_pts[i], hood_pts[(i + 1) % 3], Color(glow.r, glow.g, glow.b, 0.65), 2.0 * s)
+	# 下摆 / 长袍
+	var robe_pts: PackedVector2Array = PackedVector2Array([
+		center + Vector2(-16 * s, 10 * s),
+		center + Vector2(16 * s, 10 * s),
+		center + Vector2(12 * s, 32 * s),
+		center + Vector2(-12 * s, 32 * s),
+	])
+	c.draw_colored_polygon(robe_pts, Color(col.r * 0.7, col.g * 0.7, col.b * 0.7, 0.55))
+	# 两只发光绿眼
+	for side in [-1.0, 1.0]:
+		var eye_pos: Vector2 = center + Vector2(side * 5 * s, -6 * s)
+		_draw_glow_circle(c, eye_pos, 3 * s, Color(glow.r, glow.g, glow.b, 0.75 + pulse * 0.2))
+	# 手持法杖 — 右侧竖线 + 顶部光球
+	var staff_base: Vector2 = center + Vector2(18 * s, 8 * s)
+	var staff_top: Vector2 = center + Vector2(18 * s, -18 * s)
+	c.draw_line(staff_base, staff_top, Color(glow.r, glow.g, glow.b, 0.5), 2.5 * s)
+	_draw_glow_circle(c, staff_top, 5 * s, Color(glow.r, glow.g, glow.b, 0.6 + pulse * 0.25))

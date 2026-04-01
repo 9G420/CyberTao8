@@ -1,5 +1,39 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.79 - 2026-04-01
+
+### 新增
+- **4 种新卡牌效果**：
+  - 毒素注入（poison）：cost 1，施加持续毒素伤害（2伤/回合，持续3回合，可叠加回合数）
+  - 能量虹吸（draw）：cost 0，额外抽 2 张牌（升级后抽 3 张）
+  - 反击（counter）：cost 1，获得防御+2 并蓄力反击 3 伤害（敌方攻击时触发）
+  - 裂空斩（combo）：cost 2，3 连击各 2 伤害（每击独立计算防御减免）
+- **2 种新敌方行为模式**：
+  - buff：敌方永久 ATK+1（长战斗中威胁递增）
+  - multi_attack：敌方连续攻击 2 次（每次 60% ATK）
+- **2 个新遭遇敌方**：
+  - encounter_06 量子分裂体：HP 7 / ATK 2，含 buff + multi_attack 行为
+  - encounter_07 赛博巫医：HP 11 / ATK 2，含 buff + heal 行为
+- **CardRenderer 新增 4 种卡牌类型**：poison/draw/counter/combo 配色+图标+标签+数值格式
+- **BattleCharRenderer 新增 2 个敌方立绘**：量子分裂体（紫色菱形晶体）、赛博巫医（绿色兜帽治疗者）
+
+### 修改
+- CardBattleController.gd: 新增 _poison_turns/_poison_dmg/_counter_dmg 状态变量；_resolve_card 新增 4 种卡牌类型；_enemy_act 新增 buff/multi_attack + 反击触发；end_turn 新增毒素结算；_update_enemy_intent 新增 buff/multi_attack 意图；新增 2 个遭遇数据；奖励卡池 13→17 张；升级数据新增 4 张
+- CardRenderer.gd: TYPE_COLORS/TYPE_ICONS/TYPE_LABELS 各新增 4 项；_format_value 新增 4 种格式
+- BoardGenerator.gd: ENCOUNTER_IDS 5→7 个
+- Main.gd: 遭遇显示名映射新增 2 条
+- BattleCharRenderer.gd: draw_enemy 新增 2 个分支；新增 _draw_quantum_splitter/_draw_cyber_shaman
+- CardBattlePanel.gd: _on_enemy_intent_changed 新增"连续"/"强化"意图图标
+- DiceDebugPanel.gd: 版本标记 → v0.1.79
+
+### 备注
+- 毒素在 end_turn 中结算（敌方回合开始前），可在敌方行动前击杀
+- 反击伤害通过 _resolve_counter() 统一处理，所有敌方攻击类行为（attack/heavy/defend_attack/mega/multi）都会触发
+- combo 连击每击独立检查敌方防御，对高防敌方效果显著减弱（设计意图）
+- buff 行为使敌方 ATK 永久递增，量子分裂体 5 回合循环含 1 次 buff，长战斗中 ATK 会持续增长
+- multi_attack 每击 60% ATK，2 击共 120% ATK 但分别受防御减免（比 heavy_attack 弱但对低防有效）
+- 新遭遇均受层间难度缩放影响（HP+30%/层, ATK+1/层）
+
 ## v0.1.78 - 2026-04-01
 
 ### 新增

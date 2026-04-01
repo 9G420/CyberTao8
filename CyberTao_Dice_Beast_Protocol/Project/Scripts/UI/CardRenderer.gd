@@ -13,6 +13,10 @@ const TYPE_COLORS: Dictionary = {
 	"shock": Color(0.65, 0.4, 1.0),
 	"defend": Color(0.3, 0.7, 1.0),
 	"heal": Color(0.3, 0.95, 0.55),
+	"poison": Color(0.45, 0.85, 0.15),
+	"draw": Color(0.2, 0.75, 0.95),
+	"counter": Color(0.85, 0.55, 0.15),
+	"combo": Color(1.0, 0.25, 0.35),
 }
 
 # ---- 卡牌类型图标（程序化符号） ----
@@ -23,6 +27,10 @@ const TYPE_ICONS: Dictionary = {
 	"shock": "⚡",
 	"defend": "■",
 	"heal": "✚",
+	"poison": "☠",
+	"draw": "↻",
+	"counter": "↺",
+	"combo": "⚔⚔",
 }
 
 # ---- 卡牌类型中文标签 ----
@@ -33,6 +41,10 @@ const TYPE_LABELS: Dictionary = {
 	"shock": "电击",
 	"defend": "防御",
 	"heal": "治疗",
+	"poison": "毒素",
+	"draw": "抽牌",
+	"counter": "反击",
+	"combo": "连击",
 }
 
 # ---- 卡牌尺寸 ----
@@ -148,6 +160,14 @@ static func _format_value(card: Dictionary) -> String:
 			return "回复 " + str(v)
 		"lifesteal":
 			return str(v) + "伤/" + str(card.get("heal_value", 1)) + "回"
+		"poison":
+			return "毒素 " + str(v) + "回合"
+		"draw":
+			return "抽 " + str(v) + " 张"
+		"counter":
+			return "防" + str(card.get("def_value", 2)) + "/反击" + str(v)
+		"combo":
+			return str(card.get("hits", 3)) + "x" + str(v) + " 伤害"
 	return str(v)
 
 # ======== HP 条 ========

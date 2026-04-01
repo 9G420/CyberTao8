@@ -580,6 +580,8 @@ func _get_encounter_display_name(encounter_id: String) -> String:
 		"encounter_03": "暗网爬虫",
 		"encounter_04": "脉冲猎手",
 		"encounter_05": "数据幽灵",
+		"encounter_06": "量子分裂体",
+		"encounter_07": "赛博巫医",
 		"encounter_boss_01": "零号协议",
 	}
 	if names.has(encounter_id):

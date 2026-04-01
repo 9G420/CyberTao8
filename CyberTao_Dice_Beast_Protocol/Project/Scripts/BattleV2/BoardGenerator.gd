@@ -24,7 +24,7 @@ const ENEMY_COUNT: int = 3
 # 可用遭遇 ID 池
 const ENCOUNTER_IDS: Array[String] = [
 	"encounter_01", "encounter_02", "encounter_03",
-	"encounter_04", "encounter_05",
+	"encounter_04", "encounter_05", "encounter_06", "encounter_07",
 ]
 
 # Boss 遭遇 ID 池（每局放置 1 个）
