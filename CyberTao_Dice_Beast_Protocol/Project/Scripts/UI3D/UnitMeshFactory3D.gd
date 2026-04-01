@@ -1,36 +1,128 @@
 extends RefCounted
 class_name UnitMeshFactory3D
 
-## 3D 单位网格工厂（v0.1.71）
-## 负责为棋盘上的单位（玩家/敌方/召唤物）创建程序化 3D 表示
-## 使用 CapsuleMesh（玩家）/ CylinderMesh（敌方）+ billboard HP 条
+## 3D 单位精灵工厂（v0.1.77 — billboard Sprite3D 替代几何体）
+## 玩家单位：使用现有 4 方向 spritesheet（刀盾向X走.png），支持帧动画
+## 敌方单位：程序化生成赛博朋克风格像素图标（红色菱形）
+## 召唤伙伴：程序化生成青色系像素图标（圆形）
 
-const UNIT_HEIGHT: float = 1.2		# 单位模型高度
-const UNIT_RADIUS: float = 0.35	# 单位模型半径
-const HP_BAR_WIDTH: float = 1.0	# HP 条宽度
-const HP_BAR_HEIGHT: float = 0.12	# HP 条高度
-const HP_BAR_OFFSET_Y: float = 1.6	# HP 条在单位上方的偏移
+const HP_BAR_WIDTH: float = 1.0
+const HP_BAR_HEIGHT: float = 0.12
+const HP_BAR_OFFSET_Y: float = 1.6
 
-## 创建单位的完整 3D 节点（模型 + HP条），返回 Node3D 容器
+const PLAYER_PIXEL_SIZE: float = 0.002		# 玩家精灵：世界单位/像素
+const ICON_PIXEL_SIZE: float = 0.01			# 敌方/召唤图标：世界单位/像素
+const SPRITE_Y_PLAYER: float = 0.65			# 玩家精灵中心 Y（底部贴地）
+const SPRITE_Y_ICON: float = 0.64			# 图标中心 Y
+
+# --- 精灵帧参数（与 PlayerSpriteAnimator 对齐）---
+const COLUMNS: int = 4
+const TOTAL_FRAMES: int = 15
+const ICON_RESOLUTION: int = 128			# 程序化图标分辨率
+
+# --- 纹理缓存（静态，跨实例共享）---
+static var _player_textures: Dictionary = {}		# dir(String) -> Texture2D
+static var _player_frame_sizes: Dictionary = {}		# dir(String) -> Vector2
+static var _enemy_tex: Texture2D = null
+static var _summoned_tex: Texture2D = null
+static var _textures_ready: bool = false
+
+# ============================
+#  纹理加载 / 程序化生成
+# ============================
+
+static func _ensure_textures() -> void:
+	if _textures_ready:
+		return
+	_textures_ready = true
+	# 玩家 4 方向 spritesheet
+	var paths: Dictionary = {
+		"up": "res://Assets/Tiles/刀盾向上走.png",
+		"down": "res://Assets/Tiles/刀盾向下走.png",
+		"left": "res://Assets/Tiles/刀盾向左走.png",
+		"right": "res://Assets/Tiles/刀盾向右走.png",
+	}
+	for dir_key in paths.keys():
+		var tex = load(paths[dir_key])
+		if tex != null:
+			_player_textures[dir_key] = tex
+			var fw: float = float(tex.get_width()) / float(COLUMNS)
+			var fh: float = float(tex.get_height()) / float(COLUMNS)
+			_player_frame_sizes[dir_key] = Vector2(fw, fh)
+	# 敌方：红色菱形图标
+	_enemy_tex = _generate_icon(
+		Color(0.7, 0.1, 0.08), Color(1.0, 0.25, 0.12), "diamond")
+	# 召唤伙伴：青色圆形图标
+	_summoned_tex = _generate_icon(
+		Color(0.1, 0.45, 0.6), Color(0.2, 0.75, 1.0), "circle")
+
+## 程序化生成赛博朋克风格图标纹理
+static func _generate_icon(body_color: Color, glow_color: Color, shape: String) -> ImageTexture:
+	var s: int = ICON_RESOLUTION
+	var img: Image = Image.create(s, s, true, Image.FORMAT_RGBA8)
+	var center: float = float(s) * 0.5
+	var outer_r: float = float(s) * 0.5 - 4.0
+	var glow_w: float = 6.0
+	var inner_r: float = outer_r - glow_w
+	# 内部"核心"高亮
+	var core_r: float = outer_r * 0.25
+	var core_color: Color = Color(
+		minf(glow_color.r + 0.3, 1.0),
+		minf(glow_color.g + 0.3, 1.0),
+		minf(glow_color.b + 0.3, 1.0), 1.0)
+	for y in range(s):
+		for x in range(s):
+			var dx: float = float(x) - center
+			var dy: float = float(y) - center
+			var dist: float = 0.0
+			if shape == "diamond":
+				dist = absf(dx) + absf(dy)
+			else:
+				dist = sqrt(dx * dx + dy * dy)
+			if dist <= core_r:
+				# 核心高亮区域
+				var t: float = dist / core_r
+				var col: Color = core_color.lerp(body_color, t * t)
+				col.a = 1.0
+				img.set_pixel(x, y, col)
+			elif dist <= inner_r:
+				# 主体区域
+				img.set_pixel(x, y, Color(body_color.r, body_color.g, body_color.b, 1.0))
+			elif dist <= outer_r:
+				# 发光边缘
+				var t: float = (dist - inner_r) / glow_w
+				var col: Color = body_color.lerp(glow_color, t)
+				col.a = 1.0
+				img.set_pixel(x, y, col)
+			elif dist <= outer_r + glow_w:
+				# 外发光渐隐
+				var t: float = 1.0 - (dist - outer_r) / glow_w
+				img.set_pixel(x, y, Color(glow_color.r, glow_color.g, glow_color.b, t * 0.5))
+			else:
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+	return ImageTexture.create_from_image(img)
+
+# ============================
+#  公开接口
+# ============================
+
+## 创建单位的完整 3D 节点（精灵 + HP条），返回 Node3D 容器
 static func create_unit_node(unit: Dictionary, cell: Vector2i, grid_size: int = 12) -> Node3D:
-	var container := Node3D.new()
+	_ensure_textures()
+	var container: Node3D = Node3D.new()
 	var uid: String = String(unit.get("id", "unknown"))
 	container.name = "Unit_" + uid
-
 	var world_pos: Vector3 = GridMapper3D.cell_to_world(cell, grid_size)
 	container.position = Vector3(world_pos.x, 0.0, world_pos.z)
-
-	# 主体模型
-	var body := _create_body_mesh(unit)
+	# 精灵主体
+	var body: Sprite3D = _create_body_sprite(unit)
 	container.add_child(body)
-
-	# HP 条（billboard sprite）
-	var hp_bar := _create_hp_bar(unit)
+	# HP 条
+	var hp_bar: MeshInstance3D = _create_hp_bar(unit)
 	container.add_child(hp_bar)
-
 	return container
 
-## 更新单位位置（用于移动动画）
+## 更新单位位置
 static func update_unit_position(node: Node3D, world_pos: Vector3) -> void:
 	node.position = world_pos
 
@@ -40,10 +132,8 @@ static func update_hp_bar(node: Node3D, hp: int, max_hp: int, is_player: bool) -
 	if hp_bar == null:
 		return
 	var ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
-	# 更新 HP 条缩放（X 轴代表宽度）
 	hp_bar.scale.x = ratio
 	hp_bar.position.x = -HP_BAR_WIDTH * 0.5 * (1.0 - ratio)
-	# 更新颜色
 	var mat: StandardMaterial3D = hp_bar.material_override as StandardMaterial3D
 	if mat:
 		if is_player:
@@ -52,55 +142,100 @@ static func update_hp_bar(node: Node3D, hp: int, max_hp: int, is_player: bool) -
 			mat.albedo_color = CyberStyle.HP_ENEMY if ratio > 0.3 else CyberStyle.HP_ENEMY_LOW
 		mat.emission = mat.albedo_color
 
-## 创建主体模型
-static func _create_body_mesh(unit: Dictionary) -> MeshInstance3D:
-	var mesh_inst := MeshInstance3D.new()
-	mesh_inst.name = "Body"
-	var owner: String = String(unit.get("owner", ""))
-	var is_player: bool = owner == "player"
-	var is_summoned: bool = bool(unit.get("is_summoned", false))
+# ============================
+#  精灵动画接口（BoardView3D 调用）
+# ============================
 
-	if is_player:
-		var capsule := CapsuleMesh.new()
-		capsule.radius = UNIT_RADIUS
-		capsule.height = UNIT_HEIGHT
-		mesh_inst.mesh = capsule
+## 判断节点是否为 spritesheet 精灵（玩家英雄）
+static func is_spritesheet_unit(node: Node3D) -> bool:
+	var body: Sprite3D = node.get_node_or_null("Body") as Sprite3D
+	if body == null:
+		return false
+	return body.region_enabled
+
+## 设置精灵朝向（切换 spritesheet 纹理）
+static func set_sprite_direction(node: Node3D, dir: String) -> void:
+	var body: Sprite3D = node.get_node_or_null("Body") as Sprite3D
+	if body == null or not body.region_enabled:
+		return
+	var tex: Texture2D = _player_textures.get(dir, null)
+	if tex == null:
+		return
+	body.texture = tex
+
+## 设置精灵帧索引（更新 region_rect）
+static func set_sprite_frame(node: Node3D, dir: String, frame_index: int) -> void:
+	var body: Sprite3D = node.get_node_or_null("Body") as Sprite3D
+	if body == null or not body.region_enabled:
+		return
+	var fs: Vector2 = _player_frame_sizes.get(dir, Vector2(758, 649))
+	var col: int = frame_index % COLUMNS
+	var row: int = frame_index / COLUMNS
+	body.region_rect = Rect2(float(col) * fs.x, float(row) * fs.y, fs.x, fs.y)
+
+## 重置精灵到默认待机姿态（朝下，帧0）
+static func reset_sprite_idle(node: Node3D) -> void:
+	set_sprite_direction(node, "down")
+	set_sprite_frame(node, "down", 0)
+
+# ============================
+#  内部创建方法
+# ============================
+
+## 创建精灵主体（Sprite3D billboard）
+static func _create_body_sprite(unit: Dictionary) -> Sprite3D:
+	var sprite: Sprite3D = Sprite3D.new()
+	sprite.name = "Body"
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.shaded = false
+	sprite.double_sided = true
+	sprite.no_depth_test = false
+	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	sprite.alpha_scissor_threshold = 0.4
+	var owner_str: String = String(unit.get("owner", ""))
+	var is_player: bool = owner_str == "player"
+	var tags: Array = unit.get("tags", [])
+	var is_summoned: bool = tags.has("summoned")
+	if is_player and not is_summoned:
+		# 玩家英雄：使用 spritesheet
+		sprite.pixel_size = PLAYER_PIXEL_SIZE
+		sprite.position.y = SPRITE_Y_PLAYER
+		var tex: Texture2D = _player_textures.get("down", null)
+		if tex != null:
+			sprite.texture = tex
+			sprite.region_enabled = true
+			var fs: Vector2 = _player_frame_sizes.get("down", Vector2(758, 649))
+			sprite.region_rect = Rect2(0, 0, fs.x, fs.y)
+		else:
+			# 纹理加载失败 → 回退到程序化图标
+			sprite.texture = _generate_icon(
+				Color(0.15, 0.5, 0.9), Color(0.3, 0.6, 1.0), "circle")
+			sprite.pixel_size = ICON_PIXEL_SIZE
+	elif is_summoned:
+		# 召唤伙伴：青色图标
+		sprite.texture = _summoned_tex
+		sprite.pixel_size = ICON_PIXEL_SIZE
+		sprite.position.y = SPRITE_Y_ICON
 	else:
-		var cylinder := CylinderMesh.new()
-		cylinder.top_radius = UNIT_RADIUS * 0.7
-		cylinder.bottom_radius = UNIT_RADIUS
-		cylinder.height = UNIT_HEIGHT * 0.9
-		mesh_inst.mesh = cylinder
+		# 敌方单位：红色菱形图标
+		sprite.texture = _enemy_tex
+		sprite.pixel_size = ICON_PIXEL_SIZE
+		sprite.position.y = SPRITE_Y_ICON
+	return sprite
 
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = _get_unit_color(owner, is_summoned)
-	mat.emission_enabled = true
-	mat.emission = _get_unit_emission(owner, is_summoned)
-	mat.emission_energy_multiplier = 0.4
-	mat.metallic = 0.3
-	mat.roughness = 0.5
-	mesh_inst.material_override = mat
-
-	# 模型底部贴地
-	mesh_inst.position.y = UNIT_HEIGHT * 0.5
-	return mesh_inst
-
-## 创建 HP 条（使用 BoxMesh + billboard 行为通过代码实现）
+## 创建 HP 条（BoxMesh + billboard 材质）
 static func _create_hp_bar(unit: Dictionary) -> MeshInstance3D:
-	var mesh_inst := MeshInstance3D.new()
+	var mesh_inst: MeshInstance3D = MeshInstance3D.new()
 	mesh_inst.name = "HPBar"
-
-	var box := BoxMesh.new()
+	var box: BoxMesh = BoxMesh.new()
 	box.size = Vector3(HP_BAR_WIDTH, HP_BAR_HEIGHT, 0.02)
 	mesh_inst.mesh = box
-
-	var owner: String = String(unit.get("owner", ""))
-	var is_player: bool = owner == "player"
+	var owner_str: String = String(unit.get("owner", ""))
+	var is_player: bool = owner_str == "player"
 	var hp: int = int(unit.get("hp", 1))
 	var max_hp: int = int(unit.get("max_hp", 1))
 	var ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
-
-	var mat := StandardMaterial3D.new()
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	if is_player:
 		mat.albedo_color = CyberStyle.HP_PLAYER if ratio > 0.3 else CyberStyle.HP_PLAYER_LOW
 	else:
@@ -110,23 +245,6 @@ static func _create_hp_bar(unit: Dictionary) -> MeshInstance3D:
 	mat.emission_energy_multiplier = 0.6
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mesh_inst.material_override = mat
-
 	mesh_inst.position.y = HP_BAR_OFFSET_Y
 	mesh_inst.scale.x = ratio
 	return mesh_inst
-
-## 单位主体颜色
-static func _get_unit_color(owner: String, is_summoned: bool) -> Color:
-	if owner == "player":
-		if is_summoned:
-			return Color(0.2, 0.6, 0.8)  # 召唤物偏青
-		return Color(0.15, 0.5, 0.9)  # 玩家偏蓝
-	return Color(0.85, 0.25, 0.15)  # 敌方红色
-
-## 单位发光颜色
-static func _get_unit_emission(owner: String, is_summoned: bool) -> Color:
-	if owner == "player":
-		if is_summoned:
-			return Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b)
-		return Color(CyberStyle.NEON_BLUE.r, CyberStyle.NEON_BLUE.g, CyberStyle.NEON_BLUE.b)
-	return Color(CyberStyle.NEON_RED.r, CyberStyle.NEON_RED.g, CyberStyle.NEON_RED.b)

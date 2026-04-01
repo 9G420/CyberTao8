@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.76
+**当前版本**: v0.1.77
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -140,6 +140,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 3D 反馈系统实现（Label3D漂浮文字+CPUParticles3D+格子闪光+相机震动） | v0.1.74 | 稳定 |
 | 阵亡单位跨层复活 + 存活单位跨层回复（REVIVE 50% / HEAL 30%） | v0.1.75 | 稳定 |
 | BFC 瘦身：FloorManager 独立类（多层地图逻辑剥离，BFC 881→791行） | v0.1.76 | 稳定 |
+| 3D 单位精灵化（billboard Sprite3D+spritesheet行走动画+程序化敌方图标） | v0.1.77 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -248,8 +249,8 @@ UI层
 UI3D/（v0.1.71 新增 — 3D 表现层）
 ├── GridMapper3D        — 格坐标↔3D世界坐标转换（class_name注册）  ~40行 ✅ v0.1.71 新增
 ├── TileMeshFactory3D   — 格子 BoxMesh 程序化工厂（class_name注册）  ~110行 ✅ v0.1.71 新增
-├── UnitMeshFactory3D   — 单位 CapsuleMesh/CylinderMesh 工厂（class_name注册）  ~100行 ✅ v0.1.71 新增
-└── BoardView3D         — 3D 棋盘视图（SubViewport 内嵌，class_name注册）  ~700行 ✅ v0.1.71 新增 / v0.1.74 反馈系统实现
+├── UnitMeshFactory3D   — 单位 Sprite3D billboard 精灵工厂（class_name注册）  ~250行 ✅ v0.1.77 精灵化重写
+└── BoardView3D         — 3D 棋盘视图（SubViewport 内嵌，class_name注册）  ~736行 ✅ v0.1.71 新增 / v0.1.74 反馈系统 / v0.1.77 精灵动画
 
 System/
 ├── DisplaySettings     — 显示设置管理
@@ -368,13 +369,13 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 说明 |
 |------|------|
-| **3D 单位精灵化** | billboard sprite 或低多边形模型替代简单几何体 |
+| **商品池扩展** | 加新牌/移除诅咒/随机 crest 等 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **商品池扩展** | 加新牌/移除诅咒/随机 crest 等 |
+| **卡牌战斗层深化** | 新卡牌效果/新敌方行为模式 |
 
 ### 🟢 中低优先级
 
@@ -386,6 +387,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 版本 |
 |------|------|
+| 3D 单位精灵化（billboard Sprite3D+spritesheet行走动画+程序化敌方图标） | v0.1.77 |
 | BFC 瘦身：FloorManager 独立类（多层地图逻辑剥离） | v0.1.76 |
 | 阵亡单位跨层复活 + 存活单位跨层回复 | v0.1.75 |
 | 3D 反馈系统实现（Label3D漂浮文字+CPUParticles3D+格子闪光+相机震动） | v0.1.74 |

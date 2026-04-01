@@ -1,5 +1,29 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.77 - 2026-04-01
+
+### 新增
+- **3D 单位精灵化**：billboard Sprite3D 替代 CapsuleMesh/CylinderMesh
+  - 玩家英雄：使用现有 4 方向 spritesheet（刀盾向X走.png），支持行走帧动画（10fps，15帧循环）
+  - 敌方单位：程序化生成 128px 红色菱形图标（发光边缘+中心高亮）
+  - 召唤伙伴：程序化生成 128px 青色圆形图标
+- **UnitMeshFactory3D 精灵动画接口**：`is_spritesheet_unit()` / `set_sprite_direction()` / `set_sprite_frame()` / `reset_sprite_idle()`
+- **BoardView3D 精灵动画**：移动时自动检测方向、切换 spritesheet、推进帧动画
+
+### 修改
+- UnitMeshFactory3D.gd: 完整重写（133→250 行），从几何体工厂变为精灵工厂
+- BoardView3D.gd: 新增精灵动画逻辑（701→736 行）
+- DiceDebugPanel.gd: 版本标记 → v0.1.77
+
+### 修复
+- UnitMeshFactory3D: is_summoned 检测改为检查 tags 数组（原实现检查不存在的 "is_summoned" 字段）
+
+### 备注
+- 使用 `ALPHA_CUT_DISCARD`（gl_compatibility 兼容），阈值 0.4
+- 程序化图标缓存为静态变量，仅首次生成
+- 外部信号接口零变更，Main.gd 无需修改
+- 敌方/召唤图标为临时程序化方案，后续可替换为美术资源
+
 ## v0.1.76 - 2026-04-01
 
 ### 新增
