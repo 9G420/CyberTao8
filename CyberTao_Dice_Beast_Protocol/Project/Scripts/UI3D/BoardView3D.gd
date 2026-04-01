@@ -1,7 +1,7 @@
 extends Node3D
 class_name BoardView3D
 
-## 3D 棋盘视图（v0.1.77 — 3D 单位精灵化）
+## 3D 棋盘视图（v0.1.81 — 精灵动画移除，全单位程序化像素）
 ## 与 BoardView（2D）信号接口对齐，支持 Main.gd 通过 _active_view() 路由
 ## 内嵌于 SubViewport 中，由 Main.gd 的 SubViewportContainer 承载
 
@@ -63,11 +63,6 @@ var _move_tween: Tween = null
 
 # --- 脉冲动画 ---
 var _pulse_time: float = 0.0
-
-# --- 精灵动画（v0.1.77）---
-var _sprite_anim_accum: float = 0.0
-var _sprite_frame_idx: int = 0
-var _sprite_move_dir: String = "down"
 
 # --- 网格尺寸缓存 ---
 var _grid_size: int = 12
@@ -150,8 +145,6 @@ func _process(delta: float) -> void:
 		_camera.look_at(target_pos, Vector3.UP)
 	# 移动动画更新
 	_update_move_animation()
-	# v0.1.77：精灵帧动画（移动中以 10fps 切帧）
-	_update_sprite_animation(delta)
 
 # ============================
 #  公开接口（与 BoardView 对齐）
@@ -191,13 +184,6 @@ func play_move_step(unit_id: String, from_cell: Vector2i, to_cell: Vector2i, dur
 	_move_anim_from = GridMapper3D.cell_to_world(from_cell, _grid_size)
 	_move_anim_to = GridMapper3D.cell_to_world(to_cell, _grid_size)
 	_move_anim_t = 0.0
-	# v0.1.77：设置精灵移动方向
-	_sprite_move_dir = PlayerSpriteAnimator.direction_from_cells(from_cell, to_cell)
-	_sprite_frame_idx = 0
-	_sprite_anim_accum = 0.0
-	var node: Node3D = _unit_nodes.get(unit_id, null)
-	if node != null and UnitMeshFactory3D.is_spritesheet_unit(node):
-		UnitMeshFactory3D.set_sprite_direction(node, _sprite_move_dir)
 	_move_tween = create_tween()
 	_move_tween.tween_method(_set_move_t, 0.0, 1.0, duration)
 	_move_tween.tween_callback(_on_move_step_finished)
@@ -206,13 +192,6 @@ func _set_move_t(t: float) -> void:
 	_move_anim_t = t
 
 func _on_move_step_finished() -> void:
-	# v0.1.77：重置精灵到待机姿态
-	if _move_anim_unit != "" and _unit_nodes.has(_move_anim_unit):
-		var node: Node3D = _unit_nodes[_move_anim_unit]
-		if UnitMeshFactory3D.is_spritesheet_unit(node):
-			UnitMeshFactory3D.reset_sprite_idle(node)
-	_sprite_frame_idx = 0
-	_sprite_anim_accum = 0.0
 	_move_anim_unit = ""
 	_move_anim_t = 1.0
 	_refresh_units()
@@ -226,21 +205,6 @@ func _update_move_animation() -> void:
 		return
 	var pos: Vector3 = _move_anim_from.lerp(_move_anim_to, _move_anim_t)
 	node.position = pos
-
-## v0.1.77：精灵帧动画更新（移动中以 10fps 切帧）
-func _update_sprite_animation(delta: float) -> void:
-	if _move_anim_unit == "":
-		return
-	var node: Node3D = _unit_nodes.get(_move_anim_unit, null)
-	if node == null:
-		return
-	if not UnitMeshFactory3D.is_spritesheet_unit(node):
-		return
-	_sprite_anim_accum += delta
-	if _sprite_anim_accum >= 0.1:
-		_sprite_anim_accum -= 0.1
-		_sprite_frame_idx = (_sprite_frame_idx + 1) % UnitMeshFactory3D.TOTAL_FRAMES
-		UnitMeshFactory3D.set_sprite_frame(node, _sprite_move_dir, _sprite_frame_idx)
 
 # --- 反馈方法（v0.1.74 — 3D 反馈系统完整实现）---
 

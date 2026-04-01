@@ -1,5 +1,29 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.81 - 2026-04-01
+
+### 修改（全单位程序化 BGA 宝可梦像素风格重构）
+- **UnitMeshFactory3D 完全重写**：移除所有 spritesheet 外部 PNG 资源依赖，改为全单位程序化像素风格生成
+- 新增 12 个独立程序化像素生物生成器（BGA 宝可梦风格：大头比例+粗体轮廓+赛博朋克发光）：
+  - 刀盾狗（玩家英雄）：蓝色赛博犬战士，持刀+盾
+  - 赛博小精灵（召唤伙伴）：青色飞行小伙伴
+  - 异常哨兵、赛博游魂、暗网爬虫、脉冲猎手、数据幽灵、量子分裂体、赛博巫医（7种遭遇敌方）
+  - 零号协议（Boss）：大型暗红铠甲实体
+  - 默认回退敌方
+- 绘图系统：32×32 逻辑像素网格（128px 纹理，4×4 实际像素/逻辑像素），含自动发光轮廓
+- **BoardView3D 精灵动画移除**：删除 _update_sprite_animation() 及相关变量（_sprite_anim_accum/frame_idx/move_dir），精简 play_move_step/finish 逻辑
+- DiceDebugPanel.gd: 版本标记 → v0.1.81
+
+### 删除
+- UnitMeshFactory3D：spritesheet 加载（4方向 PNG 路径）、帧动画接口（is_spritesheet_unit/set_sprite_direction/set_sprite_frame/reset_sprite_idle）、旧版简单几何图标生成器（_generate_icon）
+- BoardView3D：精灵帧动画系统（不再需要 PlayerSpriteAnimator 的方向检测）
+
+### 备注
+- 本轮源于用户指示："敌方美术资源先取消，主角色 spritesheet 素材也不用了，改为程序化设计，参考 BGA 宝可梦像素角色怪物设计"
+- 所有单位现为静态纹理（无帧动画），如需行走表现可后续添加弹跳 tween
+- PlayerSpriteAnimator.gd 文件仍存在但已无引用（可在后续清理）
+- 敌方纹理按 encounter_id 延迟生成并缓存，首次遇到时生成
+
 ## v0.1.80 - 2026-04-01
 
 ### 修改（数值平衡调优）

@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.80
+**当前版本**: v0.1.81
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -144,6 +144,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 商品池扩展（9种商品：加牌/移除牌/随机crest/最大HP+/原有5种） | v0.1.78 | 稳定 |
 | 卡牌战斗层深化（4种新卡牌+2种新敌方行为+2个新遭遇） | v0.1.79 | 稳定 |
 | 数值平衡调优（能量虹吸/毒素/反击/脉冲猎手/赛博巫医/赛博彩票） | v0.1.80 | 稳定 |
+| 全单位程序化像素风格（BGA宝可梦风格，移除spritesheet，12种生物生成器） | v0.1.81 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -258,8 +259,8 @@ UI层
 UI3D/（v0.1.71 新增 — 3D 表现层）
 ├── GridMapper3D        — 格坐标↔3D世界坐标转换（class_name注册）  ~40行 ✅ v0.1.71 新增
 ├── TileMeshFactory3D   — 格子 BoxMesh 程序化工厂（class_name注册）  ~110行 ✅ v0.1.71 新增
-├── UnitMeshFactory3D   — 单位 Sprite3D billboard 精灵工厂（class_name注册）  ~250行 ✅ v0.1.77 精灵化重写
-└── BoardView3D         — 3D 棋盘视图（SubViewport 内嵌，class_name注册）  ~736行 ✅ v0.1.71 新增 / v0.1.74 反馈系统 / v0.1.77 精灵动画
+├── UnitMeshFactory3D   — 单位程序化像素精灵工厂（class_name注册，BGA宝可梦风格）  ~400行 ✅ v0.1.81 全单位程序化重写
+└── BoardView3D         — 3D 棋盘视图（SubViewport 内嵌，class_name注册）  ~710行 ✅ v0.1.71 新增 / v0.1.74 反馈系统 / v0.1.81 精灵动画移除
 
 System/
 ├── DisplaySettings     — 显示设置管理
@@ -379,13 +380,13 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 说明 |
 |------|------|
-| **敌方单位美术资源** | 替换程序化图标为独立 spritesheet（需美术资源就绪） |
+| **商店 remove_card 手动选择UI** | 替换自动选最弱牌为弹出牌组选择界面 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **商店 remove_card 手动选择UI** | 替换自动选最弱牌为弹出牌组选择界面 |
+| **更多遭遇/Boss** | 丰富战斗多样性，增加中后期内容 |
 
 ### 🟢 中低优先级
 
@@ -397,6 +398,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 版本 |
 |------|------|
+| 全单位程序化像素风格（BGA宝可梦风格，移除spritesheet，12种程序化生物） | v0.1.81 |
 | 数值平衡调优（能量虹吸/毒素/反击/脉冲猎手/赛博巫医/赛博彩票） | v0.1.80 |
 | 卡牌战斗层深化（4种新卡牌+2种新敌方行为+2个新遭遇） | v0.1.79 |
 | 商品池扩展（9种商品：加牌/移除牌/随机crest/最大HP+/原有5种） | v0.1.78 |
