@@ -1,5 +1,18 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.87 - 2026-04-02
+
+### 新增
+- 引入用户提供外部 BGM 文件：`Project/Audio/bgm_tension_fast.mp3`
+
+### 修改
+- `AudioManager.gd`：BGM 加载策略改为“优先外部音轨，失败回退程序化生成”
+- `AudioManager.gd`：`bgm_battle / bgm_map / bgm_boss / bgm_title` 暂统一映射到外部音轨 `res://Audio/bgm_tension_fast.mp3`
+
+### 备注
+- 当前为快速止血方案（先用用户提供 BGM 覆盖刺耳程序化曲目）
+- 后续可按场景拆分不同外部音轨，程序化继续作为 fallback
+
 ## v0.1.86 - 2026-04-02
 
 ### 修改（BGM/SFX 听感柔化，降低刺耳度）

@@ -19,6 +19,9 @@ var _current_bgm: String = ""
 var _sfx_enabled: bool = true
 var _bgm_enabled: bool = true
 
+# --- 外部 BGM（v0.1.87：优先使用用户提供音轨）---
+const EXTERNAL_BGM_COMMON: String = "res://Audio/bgm_tension_fast.mp3"
+
 func _ready() -> void:
 	# 创建多通道 SFX 播放器
 	for i in SFX_CHANNELS:
@@ -108,20 +111,29 @@ func set_bgm_enabled(enabled: bool) -> void:
 func _get_or_generate(name: String) -> AudioStream:
 	if _cache.has(name):
 		return _cache[name] as AudioStream
-	# 尝试按名称动态生成 BGM
-	var stream: AudioStream = null
-	match name:
-		"bgm_battle":
-			stream = SFXGenerator.generate_battle_bgm_loop()
-		"bgm_map":
-			stream = SFXGenerator.generate_map_bgm_loop()
-		"bgm_boss":
-			stream = SFXGenerator.generate_boss_bgm_loop()
-		"bgm_title":
-			stream = SFXGenerator.generate_title_bgm_loop()
+	# v0.1.87：BGM 先尝试外部音轨（用户提供），失败再回退程序化生成
+	var stream: AudioStream = _try_load_external_bgm(name)
+	if stream == null:
+		match name:
+			"bgm_battle":
+				stream = SFXGenerator.generate_battle_bgm_loop()
+			"bgm_map":
+				stream = SFXGenerator.generate_map_bgm_loop()
+			"bgm_boss":
+				stream = SFXGenerator.generate_boss_bgm_loop()
+			"bgm_title":
+				stream = SFXGenerator.generate_title_bgm_loop()
 	if stream != null:
 		_cache[name] = stream
 	return stream
+
+func _try_load_external_bgm(name: String) -> AudioStream:
+	match name:
+		"bgm_battle", "bgm_map", "bgm_boss", "bgm_title":
+			var ext_stream: AudioStream = load(EXTERNAL_BGM_COMMON)
+			if ext_stream != null:
+				return ext_stream
+	return null
 
 # --- 音量控制 API ---
 
