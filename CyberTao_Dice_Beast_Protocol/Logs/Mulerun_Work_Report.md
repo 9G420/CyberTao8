@@ -1,18 +1,21 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.96
+**版本**: v0.1.97
 **分支**: `codex/dice-beast-protocol`
 
-## 问题
-- 运行报错：`Invalid assignment of property or key 'modulate' ... MeshInstance3D`
-- 崩溃点：`BoardView3D.gd` 外环地台暗化逻辑。
+## 本轮任务
+- 2D 中键视角调节改为可感知（更接近 3D 操作反馈）
+- 棋盘外视觉改为独立背景区，不再延展棋盘格
 
-## 修复
-- 删除 `tile_node.modulate = Color(...)`。
-- 改为读取 `tile_node.material_override`（`StandardMaterial3D`）并复制材质后暗化：
-  - `albedo_color.darkened(0.35)`
-  - `emission_energy_multiplier *= 0.35`
+## 修改
+- `BoardView.gd`
+  - 中键拖拽：左右调整 yaw offset、上下调整 pitch offset
+  - 相机 target 计算统一使用 `(SCREEN_CENTER + yaw/pitch offset)`
+- `IsoTileRenderer.gd`
+  - `draw_board()` 改为只绘制真实棋盘格
+  - 新增 `_draw_board_platform_bg()` 作为棋盘外“舞台背景区”
 
 ## 结果
-- 报错消失，3D 外环地台可正常构建并显示。
+- 2D 中键拖拽视角变化更明显
+- 棋盘外与棋盘内形成清晰区分，沉浸感更接近你示意图方向

@@ -87,35 +87,40 @@ static func draw_board(canvas: CanvasItem, origin: Vector2, board_mgr: Node, pul
 	var gs: Vector2i = _get_grid_size(board_mgr)
 	var gw: int = gs.x
 	var gh: int = gs.y
-	# 扩展范围：在棋盘四周绘制环境格子（消除黑色空白）
-	var pad: int = int(ceil(float(AMBIENT_PAD) / zoom))
-	var min_g: int = -pad
-	var max_gw: int = gw + pad
-	var max_gh: int = gh + pad
-	for depth in range(min_g * 2, max_gw + max_gh - 1):
-		var gx_min: int = max(min_g, depth - max_gh + 1)
-		var gx_max: int = min(max_gw - 1, depth - min_g)
+	# v0.1.97：外部改为“背景舞台”而非继续铺格子
+	_draw_board_platform_bg(canvas, origin, gs, zoom, pulse)
+	for depth in range(0, gw + gh - 1):
+		var gx_min: int = max(0, depth - gh + 1)
+		var gx_max: int = min(gw - 1, depth)
 		for gx in range(gx_min, gx_max + 1):
 			var gy: int = depth - gx
-			if gy < min_g or gy >= max_gh:
-				continue
-			var in_board: bool = gx >= 0 and gy >= 0 and gx < gw and gy < gh
-			if in_board:
-				var tile_key: String = _get_tile_key(gx, gy, board_mgr)
-				_draw_tile_procedural(canvas, gx, gy, tile_key, origin, pulse, zoom)
-			else:
-				_draw_ambient_tile(canvas, gx, gy, origin, zoom)
+			var tile_key: String = _get_tile_key(gx, gy, board_mgr)
+			_draw_tile_procedural(canvas, gx, gy, tile_key, origin, pulse, zoom)
 
-## 绘制棋盘外的环境装饰格（暗色菱形，消除黑色空白）
-static func _draw_ambient_tile(canvas: CanvasItem, gx: int, gy: int, origin: Vector2, zoom: float = 1.0) -> void:
-	var center: Vector2 = grid_to_screen_zoom(gx, gy, origin, zoom)
-	var pts: PackedVector2Array = diamond_points_zoom(center, 1.0, zoom)
-	var base_a: float = 0.6 if (gx + gy) % 2 == 0 else 0.45
-	var fill: Color = Color(0.025, 0.025, 0.06, base_a)
-	canvas.draw_colored_polygon(pts, fill)
-	var line_col: Color = Color(0.0, 0.4, 0.6, 0.04)
+## 绘制棋盘外“舞台背景区”（与主棋盘区分开）
+static func _draw_board_platform_bg(canvas: CanvasItem, origin: Vector2, gs: Vector2i, zoom: float, pulse: float) -> void:
+	var pad: int = int(4 + ceil(float(AMBIENT_PAD) / zoom))
+	var min_x: int = -pad
+	var min_y: int = -pad
+	var max_x: int = gs.x - 1 + pad
+	var max_y: int = gs.y - 1 + pad
+	var p0: Vector2 = grid_to_screen_zoom(min_x, min_y, origin, zoom)
+	var p1: Vector2 = grid_to_screen_zoom(max_x + 1, min_y, origin, zoom)
+	var p2: Vector2 = grid_to_screen_zoom(max_x + 1, max_y + 1, origin, zoom)
+	var p3: Vector2 = grid_to_screen_zoom(min_x, max_y + 1, origin, zoom)
+	var ring: PackedVector2Array = PackedVector2Array([p0, p1, p2, p3])
+	var base_col: Color = Color(0.06, 0.07, 0.1, 0.88)
+	canvas.draw_colored_polygon(ring, base_col)
+	# 边框高光
+	var edge: Color = Color(0.15, 0.45, 0.7, 0.28 + pulse * 0.08)
 	for i in range(4):
-		canvas.draw_line(pts[i], pts[(i + 1) % 4], line_col, 1.0)
+		canvas.draw_line(ring[i], ring[(i + 1) % 4], edge, 2.0)
+	# 轻微分层扫描线
+	for i in range(9):
+		var t: float = float(i) / 8.0
+		var a: Vector2 = p0.lerp(p3, t)
+		var b: Vector2 = p1.lerp(p2, t)
+		canvas.draw_line(a, b, Color(0.12, 0.2, 0.3, 0.08), 1.0)
 
 ## 获取棋盘尺寸（优先从 board_mgr 取，否则用默认值）
 static func _get_grid_size(board_mgr: Node) -> Vector2i:

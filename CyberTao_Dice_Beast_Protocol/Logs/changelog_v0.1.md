@@ -1,5 +1,19 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.97 - 2026-04-02
+
+### 修改（2D中键视角生效 + 棋盘外背景区分）
+- `BoardView.gd`：中键拖拽改为明确“2D视角控制”
+  - 左右拖：`_view_yaw_offset`
+  - 上下拖：`_view_pitch_offset`
+  - 与右键平移分离
+- `IsoTileRenderer.gd`：移除棋盘外继续铺装环境格子的做法
+- `IsoTileRenderer.gd`：新增 `_draw_board_platform_bg()`，棋盘外改为独立舞台背景区（类似战场外场地）
+
+### 修复
+- **问题1**：2D 中键拖拽体感不明显，不像 3D 调视角
+- **问题2**：棋盘外仍像延展平面，不符合“外部背景区分”预期
+
 ## v0.1.96 - 2026-04-02
 
 ### 修复（3D 外环地台运行时崩溃）
