@@ -43,6 +43,7 @@ const UnitData = preload("res://Scripts/Data/UnitData.gd")
 const BoardGenerator = preload("res://Scripts/BattleV2/BoardGenerator.gd")
 const CrestActionHandler = preload("res://Scripts/BattleV2/CrestActionHandler.gd")
 const CellEffectHandler = preload("res://Scripts/BattleV2/CellEffectHandler.gd")
+const _FloorManager = preload("res://Scripts/BattleV2/FloorManager.gd")
 
 enum BattlePhase {
 	BOOT,
@@ -57,14 +58,10 @@ enum BattlePhase {
 	DEFEAT,
 }
 
-const MAX_FLOOR: int = 3
 const BOARD_SIZE: Vector2i = Vector2i(12, 12)	# v0.1.62 扩展棋盘
-const REVIVE_HP_RATIO: float = 0.5				# v0.1.75 阵亡单位复活时 HP 比例（50% max_hp）
-const FLOOR_HEAL_RATIO: float = 0.3				# v0.1.75 存活单位跨层回复比例（30% max_hp）
 
 var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
-var current_floor: int = 1
 var _summon_counter: int = 0
 var _summon_this_floor: int = 0      # 本层已部署次数
 const SUMMON_FLOOR_LIMIT: int = 2   # 每层部署上限
@@ -81,6 +78,7 @@ var buff_manager: BuffManager
 var battle_ai: BattleAI
 var crest_handler: CrestActionHandler
 var cell_effect_handler: CellEffectHandler
+var floor_manager: _FloorManager
 
 func _ready() -> void:
 	_bootstrap()
@@ -94,6 +92,7 @@ func _bootstrap() -> void:
 	battle_ai = BattleAI.new()
 	crest_handler = CrestActionHandler.new()
 	cell_effect_handler = CellEffectHandler.new()
+	floor_manager = _FloorManager.new()
 
 	add_child(dice_manager)
 	add_child(board_manager)
@@ -103,6 +102,7 @@ func _bootstrap() -> void:
 	add_child(battle_ai)
 	add_child(crest_handler)
 	add_child(cell_effect_handler)
+	add_child(floor_manager)
 
 	action_resolver.board_manager = board_manager
 	action_resolver.unit_manager = unit_manager
@@ -118,9 +118,14 @@ func _bootstrap() -> void:
 	cell_effect_handler.dice_manager = dice_manager
 	cell_effect_handler.buff_manager = buff_manager
 
+	floor_manager.dice_manager = dice_manager
+	floor_manager.board_manager = board_manager
+	floor_manager.unit_manager = unit_manager
+	floor_manager.buff_manager = buff_manager
+
 	board_manager.build_test_board(BOARD_SIZE)
 	_spawn_player_units()
-	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, current_floor)
+	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, floor_manager.current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -492,51 +497,27 @@ func _check_battle_outcome() -> void:
 		if board_manager.portal_cells.size() > 0:
 			return  # 传送门已出现，等玩家踩上
 		# 无遭遇无传送门：正常判胜/通关
-		if current_floor < MAX_FLOOR:
+		if floor_manager.current_floor < floor_manager.get_max_floor():
 			current_phase = BattlePhase.FLOOR_CLEAR
 			emit_signal("phase_changed", _phase_name(current_phase))
-			emit_signal("floor_cleared", current_floor)
+			emit_signal("floor_cleared", floor_manager.current_floor)
 		else:
 			emit_signal("game_won")
 			mark_victory()
 
-## 尝试解锁所有 Boss 遭遇格
+## 尝试解锁所有 Boss 遭遇格（v0.1.76：委托 FloorManager）
 func _try_unlock_boss() -> void:
-	var cells_to_unlock: Array[Vector2i] = []
-	for cell in board_manager.locked_encounters.keys():
-		cells_to_unlock.append(cell)
-	for cell in cells_to_unlock:
-		board_manager.unlock_encounter(cell)
+	var unlocked: Array[Vector2i] = floor_manager.try_unlock_boss()
+	for cell in unlocked:
 		emit_signal("boss_unlocked", cell)
-	# 哨兵全灭 → 自动传送英雄到 Boss 旁边
-	if cells_to_unlock.size() > 0:
-		_warp_hero_to_boss(cells_to_unlock[0])
+	if unlocked.size() > 0:
+		_warp_hero_to_boss(unlocked[0])
 
-## Boss 解锁后，将英雄单位传送到 Boss 格旁边的空格
+## Boss 解锁后，将英雄单位传送到 Boss 格旁边的空格（v0.1.76：委托 FloorManager）
 func _warp_hero_to_boss(boss_cell: Vector2i) -> void:
-	# 查找英雄单位（非 summoned 的玩家单位）
-	var hero_id: String = ""
-	for uid in unit_manager.units_by_id.keys():
-		var u: Dictionary = unit_manager.get_unit(String(uid))
-		if String(u.get("owner", "")) != "player":
-			continue
-		var tags: Array = u.get("tags", [])
-		if not tags.has("summoned"):
-			hero_id = String(uid)
-			break
-	if hero_id == "":
-		return
-	# 在 Boss 格四邻找一个空格（优先下方）
-	var dirs: Array[Vector2i] = [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1)]
-	for dir in dirs:
-		var adj: Vector2i = boss_cell + dir
-		if adj.x < 0 or adj.x >= board_manager.board_size.x or adj.y < 0 or adj.y >= board_manager.board_size.y:
-			continue
-		if board_manager.occupied_cells.has(adj):
-			continue
-		unit_manager.move_unit(hero_id, adj)
-		emit_signal("hero_warped", hero_id, adj)
-		return
+	var result: Dictionary = floor_manager.warp_hero_to_boss(boss_cell)
+	if not result.is_empty():
+		emit_signal("hero_warped", String(result["hero_id"]), result["target_cell"] as Vector2i)
 
 ## 计算含地形适性加成、临时防御和 Buff 修正的伤害值
 func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> int:
@@ -632,35 +613,22 @@ func resolve_encounter(victory: bool = true, player_hp_remaining: int = -1) -> v
 			current_phase = BattlePhase.PLAYER_ACTION
 			emit_signal("phase_changed", _phase_name(current_phase))
 
-## 在指定格子附近（优先下方）生成传送门
+## 在指定格子附近生成传送门（v0.1.76：委托 FloorManager）
 func _spawn_portal_near(cell: Vector2i) -> void:
-	# 优先下方，然后右、左、上
-	var candidates: Array[Vector2i] = [
-		cell + Vector2i(0, 1), cell + Vector2i(1, 0),
-		cell + Vector2i(-1, 0), cell + Vector2i(0, -1),
-	]
-	for c in candidates:
-		if board_manager.is_in_bounds(c) and not board_manager.occupied_cells.has(c):
-			board_manager.add_portal_cell(c)
-			emit_signal("portal_spawned", c)
-			return
-	# 如果全被占，放在原格
-	board_manager.add_portal_cell(cell)
-	emit_signal("portal_spawned", cell)
+	var portal_cell: Vector2i = floor_manager.spawn_portal_near(cell)
+	emit_signal("portal_spawned", portal_cell)
 
-## 检查玩家踩上传送门 → 通关 / 进入下一层
+## 检查玩家踩上传送门（v0.1.76：委托 FloorManager）
 func _check_portal(unit_id: String, cell: Vector2i) -> void:
-	if not board_manager.portal_cells.has(cell):
+	var result: Dictionary = floor_manager.check_portal(unit_id, cell)
+	if result.is_empty():
 		return
-	var unit: Dictionary = unit_manager.get_unit(unit_id)
-	if unit.is_empty() or String(unit.get("owner", "")) != "player":
-		return
-	board_manager.clear_portal_cell(cell)
-	if current_floor < MAX_FLOOR:
+	var action: String = String(result["action"])
+	if action == "floor_clear":
 		current_phase = BattlePhase.FLOOR_CLEAR
 		emit_signal("phase_changed", _phase_name(current_phase))
-		emit_signal("floor_cleared", current_floor)
-	else:
+		emit_signal("floor_cleared", floor_manager.current_floor)
+	elif action == "game_won":
 		emit_signal("game_won")
 		mark_victory()
 
@@ -752,87 +720,29 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 	emit_signal("summon_completed", summon_id, extended_paths, target_cell)
 	return true
 
-# ─── 多层地图 ───
+# ─── 多层地图（v0.1.76：委托 FloorManager） ───
 
-## 获取存活玩家单位的 HP 快照（用于跨层保留）
-func _snapshot_player_hp() -> Dictionary:
-	var snapshot: Dictionary = {}
-	var player_ids: Array[String] = unit_manager.get_player_units()
-	for uid in player_ids:
-		var unit: Dictionary = unit_manager.get_unit(uid)
-		if not unit.is_empty() and int(unit.get("hp", 0)) > 0:
-			snapshot[uid] = {"hp": int(unit["hp"]), "max_hp": int(unit["max_hp"]), "alive": true}
-	return snapshot
-
-## 进入下一层：保留存活单位 HP，重新生成棋盘
-## v0.1.75：阵亡单位复活 + 存活单位回复
+## 进入下一层
 func advance_to_next_floor() -> void:
 	if current_phase != BattlePhase.FLOOR_CLEAR:
 		return
-	# 保存玩家单位 HP
-	var hp_snapshot: Dictionary = _snapshot_player_hp()
-	# 清理当前层
-	dice_manager.reset_for_battle()
-	buff_manager.clear_all()
-	unit_manager.clear_all_units()
-	board_manager.clear_board()
-	board_manager.build_test_board(BOARD_SIZE)
-	_summon_counter = 0
-	_summon_this_floor = 0
+	var _reset_summon: Callable = func() -> void:
+		_summon_counter = 0
+		_summon_this_floor = 0
+	floor_manager.advance_floor(BOARD_SIZE, _reset_summon)
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)
-	# 递增层数
-	current_floor += 1
-	# 重新生成玩家单位（含阵亡复活 + 存活回复）
-	_spawn_player_units_with_hp(hp_snapshot)
-	# 生成新棋盘布局（传入 current_floor 用于难度缩放）
-	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, current_floor)
-	# 重置回合
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
 
-## 带 HP 快照生成玩家单位（v0.1.75：阵亡单位复活 + 存活单位跨层回复）
-## - 存活单位：保留 HP + 回复 FLOOR_HEAL_RATIO * max_hp（不超过 max_hp）
-## - 阵亡单位：复活，HP = REVIVE_HP_RATIO * max_hp（向上取整，至少 1）
-func _spawn_player_units_with_hp(hp_snapshot: Dictionary) -> void:
-	var spawn_data: Array[Dictionary] = [
-		{"path": "res://Data/Units/blade_shield_dog.tres", "cell": Vector2i(0, 10)},
-	]
-	for entry in spawn_data:
-		var data := load(String(entry["path"])) as UnitData
-		if data == null:
-			continue
-		var spawn_hp: int = 0
-		var spawn_max_hp: int = data.max_hp
-		if hp_snapshot.has(data.unit_id):
-			# 存活单位：保留 HP + 跨层回复
-			var saved: Dictionary = hp_snapshot[data.unit_id]
-			spawn_max_hp = int(saved["max_hp"])
-			var heal_amount: int = int(ceil(float(spawn_max_hp) * FLOOR_HEAL_RATIO))
-			spawn_hp = mini(int(saved["hp"]) + heal_amount, spawn_max_hp)
-		else:
-			# 阵亡单位：复活，HP = REVIVE_HP_RATIO * max_hp
-			spawn_hp = maxi(int(ceil(float(spawn_max_hp) * REVIVE_HP_RATIO)), 1)
-		unit_manager.spawn_unit(data.unit_id, {
-			"max_hp": spawn_max_hp, "atk": data.atk, "def": data.def,
-			"move_range": data.move_range, "attack_range": data.attack_range,
-			"owner": "player", "tags": data.meme_tags,
-			"terrain_affinity": data.terrain_affinity, "display_name": data.unit_name,
-		}, entry["cell"])
-		# 覆盖 HP 为计算值
-		var unit: Dictionary = unit_manager.get_unit(data.unit_id)
-		if not unit.is_empty():
-			unit["hp"] = spawn_hp
-			unit_manager.units_by_id[data.unit_id] = unit
-
 func get_current_floor() -> int:
-	return current_floor
+	return floor_manager.get_current_floor()
 
 func get_max_floor() -> int:
-	return MAX_FLOOR
+	return floor_manager.get_max_floor()
 
 # ─── 工具方法 ───
 
@@ -872,9 +782,9 @@ func restart_battle() -> void:
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)
-	current_floor = 1
+	floor_manager.reset_floor()
 	_spawn_player_units()
-	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, current_floor)
+	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, floor_manager.current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("round_changed", round_index)

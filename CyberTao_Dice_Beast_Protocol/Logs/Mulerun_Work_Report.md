@@ -1,22 +1,22 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-01
-**版本**: v0.1.75
+**版本**: v0.1.76
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.75：阵亡单位跨层复活机制 + 存活单位跨层回复
+- v0.1.76：BattleFlowController 瘦身 — 将多层地图逻辑剥离为 FloorManager 独立类
 
 ---
 
 ## 根因目标
 
-v0.1.42 引入多层地图后，存活单位 HP 跨层保留，但阵亡单位永久消失（`_spawn_player_units_with_hp` 跳过不在 HP 快照中的单位）。当前只有 1 个永久单位（刀盾狗/英雄），英雄阵亡即 DEFEAT，所以阵亡复活尚未实际触发。但存活单位可能以极低 HP 进入后续层（"死亡螺旋"），且机制未为未来多永久单位场景做准备。本轮实现：阵亡复活（50% HP）+ 存活回复（+30% HP），同时为未来扩展多永久单位预留。
+BattleFlowController 在 v0.1.75 后增长至 881 行，包含大量多层地图逻辑（HP 快照/复活/回复、Boss 解锁/传送、传送门生成/检测、层间推进）。这些逻辑与 BFC 核心的回合流程/战斗结算职责正交，适合剥离为独立管理器。本轮将这些逻辑提取为 `FloorManager` 类，BFC 保留信号发射和阶段管理的薄代理，减少 ~90 行至 791 行。
 
-服务层：棋盘走位层（多层地图数值调优）
+服务层：棋盘走位层（架构优化）
 
 ---
 
@@ -24,43 +24,48 @@ v0.1.42 引入多层地图后，存活单位 HP 跨层保留，但阵亡单位�
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/BattleV2/BattleFlowController.gd` | 新增 `REVIVE_HP_RATIO`/`FLOOR_HEAL_RATIO` 常量；重写 `_spawn_player_units_with_hp()`（阵亡复活+存活回复）；`_snapshot_player_hp()` 追加 `alive` 字段 |
-| `Scripts/UI/DiceDebugPanel.gd` | 版本标记 v0.1.74 → v0.1.75 |
+| `Scripts/BattleV2/FloorManager.gd` | 新增文件（~162 行），从 BFC 提取多层地图逻辑：HP 快照/复活/回复、Boss 解锁/传送、传送门生成/检测、层间推进 |
+| `Scripts/BattleV2/BattleFlowController.gd` | 移除 `MAX_FLOOR`/`REVIVE_HP_RATIO`/`FLOOR_HEAL_RATIO` 常量和 `current_floor` 变量；新增 `floor_manager` 实例；`_try_unlock_boss()`/`_warp_hero_to_boss()`/`_spawn_portal_near()`/`_check_portal()`/`advance_to_next_floor()`/`get_current_floor()`/`get_max_floor()` 改为委托 FloorManager；移除 `_snapshot_player_hp()`/`_spawn_player_units_with_hp()`；`restart_battle()` 改用 `floor_manager.reset_floor()` |
+| `Scripts/UI/DiceDebugPanel.gd` | 版本标记 v0.1.75 → v0.1.76 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.75 条目 |
-| `Logs/AI_Employee_Guide_v3.md` | 同步版本号 + §2.2/§5/§6 更新 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.76 条目 |
+| `Logs/AI_Employee_Guide_v3.md` | 同步版本号 + §2.2/§3.1/§5/§6 更新 |
+| `Logs/Handoff_Package_latest.md` | 覆盖为 v0.1.76 交接包 |
 
 ---
 
 ## 实现内容
 
-### 跨层复活与回复机制
+### FloorManager 独立类
 
-**进入下一层时的 HP 计算规则**：
-
-| 单位状态 | HP 计算 | 示例（max_hp=8） |
-|----------|---------|-------------------|
-| 存活（HP > 0） | 保留 HP + 回复 30% max_hp（不超过 max_hp） | HP=2 → 2+3=5；HP=7 → 7+3→上限8 |
-| 阵亡（HP ≤ 0 / 不在快照中） | 复活，HP = 50% max_hp（向上取整，至少 1） | max_hp=8 → HP=4；max_hp=1 → HP=1 |
-
-**常量**：
-- `REVIVE_HP_RATIO = 0.5` — 复活 HP 比例
-- `FLOOR_HEAL_RATIO = 0.3` — 存活跨层回复比例
+**提取的职责**：
+- 层间推进（`advance_floor()`）：HP 快照 → 清理 → 递增层数 → 重生单位 → 生成新棋盘
+- HP 快照/复活/回复（`snapshot_player_hp()` + `_spawn_player_units_with_hp()`）
+- Boss 解锁（`try_unlock_boss()`）
+- 英雄传送到 Boss 旁（`warp_hero_to_boss()`）
+- 传送门生成（`spawn_portal_near()`）
+- 传送门检测（`check_portal()`）
+- 层数管理（`get_current_floor()`/`get_max_floor()`/`reset_floor()`）
 
 **设计取舍**：
-- 召唤伙伴（tagged "summoned"）仍为层内临时单位，不参与跨层复活（设计意图：召唤是战术资源，不是永久伙伴）
-- 复活比例 50% 选择理由：太低（如 25%）复活后立刻阵亡，太高（如 100%）失去惩罚意义
-- 跨层回复 30% 选择理由：3 层推进中，英雄以 50% HP 进入下层时可回到 80%，不至于满血但也不至于太脆弱
-- 数值未经平衡测试，后续可直接修改常量调整
+- FloorManager 返回数据（字典/数组），不直接发射信号 — BFC 保留信号发射权，避免暴露 FloorManager 给 Main
+- FloorManager 的外部依赖（dice_manager/board_manager/unit_manager/buff_manager）由 BFC._bootstrap() 注入
+- 召唤计数器重置通过 Callable 传入 FloorManager.advance_floor()，避免 FloorManager 持有对 BFC 内部变量的引用
+- 常量 `MAX_FLOOR`/`REVIVE_HP_RATIO`/`FLOOR_HEAL_RATIO` 移至 FloorManager，BFC 不再持有这些值
+
+**行数变化**：BFC 从 881 行减至 791 行（-90 行），FloorManager 162 行
 
 ---
 
 ## 接口变更
 
-- **无新增/删除公开接口**
-- **新增常量**：`REVIVE_HP_RATIO: float = 0.5`、`FLOOR_HEAL_RATIO: float = 0.3`
-- **修改内部方法**：`_spawn_player_units_with_hp()` 逻辑变更（不再跳过阵亡单位）
-- **修改内部方法**：`_snapshot_player_hp()` 字典新增 `alive: true` 字段（向前兼容）
+- **新增文件**：`Scripts/BattleV2/FloorManager.gd`（`class_name FloorManager`）
+- **新增 BFC 成员变量**：`var floor_manager: _FloorManager`
+- **移除 BFC 常量**：`MAX_FLOOR`、`REVIVE_HP_RATIO`、`FLOOR_HEAL_RATIO`（移至 FloorManager）
+- **移除 BFC 变量**：`current_floor`（移至 FloorManager）
+- **移除 BFC 方法**：`_snapshot_player_hp()`、`_spawn_player_units_with_hp()`（移至 FloorManager）
+- **方法签名不变**：`advance_to_next_floor()`、`get_current_floor()`、`get_max_floor()` 保留签名，内部委托 FloorManager
+- **无信号变更**：所有外部信号接口不变
 
 ---
 
@@ -73,12 +78,13 @@ v0.1.42 引入多层地图后，存活单位 HP 跨层保留，但阵亡单位�
 | 掷骰 → 移动 → 攻击 → 召唤 | ✅ 不涉及本次修改 |
 | 敌方回合 → 镜头跟随 | ✅ 不涉及 |
 | 遭遇触发 → 卡牌战斗 → 选牌奖励 → HP同步回棋盘 | ✅ 不涉及 |
-| 重新开始（restart_battle） | ✅ 不调用 _spawn_player_units_with_hp，走 _spawn_player_units 全新生成 |
-| 胜负判定 | ✅ 不涉及 |
-| 跨层 HP 保留 + 回复 | ✅ 存活单位 HP + ceil(max_hp * 0.3)，clamp 到 max_hp |
-| 阵亡单位复活 | ✅ 不在快照中的单位以 ceil(max_hp * 0.5) HP 生成 |
-| 召唤伙伴跨层消失 | ✅ 召唤单位不在 spawn_data 列表中，不会被重新生成 |
-| 多永久单位场景 | ✅ spawn_data 为 Array，可扩展追加更多永久单位 |
+| 重新开始（restart_battle） | ✅ 调用 floor_manager.reset_floor() 替代 current_floor = 1 |
+| 胜负判定 | ✅ _check_battle_outcome() 通过 floor_manager.current_floor 和 floor_manager.get_max_floor() 判定 |
+| 跨层 HP 保留 + 回复 | ✅ 逻辑已移至 FloorManager，行为不变 |
+| 阵亡单位复活 | ✅ 逻辑已移至 FloorManager，行为不变 |
+| Boss 解锁 + 传送 | ✅ _try_unlock_boss()/_warp_hero_to_boss() 委托 FloorManager + BFC 发信号 |
+| 传送门生成 + 检测 | ✅ _spawn_portal_near()/_check_portal() 委托 FloorManager + BFC 发信号/切阶段 |
+| resolve_encounter → Boss 击败 → 传送门 | ✅ resolve_encounter() 调用 _spawn_portal_near()（内部委托 FloorManager） |
 
 ---
 
@@ -95,12 +101,12 @@ v0.1.42 引入多层地图后，存活单位 HP 跨层保留，但阵亡单位�
 
 ## 建议下一步
 
-1. BattleFlowController 瘦身（当前约 695 行）
-2. 3D 单位精灵化（billboard sprite 或低多边形模型）
-3. 商品池扩展（加新牌/移除诅咒/随机 crest 等）
+1. 3D 单位精灵化（billboard sprite 或低多边形模型）
+2. 商品池扩展（加新牌/移除诅咒/随机 crest 等）
+3. 卡牌战斗层深化（新卡牌效果/新敌方行为模式）
 
 ## Codex 复审标注（可选）
 
-- REVIVE_HP_RATIO 和 FLOOR_HEAL_RATIO 为 const，调整数值只需改这两个常量，无需修改逻辑代码。
-- 当前只有 1 个永久单位（blade_shield_dog），英雄阵亡会触发 DEFEAT（不会走到 advance_to_next_floor），所以复活逻辑暂时不会在实际游戏中触发。但机制已为未来多永久单位场景（如增加第二个永久伙伴）预留。
-- 跨层回复是"进入下一层"时的一次性回复，不是每回合回复，不会破坏层内战斗平衡。
+- FloorManager 使用 `class_name FloorManager` 全局注册，BFC 中通过 `const _FloorManager = preload(...)` 引用并实例化。两种方式都可访问，但 BFC 内部统一用 preload 常量。
+- `advance_floor()` 接受 `summon_counter_reset: Callable` 参数是为了避免 FloorManager 直接访问 BFC 的 `_summon_counter`/`_summon_this_floor` 内部变量。如果未来有更多 BFC 内部状态需要在层间重置，可考虑将其封装为更通用的 reset Callable 或信号。
+- BFC 行数从 881 降至 791（-90 行），FloorManager 162 行。净增 72 行代码（FloorManager 包含必要的方法签名和文档注释）。这是典型的"拆分增加总代码量但降低单文件复杂度"的取舍。

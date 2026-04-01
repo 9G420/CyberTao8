@@ -1,5 +1,28 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.76 - 2026-04-01
+
+### 新增
+- **FloorManager 独立类**（`Scripts/BattleV2/FloorManager.gd`，~162 行）：从 BattleFlowController 剥离多层地图逻辑
+  - `advance_floor()` — 层间推进（HP 快照 → 清理 → 递增 → 重生 → 生成新棋盘）
+  - `snapshot_player_hp()` / `_spawn_player_units_with_hp()` — HP 快照/复活/回复
+  - `try_unlock_boss()` / `warp_hero_to_boss()` — Boss 解锁/英雄传送
+  - `spawn_portal_near()` / `check_portal()` — 传送门生成/检测
+  - `get_current_floor()` / `get_max_floor()` / `reset_floor()` — 层数管理
+
+### 修改
+- BattleFlowController.gd: 移除 `MAX_FLOOR`/`REVIVE_HP_RATIO`/`FLOOR_HEAL_RATIO` 常量和 `current_floor` 变量（移至 FloorManager）
+- BattleFlowController.gd: 移除 `_snapshot_player_hp()`/`_spawn_player_units_with_hp()` 方法（移至 FloorManager）
+- BattleFlowController.gd: `_try_unlock_boss()`/`_warp_hero_to_boss()`/`_spawn_portal_near()`/`_check_portal()`/`advance_to_next_floor()` 改为委托 FloorManager
+- BattleFlowController.gd: `restart_battle()` 改用 `floor_manager.reset_floor()`
+- BattleFlowController.gd: 行数从 881 行减至 791 行（-90 行）
+- DiceDebugPanel.gd: 版本标记 → v0.1.76
+
+### 备注
+- 外部信号接口零变更，Main.gd 无需修改
+- FloorManager 返回数据（字典/数组），BFC 保留信号发射权
+- 常量和复活/回复逻辑行为完全不变，仅代码位置变更
+
 ## v0.1.75 - 2026-04-01
 
 ### 新增

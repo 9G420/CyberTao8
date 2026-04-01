@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.75
+**当前版本**: v0.1.76
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -139,6 +139,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 商店格扩展（ShopPanel独立面板+5种商品池+crest货币+多次购买） | v0.1.73 | 稳定 |
 | 3D 反馈系统实现（Label3D漂浮文字+CPUParticles3D+格子闪光+相机震动） | v0.1.74 | 稳定 |
 | 阵亡单位跨层复活 + 存活单位跨层回复（REVIVE 50% / HEAL 30%） | v0.1.75 | 稳定 |
+| BFC 瘦身：FloorManager 独立类（多层地图逻辑剥离，BFC 881→791行） | v0.1.76 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -205,7 +206,8 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 ### 3.1 模块结构
 
 ```
-BattleFlowController（棋盘层核心控制器）         ~693行（含多层地图）
+BattleFlowController（棋盘层核心控制器）         ~791行（v0.1.76 瘦身后）
+├── FloorManager          — 多层地图管理器（v0.1.76 从BFC剥离）    ~162行
 ├── DiceManager          — 掷骰 + crest 资源池
 ├── BoardManager         — 棋盘状态（9个格子字典+locked_encounters+portal_cells + BFS）
 ├── BoardGenerator       — 棋盘程序化生成（静态工具类）
@@ -286,6 +288,7 @@ BoardGenerator：      Scripts/BattleV2/BoardGenerator.gd
 UnitManager：         Scripts/BattleV2/UnitManager.gd
 CrestActionHandler：  Scripts/BattleV2/CrestActionHandler.gd
 CellEffectHandler：   Scripts/BattleV2/CellEffectHandler.gd
+FloorManager：        Scripts/BattleV2/FloorManager.gd          ✅ v0.1.76 新增
 BoardView：           Scripts/UI/BoardView.gd（v0.1.58 等距化重写）
 BoardCellRenderer：   Scripts/UI/BoardCellRenderer.gd（Phase 6 后仅供参考）
 UnitRenderer：        Scripts/UI/UnitRenderer.gd
@@ -347,7 +350,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 | ~~BUG-001：分辨率/窗口模式切换无效~~ | ~~低~~ | ~~否~~ | ✅ v0.1.43 已解决 |
 | ~~BuffManager.tick_turn() 未接入~~ | ~~中~~ | ~~否~~ | ✅ v0.1.39 已解决 |
 | ~~BattleFlowController 795行，需瘦身~~ | ~~中~~ | ~~否~~ | ✅ v0.1.40 已瘦身至588行 |
-| BattleFlowController 693行（多层地图后增长） | 中 | 否 | 下次大功能前考虑瘦身 |
+| ~~BattleFlowController 693行（多层地图后增长）~~ | ~~中~~ | ~~否~~ | ✅ v0.1.76 FloorManager 剥离后 791 行 |
 | ~~BoardView 640行，职责混杂~~ | ~~中~~ | ~~否~~ | ✅ v0.1.45 Phase 1 瘦身至423行 |
 | 电弧牌 ATK-1 效果仅单场生效（设计缺陷） | 低 | 否 | 卡牌数据结构重构时修 |
 | 升级数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
@@ -365,13 +368,12 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 说明 |
 |------|------|
-| **BattleFlowController 瘦身** | 当前约 695 行 |
+| **3D 单位精灵化** | billboard sprite 或低多边形模型替代简单几何体 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **3D 单位精灵化** | billboard sprite 或低多边形模型替代简单几何体 |
 | **商品池扩展** | 加新牌/移除诅咒/随机 crest 等 |
 
 ### 🟢 中低优先级
@@ -384,6 +386,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 版本 |
 |------|------|
+| BFC 瘦身：FloorManager 独立类（多层地图逻辑剥离） | v0.1.76 |
 | 阵亡单位跨层复活 + 存活单位跨层回复 | v0.1.75 |
 | 3D 反馈系统实现（Label3D漂浮文字+CPUParticles3D+格子闪光+相机震动） | v0.1.74 |
 | 商店格扩展（ShopPanel独立面板+5种商品池+crest货币+多次购买） | v0.1.73 |
