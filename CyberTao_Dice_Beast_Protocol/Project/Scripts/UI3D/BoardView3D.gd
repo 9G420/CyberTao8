@@ -1,7 +1,7 @@
 extends Node3D
 class_name BoardView3D
 
-## 3D 棋盘视图（v0.1.72 — 3D 交互手感修复）
+## 3D 棋盘视图（v0.1.74 — 3D 反馈系统实现）
 ## 与 BoardView（2D）信号接口对齐，支持 Main.gd 通过 _active_view() 路由
 ## 内嵌于 SubViewport 中，由 Main.gd 的 SubViewportContainer 承载
 
@@ -40,8 +40,12 @@ var _camera_distance: float = 18.0
 var _tiles_root: Node3D = null
 var _units_root: Node3D = null
 var _highlights_root: Node3D = null
+var _feedback_root: Node3D = null		# v0.1.74：反馈特效容器
 var _env_light: DirectionalLight3D = null
 var _ambient: WorldEnvironment = null
+
+# --- 相机震动（v0.1.74）---
+var _shake_offset: Vector3 = Vector3.ZERO
 
 # --- 拖拽 ---
 var _drag_active: bool = false
@@ -81,6 +85,10 @@ func _ready() -> void:
 	_units_root = Node3D.new()
 	_units_root.name = "UnitsRoot"
 	add_child(_units_root)
+
+	_feedback_root = Node3D.new()
+	_feedback_root.name = "FeedbackRoot"
+	add_child(_feedback_root)
 
 	# 相机
 	_camera = Camera3D.new()
@@ -131,9 +139,9 @@ func _process(delta: float) -> void:
 		var desired_pos: Vector3 = target_pos + cam_offset
 		if _drag_active:
 			# 拖拽中：高速追踪，接近即时响应
-			_camera.position = _camera.position.lerp(desired_pos, clampf(20.0 * delta, 0.0, 1.0))
+			_camera.position = _camera.position.lerp(desired_pos, clampf(20.0 * delta, 0.0, 1.0)) + _shake_offset
 		else:
-			_camera.position = _camera.position.lerp(desired_pos, clampf(CAMERA_LERP_SPEED * delta, 0.0, 1.0))
+			_camera.position = _camera.position.lerp(desired_pos, clampf(CAMERA_LERP_SPEED * delta, 0.0, 1.0)) + _shake_offset
 		_camera.look_at(target_pos, Vector3.UP)
 	# 移动动画更新
 	_update_move_animation()
@@ -198,35 +206,165 @@ func _update_move_animation() -> void:
 	var pos: Vector3 = _move_anim_from.lerp(_move_anim_to, _move_anim_t)
 	node.position = pos
 
-# --- 反馈方法桩（与 BoardView 对齐，3D 实现后续补充）---
+# --- 反馈方法（v0.1.74 — 3D 反馈系统完整实现）---
 
 func play_attack_feedback(cell: Vector2i, damage: int, is_kill: bool = false) -> void:
-	# TODO: 3D 攻击闪光特效
-	pass
+	var world_pos: Vector3 = GridMapper3D.cell_to_world(cell, _grid_size)
+	# 1) 格子闪光
+	var flash_color: Color = CyberStyle.NEON_GOLD if is_kill else Color(1.0, 1.0, 1.0, 0.9)
+	var flash_dur: float = 0.45 if is_kill else 0.35
+	_spawn_cell_flash_3d(cell, flash_color, flash_dur)
+	# 2) 相机震动
+	var shake_intensity: float = 0.6 if is_kill else 0.35
+	_shake_camera_3d(shake_intensity, 0.3)
+	# 3) 命中粒子
+	var particle_color: Color = CyberStyle.NEON_GOLD if is_kill else CyberStyle.NEON_RED
+	_spawn_hit_particles_3d(world_pos, particle_color, is_kill)
+	# 4) 伤害飘字
+	var dmg_color: Color = CyberStyle.NEON_GOLD if is_kill else CyberStyle.NEON_RED
+	var dmg_size: float = 0.9 if is_kill else 0.65
+	_spawn_float_text_3d(cell, "-" + str(damage), dmg_color, dmg_size, 3.0, 0.75 if is_kill else 0.6)
+	# 5) 击杀文字
+	if is_kill:
+		_spawn_float_text_3d(cell, "KILL!", CyberStyle.NEON_GOLD, 0.7, 4.5, 0.9, 0.25)
 
 func play_pickup_feedback(cell: Vector2i, effect_text: String) -> void:
-	pass
+	_spawn_float_text_3d(cell, effect_text, CyberStyle.NEON_GREEN, 0.55, 3.0, 0.7)
 
 func play_enemy_warning(cell: Vector2i) -> void:
-	pass
+	# 红色闪烁脉冲：快速闪两次
+	_spawn_cell_flash_3d(cell, Color(1.0, 0.2, 0.15, 0.7), 0.25)
+	# 延迟第二次闪烁
+	var timer: SceneTreeTimer = get_tree().create_timer(0.3)
+	timer.timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			_spawn_cell_flash_3d(cell, Color(1.0, 0.2, 0.15, 0.5), 0.2)
+	)
 
 func play_enemy_move_indicator(cell: Vector2i, unit_name: String) -> void:
-	pass
+	_spawn_float_text_3d(cell, unit_name, CyberStyle.ACCENT_ORANGE, 0.4, 2.0, 0.8)
 
 func play_encounter_feedback(cell: Vector2i, text: String) -> void:
-	pass
+	_spawn_float_text_3d(cell, text, CyberStyle.ACCENT_ORANGE, 0.7, 3.5, 0.9)
 
 func play_heal_feedback(cell: Vector2i, text: String) -> void:
-	pass
+	_spawn_float_text_3d(cell, text, CyberStyle.NEON_BLUE, 0.55, 3.0, 0.7)
 
 func play_event_feedback(cell: Vector2i, text: String, is_positive: bool) -> void:
-	pass
+	var col: Color = CyberStyle.NEON_GOLD if is_positive else CyberStyle.NEON_RED
+	_spawn_float_text_3d(cell, text, col, 0.55, 3.0, 0.7)
 
 func play_shop_feedback(cell: Vector2i, text: String) -> void:
-	pass
+	_spawn_float_text_3d(cell, text, CyberStyle.NEON_TEAL, 0.55, 3.0, 0.7)
 
 func play_chest_feedback(cell: Vector2i, text: String) -> void:
-	pass
+	_spawn_float_text_3d(cell, text, CyberStyle.NEON_GOLD, 0.65, 3.2, 0.8)
+
+# ============================
+#  3D 反馈辅助方法（v0.1.74）
+# ============================
+
+## 3D 漂浮文字（Label3D billboard，上升 + 渐隐 + 自动释放）
+## rise_height: 世界单位上升高度；duration: 动画总时长；delay: 起始延迟
+func _spawn_float_text_3d(cell: Vector2i, text: String, color: Color, font_size: float, rise_height: float, duration: float, delay: float = 0.0) -> void:
+	var world_pos: Vector3 = GridMapper3D.cell_to_world(cell, _grid_size)
+	var lbl: Label3D = Label3D.new()
+	lbl.text = text
+	lbl.font_size = int(font_size * 64.0)		# Label3D font_size 单位较小，乘以缩放系数
+	lbl.pixel_size = 0.01						# 世界单位 / 像素
+	lbl.modulate = color
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.no_depth_test = true					# 始终可见（不被格子遮挡）
+	lbl.position = Vector3(world_pos.x, 1.5, world_pos.z)	# 起始高度略高于格子
+	lbl.outline_modulate = Color(0, 0, 0, 0.8)
+	lbl.outline_size = 8
+	_feedback_root.add_child(lbl)
+	# 延迟后播放动画
+	var tw: Tween = lbl.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	tw.set_parallel(true)
+	tw.tween_property(lbl, "position:y", 1.5 + rise_height, duration).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(lbl, "modulate:a", 0.0, duration).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.set_parallel(false)
+	tw.tween_callback(lbl.queue_free)
+
+## 3D 格子闪光覆盖层（半透明 PlaneMesh 叠放在格子上方，渐隐后释放）
+func _spawn_cell_flash_3d(cell: Vector2i, color: Color, duration: float) -> void:
+	var world_pos: Vector3 = GridMapper3D.cell_to_world(cell, _grid_size)
+	var mesh_inst: MeshInstance3D = MeshInstance3D.new()
+	var plane: PlaneMesh = PlaneMesh.new()
+	plane.size = Vector2(GridMapper3D.CELL_SIZE * 0.95, GridMapper3D.CELL_SIZE * 0.95)
+	mesh_inst.mesh = plane
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = Color(color.r, color.g, color.b)
+	mat.emission_energy_multiplier = 2.0
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.no_depth_test = true
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh_inst.material_override = mat
+	mesh_inst.position = Vector3(world_pos.x, 0.15, world_pos.z)	# 格子表面略上方
+	_feedback_root.add_child(mesh_inst)
+	# 渐隐动画
+	var tw: Tween = mesh_inst.create_tween()
+	tw.tween_method(func(alpha: float) -> void:
+		mat.albedo_color.a = alpha
+		mat.emission_energy_multiplier = alpha * 2.0
+	, color.a, 0.0, duration)
+	tw.tween_callback(mesh_inst.queue_free)
+
+## 3D 相机震动（通过 _shake_offset 驱动，_process 中叠加到相机位置）
+func _shake_camera_3d(intensity: float, duration: float) -> void:
+	var steps: int = 6
+	var step_time: float = duration / float(steps)
+	var tw: Tween = create_tween()
+	for i in range(steps):
+		var decay: float = 1.0 - float(i) / float(steps)
+		var offset_x: float = randf_range(-intensity, intensity) * decay
+		var offset_z: float = randf_range(-intensity, intensity) * decay
+		tw.tween_property(self, "_shake_offset", Vector3(offset_x, 0, offset_z), step_time)
+	tw.tween_property(self, "_shake_offset", Vector3.ZERO, step_time * 0.5)
+
+## 3D 命中粒子爆发（CPUParticles3D，gl_compatibility 兼容）
+func _spawn_hit_particles_3d(world_pos: Vector3, color: Color, is_kill: bool) -> void:
+	var particles: CPUParticles3D = CPUParticles3D.new()
+	particles.position = Vector3(world_pos.x, 0.8, world_pos.z)
+	particles.emitting = false
+	particles.one_shot = true
+	particles.explosiveness = 1.0
+	particles.amount = 16 if is_kill else 8
+	particles.lifetime = 0.7 if is_kill else 0.45
+	# 方向：全方位向上扩散
+	particles.direction = Vector3(0, 1, 0)
+	particles.spread = 60.0
+	particles.initial_velocity_min = 3.0 if is_kill else 2.0
+	particles.initial_velocity_max = 7.0 if is_kill else 4.5
+	particles.gravity = Vector3(0, -8.0, 0)
+	# 粒子大小
+	particles.scale_amount_min = 0.08 if is_kill else 0.05
+	particles.scale_amount_max = 0.15 if is_kill else 0.1
+	# 颜色渐变（不透明 → 透明）
+	var gradient: Gradient = Gradient.new()
+	gradient.set_color(0, Color(color.r, color.g, color.b, 1.0))
+	gradient.set_color(1, Color(color.r, color.g, color.b, 0.0))
+	particles.color_ramp = gradient
+	particles.color = color
+	# 发射形状
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 0.4 if is_kill else 0.2
+	# 使用简单网格作为粒子可见形状
+	var sphere_mesh: SphereMesh = SphereMesh.new()
+	sphere_mesh.radius = 0.05
+	sphere_mesh.height = 0.1
+	particles.mesh = sphere_mesh
+	_feedback_root.add_child(particles)
+	particles.emitting = true
+	# 粒子结束后自动释放
+	var tw: Tween = particles.create_tween()
+	tw.tween_interval(particles.lifetime + 0.2)
+	tw.tween_callback(particles.queue_free)
 
 # ============================
 #  棋盘构建

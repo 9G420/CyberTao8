@@ -1,5 +1,28 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.74 - 2026-04-01
+
+### 新增
+- **3D 反馈系统完整实现**：9 个桩函数全部替换为真实 3D 特效
+- **Label3D billboard 漂浮文字**：`_spawn_float_text_3d()` — 带黑色描边的 billboard 文字，上升 + 渐隐 + 自动释放，用于伤害数字/拾取/治疗/事件/商店/宝箱/遭遇反馈
+- **PlaneMesh 格子闪光**：`_spawn_cell_flash_3d()` — 半透明发光平面叠放在目标格子上方，自发光 + 渐隐后释放，用于攻击闪光和敌方预警
+- **CPUParticles3D 命中粒子**：`_spawn_hit_particles_3d()` — 球形粒子向上爆散（gl_compatibility 兼容），颜色渐变透明，击杀时数量/速度/范围增大
+- **3D 相机震动**：`_shake_camera_3d()` — 通过 `_shake_offset` 变量驱动，6 步衰减抖动，在 `_process()` 中叠加到相机位置
+- **`_feedback_root` 容器节点**：所有临时反馈特效（Label3D/MeshInstance3D/CPUParticles3D）统一挂载，与格子/单位/高亮层分离
+
+### 修改
+- BoardView3D.gd: v0.1.72 → v0.1.74，9 个桩函数替换为完整实现（~130 行新增），新增 4 个辅助方法 + `_feedback_root` + `_shake_offset`
+- BoardView3D.gd: `_process()` 相机更新叠加 `_shake_offset`
+- DiceDebugPanel.gd: 版本标记 → v0.1.74
+
+### 备注
+- 仅修改 BoardView3D.gd 和 DiceDebugPanel.gd，核心逻辑文件零改动
+- 2D 模式不涉及本次修改，零影响
+- CPUParticles3D 使用 SphereMesh 作为粒子可见形状，gl_compatibility 渲染器完全兼容
+- Label3D 使用 `no_depth_test = true` 确保文字不被棋盘格子遮挡
+- 攻击反馈包含 5 层效果（闪光+震动+粒子+伤害飘字+击杀文字），与 2D 版对齐
+- 敌方预警使用双次延迟闪烁（0.25s + 0.3s 延迟后 0.2s），模拟 2D 版脉冲效果
+
 ## v0.1.73 - 2026-04-01
 
 ### 新增

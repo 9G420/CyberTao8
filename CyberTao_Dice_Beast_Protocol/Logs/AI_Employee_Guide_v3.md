@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.73
+**当前版本**: v0.1.74
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -137,6 +137,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 3D 渐进迁移 P0（BoardView3D+SubViewport+F5切换） | v0.1.71 | 稳定 |
 | 3D 交互手感修复（拖拽+镜头跟随+边界限制+缩放轴心） | v0.1.72 | 稳定 |
 | 商店格扩展（ShopPanel独立面板+5种商品池+crest货币+多次购买） | v0.1.73 | 稳定 |
+| 3D 反馈系统实现（Label3D漂浮文字+CPUParticles3D+格子闪光+相机震动） | v0.1.74 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -245,7 +246,7 @@ UI3D/（v0.1.71 新增 — 3D 表现层）
 ├── GridMapper3D        — 格坐标↔3D世界坐标转换（class_name注册）  ~40行 ✅ v0.1.71 新增
 ├── TileMeshFactory3D   — 格子 BoxMesh 程序化工厂（class_name注册）  ~110行 ✅ v0.1.71 新增
 ├── UnitMeshFactory3D   — 单位 CapsuleMesh/CylinderMesh 工厂（class_name注册）  ~100行 ✅ v0.1.71 新增
-└── BoardView3D         — 3D 棋盘视图（SubViewport 内嵌，class_name注册）  ~340行 ✅ v0.1.71 新增
+└── BoardView3D         — 3D 棋盘视图（SubViewport 内嵌，class_name注册）  ~700行 ✅ v0.1.71 新增 / v0.1.74 反馈系统实现
 
 System/
 ├── DisplaySettings     — 显示设置管理
@@ -362,14 +363,15 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 说明 |
 |------|------|
-| **3D 反馈系统实现** | 粒子特效/3D 飘字替代 2D BattleEffects |
+| **阵亡单位跨层复活机制** | 防止后续层无伙伴可用 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **阵亡单位跨层复活机制** | 防止后续层无伙伴可用 |
 | **BattleFlowController 瘦身** | 当前约 693 行 |
+| **3D 单位精灵化** | billboard sprite 或低多边形模型替代简单几何体 |
+| **商品池扩展** | 加新牌/移除诅咒/随机 crest 等 |
 
 ### 🟢 中低优先级
 
@@ -381,6 +383,8 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 版本 |
 |------|------|
+| 3D 反馈系统实现（Label3D漂浮文字+CPUParticles3D+格子闪光+相机震动） | v0.1.74 |
+| 商店格扩展（ShopPanel独立面板+5种商品池+crest货币+多次购买） | v0.1.73 |
 | 棋盘渲染回退至程序化（移除AI贴图） | v0.1.61 |
 | 鼠标拖拽相机+平滑跟随+悬停高亮+棋盘扩展12x12 | v0.1.62 |
 | 大世界环境填充+缩放+敌方跟随+光标+UI紧凑化 | v0.1.63 |
