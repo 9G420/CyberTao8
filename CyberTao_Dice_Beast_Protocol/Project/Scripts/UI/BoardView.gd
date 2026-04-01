@@ -99,7 +99,6 @@ func _on_anim_tick() -> void:
 		if not su.is_empty():
 			camera_cell = su["cell"]
 			_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
-			_drag_offset = _drag_offset.lerp(Vector2.ZERO, 0.1)
 	if not _drag_active:
 		var target: Vector2 = _iso_origin_target + _drag_offset
 		var diff: Vector2 = target - iso_origin

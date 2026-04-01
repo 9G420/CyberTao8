@@ -111,10 +111,24 @@ static func _draw_board_platform_bg(canvas: CanvasItem, origin: Vector2, gs: Vec
 	var ring: PackedVector2Array = PackedVector2Array([p0, p1, p2, p3])
 	var base_col: Color = Color(0.16, 0.18, 0.22, 0.95)
 	canvas.draw_colored_polygon(ring, base_col)
-	# 边框高光
-	var edge: Color = Color(0.35, 0.72, 0.92, 0.38 + pulse * 0.12)
+	# 固定边框台座（双层）
+	var frame_outer: Color = Color(0.22, 0.42, 0.56, 0.46)
+	var frame_inner: Color = Color(0.45, 0.85, 1.0, 0.34 + pulse * 0.12)
 	for i in range(4):
-		canvas.draw_line(ring[i], ring[(i + 1) % 4], edge, 2.5)
+		canvas.draw_line(ring[i], ring[(i + 1) % 4], frame_outer, 7.0)
+	for i in range(4):
+		canvas.draw_line(ring[i], ring[(i + 1) % 4], frame_inner, 2.5)
+
+	# 四角结构件（机械支架感）
+	for cpos in [p0, p1, p2, p3]:
+		var a: float = 0.72
+		var sz: float = 22.0 * zoom
+		var r: Rect2 = Rect2(cpos - Vector2(sz, sz), Vector2(sz * 2.0, sz * 2.0))
+		canvas.draw_rect(r, Color(0.16, 0.22, 0.28, 0.45), true)
+		canvas.draw_rect(r, Color(0.5, 0.9, 1.0, a * 0.35), false, 2.0)
+		canvas.draw_line(r.position, r.position + Vector2(r.size.x, r.size.y), Color(0.45, 0.78, 1.0, 0.20), 1.2)
+		canvas.draw_line(Vector2(r.position.x + r.size.x, r.position.y), Vector2(r.position.x, r.position.y + r.size.y), Color(0.45, 0.78, 1.0, 0.20), 1.2)
+
 	# 外场警示斜线（轻量）
 	for i in range(11):
 		var t_warn: float = float(i) / 10.0

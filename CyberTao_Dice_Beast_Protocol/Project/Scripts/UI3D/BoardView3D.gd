@@ -138,9 +138,6 @@ func _setup_lighting() -> void:
 
 func _process(delta: float) -> void:
 	_pulse_time += delta
-	# v0.1.99：非操作状态下缓慢回正，避免长时漂移
-	if not _drag_active and not _orbit_active:
-		_drag_offset_accumulated = _drag_offset_accumulated.lerp(Vector3.ZERO, clampf(delta * 0.8, 0.0, 1.0))
 	# v0.1.72：边界限制 — 将拖拽偏移夹紧到棋盘世界范围
 	_clamp_drag_offset()
 	# 平滑相机插值（v0.1.72：拖拽期间也更新相机，消除滞后感）

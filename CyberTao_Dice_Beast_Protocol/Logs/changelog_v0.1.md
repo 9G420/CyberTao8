@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.103 - 2026-04-02
+
+### 修改
+- `IsoTileRenderer.gd`：外场新增固定边框台座（双层边框）与四角结构件，强化“棋盘舞台”轮廓
+
+### 调整
+- 取消 2D/3D 拖拽后的自动回正行为（手感优化，避免强制拉回）
+  - `BoardView.gd`：移除选中状态下 `_drag_offset` 自动 lerp 回零
+  - `BoardView3D.gd`：移除 `_drag_offset_accumulated` 空闲自动回正
+
 ## v0.1.102 - 2026-04-02
 
 ### 修改（棋盘外背景“有画面”）
