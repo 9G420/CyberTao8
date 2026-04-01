@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.77
+**当前版本**: v0.1.78
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -141,6 +141,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 阵亡单位跨层复活 + 存活单位跨层回复（REVIVE 50% / HEAL 30%） | v0.1.75 | 稳定 |
 | BFC 瘦身：FloorManager 独立类（多层地图逻辑剥离，BFC 881→791行） | v0.1.76 | 稳定 |
 | 3D 单位精灵化（billboard Sprite3D+spritesheet行走动画+程序化敌方图标） | v0.1.77 | 稳定 |
+| 商品池扩展（9种商品：加牌/移除牌/随机crest/最大HP+/原有5种） | v0.1.78 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -243,7 +244,7 @@ UI层
 ├── UITransitions       — UI过渡动画工具类（class_name注册）    ~60行 ✅ v0.1.55 新增
 ├── UnitPortraitHUD    — 顶部单位头像 HUD（class_name注册）    ~130行 ✅ v0.1.69 新增
 ├── PlayerSpriteAnimator — 玩家精灵动画管理器（class_name注册）  ~70行 ✅ v0.1.70 新增
-├── ShopPanel          — 商店面板（class_name注册，5种商品池+crest货币）  ~240行 ✅ v0.1.73 新增
+├── ShopPanel          — 商店面板（class_name注册，9种商品池+crest货币）  ~370行 ✅ v0.1.78 扩展
 └── SettingsPanel        — 显示设置
 
 UI3D/（v0.1.71 新增 — 3D 表现层）
@@ -358,6 +359,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 | 多层地图难度暂不递增（各层敌方数值相同） | ~~低~~ | ~~否~~ | ✅ v0.1.57 已实现层间难度缩放 |
 | ~~阵亡单位跨层不复活（可能导致后续层过难）~~ | ~~低~~ | ~~否~~ | ✅ v0.1.75 已实现复活+跨层回复 |
 | 复活/回复数值未经平衡测试（REVIVE 50% / HEAL 30%） | 低 | 否 | 数值调优轮次 |
+| ~~BUG-002：v0.1.76 回归 — DiceDebugPanel/Main.gd 直接访问已移除 current_floor~~ | ~~高~~ | ~~是~~ | ✅ v0.1.77 hotfix 已修复（改为 get_current_floor()） |
 
 ---
 
@@ -369,13 +371,13 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 说明 |
 |------|------|
-| **商品池扩展** | 加新牌/移除诅咒/随机 crest 等 |
+| **卡牌战斗层深化** | 新卡牌效果/新敌方行为模式 |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
-| **卡牌战斗层深化** | 新卡牌效果/新敌方行为模式 |
+| **敌方单位美术资源** | 替换程序化图标为独立 spritesheet |
 
 ### 🟢 中低优先级
 
@@ -387,6 +389,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 版本 |
 |------|------|
+| 商品池扩展（9种商品：加牌/移除牌/随机crest/最大HP+/原有5种） | v0.1.78 |
 | 3D 单位精灵化（billboard Sprite3D+spritesheet行走动画+程序化敌方图标） | v0.1.77 |
 | BFC 瘦身：FloorManager 独立类（多层地图逻辑剥离） | v0.1.76 |
 | 阵亡单位跨层复活 + 存活单位跨层回复 | v0.1.75 |

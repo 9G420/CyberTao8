@@ -1,5 +1,25 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.78 - 2026-04-01
+
+### 新增
+- **商品池扩展**：商店从 5 种商品扩展至 9 种，新增 4 类策略性商品
+  - 数据芯片（add_card）：花费 策x1，从奖励卡池随机获得 1 张卡牌加入持久牌组
+  - 数据清洗（remove_card）：花费 术x1，移除牌组中效费比最低的 1 张牌（牌组≤3张时不可用）
+  - 赛博彩票（random_crest）：花费 步x1，随机获得 2 个 crest 资源
+  - 生体强化（max_hp_up）：花费 盾x2，最大HP+2 并同时回复 2HP
+
+### 修改
+- ShopPanel.gd: SHOP_ITEM_POOL 5→9 种；`_pick_random_items()` 新增牌组过小过滤；`_can_purchase()` 新增 add_card/remove_card 前置检查；`_execute_purchase()` 新增 4 种效果结算
+- DiceDebugPanel.gd: 版本标记 → v0.1.78
+
+### 备注
+- add_card 从 `CardBattleController._build_reward_pool()` 取卡，复用现有 13 张奖励卡池
+- remove_card 按 value/cost 比值选择最弱牌，确保牌组≤3张时自动禁用
+- random_crest 从 6 种 crest 中随机选取，直接修改 `crest_pool` 字典
+- max_hp_up 同时提升 max_hp 和当前 hp，避免购买后 HP 条看起来反而更低
+- 商店仍然每次随机展示 3 件商品（从 9 种中选），丰富策略选择
+
 ## v0.1.77 - 2026-04-01
 
 ### 新增
@@ -17,6 +37,7 @@
 
 ### 修复
 - UnitMeshFactory3D: is_summoned 检测改为检查 tags 数组（原实现检查不存在的 "is_summoned" 字段）
+- **BUG-002：v0.1.76 回归 — DiceDebugPanel/Main.gd 直接访问已移除的 `current_floor` 属性**：v0.1.76 将 `current_floor` 从 BFC 移至 FloorManager，但 DiceDebugPanel（3处）和 Main.gd（2处）仍直接访问 `battle_flow.current_floor`，导致运行时崩溃。修复：全部改为 `get_current_floor()` 方法调用
 
 ### 备注
 - 使用 `ALPHA_CUT_DISCARD`（gl_compatibility 兼容），阈值 0.4

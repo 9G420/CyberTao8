@@ -1,7 +1,7 @@
 extends Panel
 class_name ShopPanel
 
-## 商店面板（v0.1.73：商店格扩展）
+## 商店面板（v0.1.78：商品池扩展）
 ## 玩家踩到商店格后弹出，展示 3 件随机商品，用 crest 购买
 ## 纯 UI 层，购买效果在面板内直接结算（引用 dice_manager/unit_manager/card_battle_ctrl）
 
@@ -14,6 +14,10 @@ const SHOP_ITEM_POOL: Array = [
 	{"id": "atk_boost", "name": "攻击芯片", "desc": "本层 ATK+1", "cost_type": "attack", "cost_amount": 1, "effect": "atk_boost", "value": 1},
 	{"id": "def_boost", "name": "防御芯片", "desc": "本层 DEF+1", "cost_type": "defend", "cost_amount": 1, "effect": "def_boost", "value": 1},
 	{"id": "energy_up", "name": "能量核心", "desc": "最大能量+1（上限5）", "cost_type": "skill", "cost_amount": 2, "effect": "energy_up", "value": 1},
+	{"id": "add_card", "name": "数据芯片", "desc": "随机获得1张卡牌加入牌组", "cost_type": "trick", "cost_amount": 1, "effect": "add_card", "value": 1},
+	{"id": "remove_card", "name": "数据清洗", "desc": "移除牌组中最弱的1张牌", "cost_type": "skill", "cost_amount": 1, "effect": "remove_card", "value": 1},
+	{"id": "random_crest", "name": "赛博彩票", "desc": "随机获得2个crest资源", "cost_type": "move", "cost_amount": 1, "effect": "random_crest", "value": 2},
+	{"id": "max_hp_up", "name": "生体强化", "desc": "最大HP+2（同时回复2HP）", "cost_type": "defend", "cost_amount": 2, "effect": "max_hp_up", "value": 2},
 ]
 
 const ITEMS_PER_SHOP: int = 3
@@ -64,6 +68,9 @@ func _pick_random_items() -> Array:
 	# 过滤不适用的商品
 	if _card_battle_ctrl != null and int(_card_battle_ctrl.max_energy) >= 5:
 		pool = pool.filter(func(item): return item["id"] != "energy_up")
+	# 牌组过小（<=3张）时不提供移除
+	if _card_battle_ctrl != null and _card_battle_ctrl.get_deck_size() <= 3:
+		pool = pool.filter(func(item): return item["id"] != "remove_card")
 	pool.shuffle()
 	var count: int = min(ITEMS_PER_SHOP, pool.size())
 	var result: Array = []
@@ -124,6 +131,14 @@ func _can_purchase(item: Dictionary) -> bool:
 	if effect == "energy_up":
 		if _card_battle_ctrl == null or int(_card_battle_ctrl.max_energy) >= 5:
 			return false
+	# 加牌/移除牌：需要 card_battle_ctrl
+	if effect == "add_card" or effect == "remove_card":
+		if _card_battle_ctrl == null:
+			return false
+	# 移除牌：牌组过小不允许
+	if effect == "remove_card":
+		if _card_battle_ctrl.get_deck_size() <= 3:
+			return false
 	return true
 
 # --- 购买执行 ---
@@ -169,6 +184,52 @@ func _execute_purchase(item: Dictionary) -> String:
 				_card_battle_ctrl.max_energy = int(_card_battle_ctrl.max_energy) + value
 				return "最大能量+" + str(value)
 			return "无效"
+		"add_card":
+			if _card_battle_ctrl == null:
+				return "无效"
+			var pool: Array = CardBattleController._build_reward_pool()
+			if pool.is_empty():
+				return "无效"
+			var card: Dictionary = pool[randi() % pool.size()].duplicate()
+			_card_battle_ctrl.persistent_deck.append(card)
+			return "获得「" + String(card["name"]) + "」"
+		"remove_card":
+			if _card_battle_ctrl == null:
+				return "无效"
+			var deck: Array = _card_battle_ctrl.persistent_deck
+			if deck.size() <= 3:
+				return "牌组过小"
+			# 移除"最弱"卡牌：按 value/cost 比值最低的
+			var worst_idx: int = 0
+			var worst_score: float = 999.0
+			for i in range(deck.size()):
+				var c: Dictionary = deck[i]
+				var c_cost: int = max(1, int(c.get("cost", 1)))
+				var score: float = float(int(c.get("value", 0))) / float(c_cost)
+				if score < worst_score:
+					worst_score = score
+					worst_idx = i
+			var removed: Dictionary = deck[worst_idx]
+			deck.remove_at(worst_idx)
+			return "移除「" + String(removed["name"]) + "」"
+		"random_crest":
+			var crest_types: Array = ["move", "attack", "defend", "skill", "trick", "summon"]
+			var gained: Array = []
+			for _i in range(value):
+				var picked: String = crest_types[randi() % crest_types.size()]
+				_dice_manager.crest_pool[picked] = int(_dice_manager.crest_pool.get(picked, 0)) + 1
+				gained.append(_crest_display_name(picked))
+			return "+" + "+".join(gained)
+		"max_hp_up":
+			var unit: Dictionary = _unit_manager.get_unit(_unit_id)
+			if unit.is_empty():
+				return "单位不存在"
+			var old_max: int = int(unit.get("max_hp", 1))
+			unit["max_hp"] = old_max + value
+			unit["hp"] = int(unit.get("hp", 0)) + value
+			_unit_manager.units_by_id[_unit_id] = unit
+			_unit_manager.emit_signal("units_changed")
+			return "最大HP+" + str(value)
 	return ""
 
 # --- 按钮回调 ---

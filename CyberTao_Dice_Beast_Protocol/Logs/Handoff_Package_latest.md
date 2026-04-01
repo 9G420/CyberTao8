@@ -1,14 +1,14 @@
 # CyberTao: Dice Beast Protocol — 交接包
 
 **生成时间**: 2026-04-01
-**当前版本**: v0.1.77
+**当前版本**: v0.1.78
 **分支**: codex/dice-beast-protocol
 
 ---
 
 ## 1. 此刻的精确状态（一句话）
 
-v0.1.77 完成 3D 单位精灵化：玩家英雄使用 billboard Sprite3D + 现有 4 方向 spritesheet（含行走帧动画），敌方和召唤伙伴使用程序化生成的赛博朋克图标。BFC 瘦身（v0.1.76）、跨层复活/回复（v0.1.75）、3D 反馈系统（v0.1.74）和商店面板（v0.1.73）均稳定。下一步是商品池扩展或卡牌层深化。
+v0.1.78 完成商品池扩展：商店从 5 种基础商品扩展至 9 种，新增加牌（trick x1）、移除牌（skill x1）、随机crest（move x1）、最大HP提升（defend x2）四种策略性商品，连接棋盘层 crest 资源与卡牌层牌组构筑。BUG-002 修复（v0.1.77 hotfix）、3D 单位精灵化（v0.1.77）、BFC 瘦身（v0.1.76）、跨层复活/回复（v0.1.75）、3D 反馈系统（v0.1.74）均稳定。下一步是卡牌战斗层深化。
 
 ---
 
@@ -19,30 +19,27 @@ v0.1.77 完成 3D 单位精灵化：玩家英雄使用 billboard Sprite3D + 现�
 | v0.1.74 | 3D 反馈系统实现（9个桩函数→完整3D特效） | 完成 |
 | v0.1.75 | 阵亡单位跨层复活 + 存活单位跨层回复 | 完成 |
 | v0.1.76 | BFC 瘦身：FloorManager 独立类 | 完成 |
-| v0.1.77 | 3D 单位精灵化（billboard Sprite3D） | 完成 |
+| v0.1.77 | 3D 单位精灵化（billboard Sprite3D）+ BUG-002 修复 | 完成 |
+| v0.1.78 | 商品池扩展（5→9种商品） | 完成 |
 
 ---
 
 ## 3. 最后版本关键变更
 
-**版本号**: v0.1.77
+**版本号**: v0.1.78
 
 **修改文件**:
-- `Scripts/UI3D/UnitMeshFactory3D.gd` — 完整重写：CapsuleMesh/CylinderMesh → billboard Sprite3D；spritesheet 行走动画支持；程序化敌方/召唤图标
-- `Scripts/UI3D/BoardView3D.gd` — 新增精灵帧动画逻辑（移动时方向检测+10fps帧推进+结束重置）
-- `Scripts/UI/DiceDebugPanel.gd` — 版本标记 → v0.1.77
+- `Scripts/UI/ShopPanel.gd` — SHOP_ITEM_POOL 5→9种；新增 add_card/remove_card/random_crest/max_hp_up 四种效果；新增牌组过小过滤和前置检查
+- `Scripts/UI/DiceDebugPanel.gd` — 版本标记 → v0.1.78
 
-**新增接口**:
-- `UnitMeshFactory3D.is_spritesheet_unit(node)` — 判断是否为 spritesheet 精灵
-- `UnitMeshFactory3D.set_sprite_direction(node, dir)` — 设置精灵朝向
-- `UnitMeshFactory3D.set_sprite_frame(node, dir, frame)` — 设置精灵帧
-- `UnitMeshFactory3D.reset_sprite_idle(node)` — 重置待机姿态
+**无新增公开接口**
 
 **无外部信号变更**
 
 **遗留问题**:
 - spritesheet 背景透明度（v0.1.70 遗留）
 - DiceDebugPanel 仍绑定 2D BoardView（v0.1.71 遗留）
+- remove_card 自动选择最弱牌，无手动选择UI
 - 敌方/召唤单位使用程序化图标（无独立美术资源）
 
 ---
@@ -51,13 +48,13 @@ v0.1.77 完成 3D 单位精灵化：玩家英雄使用 billboard Sprite3D + 现�
 
 **立刻要做的**:
 根据用户指派的任务方向选择：
-- 商品池扩展：在 `Scripts/UI/ShopPanel.gd` 添加新商品类型（加新牌/移除诅咒/随机 crest）
-- 卡牌战斗层深化：新卡牌效果、新敌方行为模式
+- 卡牌战斗层深化：在 `Scripts/BattleV2/CardBattleController.gd` 添加新卡牌效果（如"连击"/"护盾"/"毒素"）和新敌方行为模式
+- 敌方单位美术资源：替换 `UnitMeshFactory3D._create_body_sprite()` 中程序化图标为独立 spritesheet
 
 **任务队列**:
-1. 商品池扩展
-2. 卡牌战斗层深化
-3. 敌方单位美术资源（替换程序化图标）
+1. 卡牌战斗层深化
+2. 敌方单位美术资源
+3. 商店 remove_card 手动选择UI
 
 ---
 
@@ -72,6 +69,7 @@ v0.1.77 完成 3D 单位精灵化：玩家英雄使用 billboard Sprite3D + 现�
 | BoardView3D.rebuild_board() 全量重建 | 低 | 否 | 3D 优化轮次 |
 | 复活/回复数值未经平衡测试 | 低 | 否 | 数值调优轮次 |
 | 敌方/召唤使用程序化图标 | 低 | 否 | 美术资源就绪后替换 |
+| remove_card 自动选择最弱牌 | 低 | 否 | 需手动选择时加二级UI |
 
 ---
 
@@ -96,10 +94,9 @@ git pull origin codex/dice-beast-protocol
 
 ## 7. 给下一个账号的备注
 
-- v0.1.77 的 UnitMeshFactory3D 完全重写，从几何体工厂变为精灵工厂
-- 玩家精灵使用 `Sprite3D` + `region_enabled`，通过 `region_rect` 选择 spritesheet 帧
-- 程序化图标通过 `Image` + `ImageTexture.create_from_image()` 生成，缓存到静态变量
-- `alpha_cut = ALPHA_CUT_DISCARD` + `alpha_scissor_threshold = 0.4` 处理透明度（gl_compatibility 兼容）
-- 精灵动画由 BoardView3D._update_sprite_animation() 驱动，仅在 _move_anim_unit 非空时推帧
-- 要替换敌方/召唤图标为美术资源，只需修改 `_create_body_sprite()` 中的纹理分支
-- v0.1.76 FloorManager 详见上一版交接包
+- v0.1.78 商品池扩展纯 UI 层改动，仅修改 ShopPanel.gd，不涉及任何控制器或状态机
+- add_card 调用 `CardBattleController._build_reward_pool()`（静态方法），不需要战斗进行中
+- remove_card 按 value/cost 比值自动选最弱牌，后续如需手动选择需新增牌组选择 UI（类似 DeckViewPanel 但带选择按钮）
+- random_crest 直接写入 `_dice_manager.crest_pool` 字典，DiceManager 当前无 earn 方法
+- max_hp_up 同时加 max_hp 和当前 hp，这是有意设计（避免购买后 HP 条反而变低）
+- 商品池 9 种每次展示 3 件，概率分布均匀，无权重系统
