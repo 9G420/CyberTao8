@@ -331,7 +331,7 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 	# 百叶窗合拢后：显示全屏卡牌战斗面板 + 启动战斗
 	_card_battle_panel.visible = true
 	_portrait_hud.visible = false
-	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp, _battle_flow.current_floor)
+	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp, _battle_flow.get_current_floor())
 	# 切换为战斗 BGM
 	if is_boss:
 		_audio.play_bgm("bgm_boss")
@@ -526,7 +526,7 @@ func _on_test_card_battle_requested() -> void:
 	await _transition.transition_to_battle("异常哨兵", false)
 	_card_battle_panel.visible = true
 	_portrait_hud.visible = false
-	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp, _battle_flow.current_floor)
+	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp, _battle_flow.get_current_floor())
 	await _transition.reveal()
 
 func _on_deck_view_requested() -> void:

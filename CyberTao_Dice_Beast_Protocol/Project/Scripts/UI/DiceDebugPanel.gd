@@ -74,7 +74,7 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 		if battle_flow.buff_manager.buff_expired and not battle_flow.buff_manager.buff_expired.is_connected(_on_buff_expired):
 			battle_flow.buff_manager.buff_expired.connect(_on_buff_expired)
 	round_label.text = "R" + str(battle_flow.round_index)
-	floor_label.text = "F" + str(battle_flow.current_floor) + "/" + str(battle_flow.get_max_floor())
+	floor_label.text = "F" + str(battle_flow.get_current_floor()) + "/" + str(battle_flow.get_max_floor())
 	_refresh_crest_pool()
 
 func bind_board_view(board_view: Node) -> void:
@@ -360,13 +360,13 @@ func _on_phase_changed(phase_name: String) -> void:
 			enemy_intent_label.text = ""
 		# 刷新层数显示（进入新层后更新）
 		if battle_flow:
-			floor_label.text = "F" + str(battle_flow.current_floor) + "/" + str(battle_flow.get_max_floor())
+			floor_label.text = "F" + str(battle_flow.get_current_floor()) + "/" + str(battle_flow.get_max_floor())
 	_refresh_crest_pool()
 
 func _on_round_changed(round_number: int) -> void:
 	round_label.text = "R" + str(round_number)
 	if battle_flow:
-		floor_label.text = "F" + str(battle_flow.current_floor) + "/" + str(battle_flow.get_max_floor())
+		floor_label.text = "F" + str(battle_flow.get_current_floor()) + "/" + str(battle_flow.get_max_floor())
 
 func _on_dice_rolled(results: Array[String], next_crest_pool: Dictionary) -> void:
 	# 立即更新 crest 池（玩家可在动画期间行动）
