@@ -1,27 +1,25 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.94
+**版本**: v0.1.95
 **分支**: `codex/dice-beast-protocol`
 
 ## 本轮任务
-- 修复 3D 最远距离单位不可见
-- 新增中键按住拖拽调整 3D 视角
-- 增强棋盘功能格 3D 立体识别
+- 2D 增加中键按住拖拽视角调节
+- 3D 去除棋盘外黑边，增强沉浸环境
+- 3D 最远距离单位可见性继续增强
 
-## 修改摘要
+## 实现
+- `BoardView.gd`
+  - 新增 `_orbit_active` 2D 中键视角模式
+  - 中键拖拽：上下调整 `_view_pitch_offset`，左右微调缩放
+  - `set_camera_target/_apply_zoom` 统一接入 pitch 偏移
 - `BoardView3D.gd`
-  - 新增中键 Orbit 视角控制（Pitch/Yaw）
-  - 右键继续平移，操作分离
-  - 相机计算改为 `_camera_angle_deg + _camera_yaw_deg`
-  - 远距单位缩放倍率上限提高（最远更容易看清）
-- `UnitMeshFactory3D.gd`
-  - 精灵像素尺寸微调，配合动态缩放防止近景过大
-- `TileMeshFactory3D.gd`
-  - 功能格增加 3D marker（箱体/棱柱/圆柱）
-  - shop/chest 等可直接肉眼识别，不再等于平面2D
+  - `rebuild_board()` 改为主棋盘外扩 `ambient_pad=8` 圈环境地台
+  - 外环 tile 采用暗化调制，形成“棋盘内外”层次
+  - `_update_unit_readability_scale` 上限提高到 `2.8`
 
 ## 结果
-- 3D 最远视角下单位可见性提升
-- 可以按住鼠标滚轮键自由调视角
-- 功能格有立体结构，棋盘层次明显增强
+- 2D 支持中键调视角（操作与 3D 更一致）
+- 3D 棋盘外不再是纯黑边，沉浸感明显提升
+- 3D 最远视角单位更可见

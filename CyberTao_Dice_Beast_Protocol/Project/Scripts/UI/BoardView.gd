@@ -32,6 +32,13 @@ var _drag_start_pos: Vector2 = Vector2.ZERO
 var _drag_start_origin: Vector2 = Vector2.ZERO
 var _drag_offset: Vector2 = Vector2.ZERO	# 用户拖拽累积偏移
 
+# v0.1.95：2D 中键视角调节（伪镜头俯仰）
+var _orbit_active: bool = false
+var _orbit_start_pos: Vector2 = Vector2.ZERO
+var _orbit_start_zoom: float = 1.0
+var _view_pitch_offset: float = 0.0
+var _orbit_start_pitch: float = 0.0
+
 # Selection state
 var selected_unit_id: String = ""
 var highlight_cells: Array[Vector2i] = []
@@ -71,7 +78,7 @@ func _ready() -> void:
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# 初始相机位置
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(0, _view_pitch_offset), _zoom)
 	iso_origin = _iso_origin_target
 	# 动画刷新定时器（50ms=20fps，驱动呼吸/脉冲效果）
 	_anim_timer = Timer.new()
@@ -95,7 +102,7 @@ func _on_anim_tick() -> void:
 ## 设置相机跟随目标格子（v0.1.63：平滑过渡+缩放）
 func set_camera_target(cell: Vector2i) -> void:
 	camera_cell = cell
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(0, _view_pitch_offset), _zoom)
 	queue_redraw()
 
 func bind_managers(next_board_manager: Node, next_unit_manager: Node) -> void:
@@ -140,10 +147,10 @@ func _gui_input(event: InputEvent) -> void:
 			_apply_zoom(-ZOOM_STEP, mb.position)
 			accept_event()
 			return
-	# 鼠标拖拽平移（右键或中键或左键拖拽）
+	# 右键拖拽平移
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
+		if mb.button_index == MOUSE_BUTTON_RIGHT:
 			if mb.pressed:
 				_drag_active = true
 				_drag_start_pos = mb.position
@@ -153,9 +160,30 @@ func _gui_input(event: InputEvent) -> void:
 				_drag_offset = iso_origin - _iso_origin_target
 			accept_event()
 			return
+		# v0.1.95：中键拖拽调2D视角（上下=俯仰/左右=缩放）
+		if mb.button_index == MOUSE_BUTTON_MIDDLE:
+			if mb.pressed:
+				_orbit_active = true
+				_orbit_start_pos = mb.position
+				_orbit_start_zoom = _zoom
+				_orbit_start_pitch = _view_pitch_offset
+			else:
+				_orbit_active = false
+			accept_event()
+			return
 	if event is InputEventMouseMotion and _drag_active:
 		var mm: InputEventMouseMotion = event as InputEventMouseMotion
 		iso_origin = _drag_start_origin + (mm.position - _drag_start_pos)
+		queue_redraw()
+		accept_event()
+		return
+	if event is InputEventMouseMotion and _orbit_active:
+		var mm: InputEventMouseMotion = event as InputEventMouseMotion
+		var d: Vector2 = mm.position - _orbit_start_pos
+		_view_pitch_offset = clampf(_orbit_start_pitch + d.y * 0.9, -140.0, 120.0)
+		_zoom = clampf(_orbit_start_zoom + d.x * 0.0018, ZOOM_MIN, ZOOM_MAX)
+		_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(0, _view_pitch_offset), _zoom)
+		_drag_offset = iso_origin - _iso_origin_target
 		queue_redraw()
 		accept_event()
 		return
@@ -200,7 +228,7 @@ func _apply_zoom(delta: float, mouse_pos: Vector2) -> void:
 	# 保持鼠标指向的世界位置不变
 	var ratio: float = _zoom / old_zoom
 	iso_origin = mouse_pos + (iso_origin - mouse_pos) * ratio
-	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER, _zoom)
+	_iso_origin_target = IsoTileRenderer.calc_origin_for_cell_zoom(camera_cell, SCREEN_CENTER + Vector2(0, _view_pitch_offset), _zoom)
 	_drag_offset = iso_origin - _iso_origin_target
 	queue_redraw()
 

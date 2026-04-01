@@ -221,7 +221,7 @@ func _update_move_animation() -> void:
 
 func _update_unit_readability_scale() -> void:
 	var t: float = inverse_lerp(ZOOM_MIN, ZOOM_MAX, _camera_distance)
-	var scale_factor: float = lerpf(1.0, 2.2, clampf(t, 0.0, 1.0))
+	var scale_factor: float = lerpf(1.0, 2.8, clampf(t, 0.0, 1.0))
 	for uid in _unit_nodes.keys():
 		var node: Node3D = _unit_nodes[uid]
 		if node == null:
@@ -399,11 +399,15 @@ func rebuild_board() -> void:
 	if board_manager == null:
 		return
 	_grid_size = _get_grid_size()
-	for gx in range(_grid_size):
-		for gy in range(_grid_size):
+	var ambient_pad: int = 8
+	for gx in range(-ambient_pad, _grid_size + ambient_pad):
+		for gy in range(-ambient_pad, _grid_size + ambient_pad):
 			var cell := Vector2i(gx, gy)
-			var tile_key: String = _get_tile_key(cell)
+			var in_board: bool = gx >= 0 and gy >= 0 and gx < _grid_size and gy < _grid_size
+			var tile_key: String = _get_tile_key(cell) if in_board else ("normal_dark" if (gx + gy) % 2 == 0 else "normal_light")
 			var tile_node: MeshInstance3D = TileMeshFactory3D.create_tile(tile_key, cell, _grid_size)
+			if not in_board:
+				tile_node.modulate = Color(0.55, 0.58, 0.7, 0.75)
 			_tiles_root.add_child(tile_node)
 			_tile_nodes[cell] = tile_node
 	_refresh_units()
