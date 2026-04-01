@@ -19,7 +19,7 @@ signal event_cell_triggered(unit_id: String, cell: Vector2i, event_id: String, e
 signal defend_crest_used(unit_id: String, new_temp_def: int)
 signal skill_crest_used(unit_id: String, heal_amount: int)
 signal trick_crest_used(gained_crest: String)
-signal shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int)
+signal shop_panel_requested(unit_id: String, cell: Vector2i)
 signal chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String)
 signal floor_cleared(floor_number: int)
 signal game_won
@@ -204,9 +204,8 @@ func _check_event_cell(unit_id: String, cell: Vector2i) -> void:
 			_check_battle_outcome()
 
 func _check_shop_cell(unit_id: String, cell: Vector2i) -> void:
-	var r: Dictionary = cell_effect_handler.check_shop_cell(unit_id, cell)
-	if r.get("used", false):
-		emit_signal("shop_cell_triggered", unit_id, cell, String(r["cost_crest"]), int(r["actual_heal"]))
+	if cell_effect_handler.has_valid_shop_cell(unit_id, cell):
+		emit_signal("shop_panel_requested", unit_id, cell)
 
 func _check_chest_cell(unit_id: String, cell: Vector2i) -> void:
 	var r: Dictionary = cell_effect_handler.check_chest_cell(unit_id, cell)

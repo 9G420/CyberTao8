@@ -1,5 +1,27 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.73 - 2026-04-01
+
+### 新增
+- **ShopPanel.gd**：新文件（~240行），`class_name ShopPanel`，独立商店 UI 面板
+- **5 种商品池**：修复药剂（步x1→HP+3）、高级修复（步x2→HP+6）、攻击芯片（攻x1→ATK+1）、防御芯片（盾x1→DEF+1）、能量核心（术x2→能量上限+1）
+- **随机 3 选**：每次踩商店格从池中随机展示 3 件商品，可多次购买
+- **CyberStyle 风格化面板**：赛博青色边框，显示持有 crest 资源，购买反馈文字，灰掉不可购买项
+- **信号 `shop_panel_requested`**：替代旧的 `shop_cell_triggered`，BFC 仅发信号不自动购买
+- **`CellEffectHandler.has_valid_shop_cell()`**：仅检查商店格存在性+玩家身份，不执行购买逻辑
+
+### 修改
+- CellEffectHandler.gd: 删除 `check_shop_cell()`（自动购买），替换为 `has_valid_shop_cell()`（纯校验）
+- BattleFlowController.gd: `_check_shop_cell` 改为仅发 `shop_panel_requested` 信号
+- Main.gd: 新增 ShopPanel 导入/实例化/信号连接 + `_on_shop_panel_requested`/`_on_shop_closed` 回调
+- DiceDebugPanel.gd: 信号绑定 `shop_cell_triggered` → `shop_panel_requested`，版本标记 → v0.1.73
+
+### 备注
+- ATK/DEF 提升直接修改 unit dict（本层永久，跨层时 unit 重建自动重置），未走 BuffManager
+- 能量核心修改 CardBattleController.max_energy（跨战斗持久），上限卡 5
+- 商品池为 const Array，后续扩展方便（加新牌/移除诅咒/随机 crest 等）
+- 旧信号 shop_cell_triggered 已全量清除（grep 确认零引用）
+
 ## v0.1.72 - 2026-03-31
 
 ### 修复

@@ -1,10 +1,10 @@
 # CyberTao: Dice Beast Protocol — AI 员工上岗指令 v3
 
-**发布时间**: 2026-03-31
+**发布时间**: 2026-04-01
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.72
+**当前版本**: v0.1.73
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -136,6 +136,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 玩家角色精灵动画（4方向 spritesheet） | v0.1.70 | 稳定 |
 | 3D 渐进迁移 P0（BoardView3D+SubViewport+F5切换） | v0.1.71 | 稳定 |
 | 3D 交互手感修复（拖拽+镜头跟随+边界限制+缩放轴心） | v0.1.72 | 稳定 |
+| 商店格扩展（ShopPanel独立面板+5种商品池+crest货币+多次购买） | v0.1.73 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -237,6 +238,7 @@ UI层
 ├── UITransitions       — UI过渡动画工具类（class_name注册）    ~60行 ✅ v0.1.55 新增
 ├── UnitPortraitHUD    — 顶部单位头像 HUD（class_name注册）    ~130行 ✅ v0.1.69 新增
 ├── PlayerSpriteAnimator — 玩家精灵动画管理器（class_name注册）  ~70行 ✅ v0.1.70 新增
+├── ShopPanel          — 商店面板（class_name注册，5种商品池+crest货币）  ~240行 ✅ v0.1.73 新增
 └── SettingsPanel        — 显示设置
 
 UI3D/（v0.1.71 新增 — 3D 表现层）
@@ -298,6 +300,7 @@ CyberBackground：     Scripts/UI/CyberBackground.gd
 TransitionOverlay：   Scripts/UI/TransitionOverlay.gd
 BattleCharRenderer：  Scripts/UI/BattleCharRenderer.gd
 UITransitions：       Scripts/UI/UITransitions.gd
+ShopPanel：          Scripts/UI/ShopPanel.gd
 AudioManager：        Scripts/System/AudioManager.gd
 SFXGenerator：        Scripts/System/SFXGenerator.gd
 Main：                Scripts/Main.gd
@@ -353,19 +356,20 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 ## 6. 下一阶段任务优先级
 
-以下任务来自 v0.1.60 Work Report，按优先级排列：
+以下任务按优先级排列：
 
 ### 🔴 高优先级（当前阶段核心）
 
 | 任务 | 说明 |
 |------|------|
-| **商店格扩展** | 多选商品 + 独立 UI 面板 |
+| **3D 反馈系统实现** | 粒子特效/3D 飘字替代 2D BattleEffects |
 
 ### 🟡 中优先级
 
 | 任务 | 说明 |
 |------|------|
 | **阵亡单位跨层复活机制** | 防止后续层无伙伴可用 |
+| **BattleFlowController 瘦身** | 当前约 693 行 |
 
 ### 🟢 中低优先级
 
@@ -389,6 +393,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 | 玩家角色精灵动画（4方向 spritesheet） | v0.1.70 |
 | 3D 渐进迁移 P0（BoardView3D+SubViewport+F5切换） | v0.1.71 |
 | 3D 交互手感修复（拖拽+镜头跟随+边界限制+缩放轴心） | v0.1.72 |
+| 商店格扩展（ShopPanel独立面板+5种商品池+crest货币+多次购买） | v0.1.73 |
 | 相机跟随玩家角色+全新素材+UI优化 | v0.1.60 |
 | 全屏等距棋盘+叠层UI+高起贴图+角色放大 | v0.1.59 |
 | 美化 Phase 6（IsoTileRenderer+等距贴图棋盘+BoardView等距化） | v0.1.58 |

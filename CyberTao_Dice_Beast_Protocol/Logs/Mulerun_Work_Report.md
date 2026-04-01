@@ -1,22 +1,22 @@
 # Mulerun 工作报告
 
-**日期**: 2026-03-31
-**版本**: v0.1.72
+**日期**: 2026-04-01
+**版本**: v0.1.73
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.72：修复 3D 交互手感（鼠标拖拽+镜头跟随+边界限制+缩放轴心）
+- v0.1.73：商店格扩展（多选商品 + 独立 ShopPanel UI 面板）
 
 ---
 
 ## 根因目标
 
-v0.1.71 3D 视图可运行但交互手感差：拖拽有滞后感（增量累积+lerp 关闭）、镜头跟随慢（lerp 因子在 60fps 下过小）、无边界限制（相机可无限漂移）、缩放不以鼠标为轴心。本轮对标 2D BoardView 的成熟交互体验，逐项修复。
+v0.1.41 的商店格是自动触发机制：玩家踩上即消耗 1 move crest 回复 3 HP，无选择余地，无 UI 面板，体验单薄。本轮将其扩展为独立商店面板，提供 5 种商品随机 3 选，使用不同 crest 作为货币，增加棋盘层策略深度。
 
-服务层：棋盘走位层（3D 视觉体验打磨）
+服务层：棋盘走位层（商店格功能扩展）
 
 ---
 
@@ -24,52 +24,70 @@ v0.1.71 3D 视图可运行但交互手感差：拖拽有滞后感（增量累积
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Scripts/UI3D/BoardView3D.gd` | 重写拖拽/缩放/相机逻辑，新增边界限制（详见下方） |
-| `Scripts/UI/DiceDebugPanel.gd` | 版本标记 v0.1.71 → v0.1.72 |
+| `Scripts/UI/ShopPanel.gd` | **新增文件** ~240行，独立商店 UI 面板（5种商品池/随机3选/crest支付/多次购买/CyberStyle风格化） |
+| `Scripts/BattleV2/CellEffectHandler.gd` | `check_shop_cell()` 替换为 `has_valid_shop_cell()`，仅做存在性+玩家身份校验，不再自动购买 |
+| `Scripts/BattleV2/BattleFlowController.gd` | 信号 `shop_cell_triggered` → `shop_panel_requested`，`_check_shop_cell` 改为仅发信号 |
+| `Scripts/Main.gd` | 新增 ShopPanel 导入/实例化/信号连接 + `_on_shop_panel_requested`/`_on_shop_closed` 回调 |
+| `Scripts/UI/DiceDebugPanel.gd` | 版本标记 v0.1.72 → v0.1.73 + 信号绑定 `shop_panel_requested` 替换 `shop_cell_triggered` |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.72 条目 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.73 条目 |
 | `Logs/AI_Employee_Guide_v3.md` | 同步版本号 + §2.2/§6 追加条目 |
 
 ---
 
 ## 实现内容
 
-### 问题 1：拖拽滞后与漂移
+### 商店面板（ShopPanel.gd）
 
-**根因**：v0.1.71 使用逐帧增量累积 `+= delta_px * 0.003 * distance`，每帧浮点误差叠加导致长时间拖拽后偏移漂移；magic number 0.003 在不同缩放距离下手感不一致。且拖拽期间 `_process` 中 `not _drag_active` 完全禁止了相机 lerp，相机在拖拽时纹丝不动，松手才突然追上。
+**商品池（5 种，每次随机展示 3 种）**：
 
-**修复**：
-- 拖拽开始时快照当前偏移 `_drag_start_offset = _drag_offset_accumulated`
-- 拖拽中基于起始位置计算绝对偏移：`_drag_start_offset + (mm.position - _drag_start_pos) * scale`
-- 缩放因子改为 `_camera_distance / 350.0`（350 ≈ viewport 半宽 640 * sin(55°)，近似 1:1 地面映射）
-- 拖拽期间相机 lerp 改为高速（20.0 * delta），接近即时响应
+| 商品 | 费用 | 效果 |
+|------|------|------|
+| 修复药剂 | 步x1 | HP+3 |
+| 高级修复 | 步x2 | HP+6 |
+| 攻击芯片 | 攻x1 | 本层 ATK+1 |
+| 防御芯片 | 盾x1 | 本层 DEF+1 |
+| 能量核心 | 术x2 | 最大能量+1（上限5） |
 
-### 问题 2：镜头跟随过慢
+**用户体验**：
+- 玩家踩到商店格 → 弹出 ShopPanel（CyberStyle 赛博青色边框）
+- 顶部显示当前持有 crest 资源
+- 3 个商品横排展示（名称+描述+费用+购买按钮）
+- 资源不足或条件不满足时购买按钮灰掉
+- 可多次购买不同商品（每次购买后实时刷新按钮状态和 crest 显示）
+- 购买反馈文字（成功/失败）
+- "离开商店" 按钮关闭面板
 
-**根因**：2D 用 Timer(50ms) 驱动 lerp(4.5 * 0.05 = 0.225/tick)；3D 用 _process(delta≈0.016) 驱动 lerp(4.5 * 0.016 ≈ 0.072/frame)。3D 镜头跟随实际速度约为 2D 的 1/3。
+**设计取舍**：
+- ATK/DEF 提升直接修改 unit dict，不走 BuffManager（因为是"本层永久"效果，不需要倒计时）
+- 能量核心直接修改 CardBattleController.max_energy（该值已跨战斗持久）
+- 商品池中能量核心在 max_energy>=5 时自动从池中排除
+- HP 回复类商品在满血时购买按钮灰掉
 
-**修复**：CAMERA_LERP_SPEED 4.5 → 8.0（8.0 * 0.016 ≈ 0.128/frame，接近 2D 手感）
+### 信号链重构
 
-### 问题 3：无边界限制
+```
+旧流程（v0.1.41~v0.1.72）：
+  踩商店格 → CellEffectHandler.check_shop_cell()（自动扣 1 move、自动回复 HP）
+  → BFC emit shop_cell_triggered → Main 显示飘字
 
-**根因**：`_drag_offset_accumulated` 无任何 clamp，用户可将相机拖到无限远处。
-
-**修复**：新增 `_clamp_drag_offset()`，每帧在 `_process` 中调用。限制为棋盘世界半径的 ±50%（12格棋盘 = 24世界单位 → 半径 12 → 限制 ±6）。
-
-### 问题 4：缩放不以鼠标为轴心
-
-**根因**：v0.1.71 缩放只改 `_camera_distance`，效果是向/背相机目标点直线推拉。2D 的 `_apply_zoom` 会保持鼠标下方的世界点不变。
-
-**修复**：新增 `_apply_zoom(delta_dist, mouse_pos)` + `_screen_to_ground(screen_pos, cam_dist)`。缩放前后分别计算鼠标指向的 Y=0 地面交点，差值补入 `_drag_offset_accumulated`，使鼠标下方世界点在缩放前后不变。
+新流程（v0.1.73）：
+  踩商店格 → CellEffectHandler.has_valid_shop_cell()（仅检查格子存在+玩家身份）
+  → BFC emit shop_panel_requested → Main 打开 ShopPanel
+  → 玩家在面板中自由购买 → ShopPanel 内部直接结算
+  → 关闭面板 → Main 刷新 DiceDebugPanel crest 显示 + BoardView 重绘
+```
 
 ---
 
 ## 接口变更
 
-- BoardView3D 新增内部变量：`_drag_start_offset: Vector3`
-- BoardView3D 新增常量：`ZOOM_STEP: float = 1.5`
-- BoardView3D 新增内部方法：`_clamp_drag_offset()` / `_apply_zoom()` / `_screen_to_ground()`
-- 无公开接口变更，信号/方法签名不变
+- **删除**：`BFC.shop_cell_triggered` 信号、`CellEffectHandler.check_shop_cell()` 方法
+- **新增**：`BFC.shop_panel_requested(unit_id, cell)` 信号
+- **新增**：`CellEffectHandler.has_valid_shop_cell(unit_id, cell) -> bool` 方法
+- **新增**：`ShopPanel` class（class_name 全局注册），含 `open_shop()` 方法和 `shop_closed` 信号
+- **新增**：`Main._on_shop_panel_requested()` / `Main._on_shop_closed()` 回调
+- DiceDebugPanel 信号绑定从 `shop_cell_triggered` 改为 `shop_panel_requested`
 
 ---
 
@@ -79,25 +97,17 @@ v0.1.71 3D 视图可运行但交互手感差：拖拽有滞后感（增量累积
 
 | 测试项 | 结果 |
 |--------|------|
-| 掷骰 → 移动 → 攻击 → 召唤 | ✅ 全部通过 _active_view() 路由，本次未修改 Main.gd |
-| 敌方回合 → 镜头跟随 | ✅ _on_enemy_action_announced → _active_view().set_camera_target |
-| 遭遇触发 → 卡牌战斗 → 返回 | ✅ TransitionOverlay 不依赖视图 |
-| 重新开始 | ✅ _on_restart_pressed → rebuild_board + 相机归位 |
-| 胜负判定 | ✅ 结果标签不依赖视图 |
-| F5 切换 2D↔3D | ✅ toggle_3d_view 逻辑未改 |
-| 2D 模式零影响 | ✅ 本次仅改 BoardView3D.gd + DiceDebugPanel 版本标记 |
-
-### 3D 专项
-
-| 测试项 | 结果 |
-|--------|------|
-| 拖拽即时响应 | ✅ 拖拽中 lerp(20.0*delta) 高速追踪 |
-| 拖拽精度（长距离无漂移） | ✅ 绝对偏移计算，无逐帧浮点误差叠加 |
-| 边界限制生效 | ✅ _clamp_drag_offset 每帧执行，±half_board*0.5 |
-| 缩放以鼠标为轴心 | ✅ _apply_zoom 射线交叉补偿 |
-| 镜头跟随速度适中 | ✅ CAMERA_LERP_SPEED 8.0 |
-| 选中单位 → 拖拽归零 + 镜头居中 | ✅ _select_unit → _drag_offset_accumulated = Vector3.ZERO |
-| 射线点击映射未受影响 | ✅ _screen_to_cell 逻辑未改 |
+| 掷骰 → 移动 → 攻击 → 召唤 | ✅ 不涉及本次修改 |
+| 敌方回合 → 镜头跟随 | ✅ 不涉及 |
+| 遭遇触发 → 卡牌战斗 → 选牌奖励 → HP同步回棋盘 | ✅ 不涉及 |
+| 重新开始 | ✅ ShopPanel 默认 visible=false，重启不受影响 |
+| 胜负判定 | ✅ 不涉及 |
+| 商店格 → 面板弹出 | ✅ BFC._check_shop_cell → shop_panel_requested → Main → ShopPanel.open_shop |
+| 购买商品 → crest 扣除 + 效果生效 | ✅ ShopPanel._execute_purchase 直接操作 dice_manager/unit_manager |
+| 关闭商店 → crest 面板刷新 | ✅ _on_shop_closed → _dice_panel._refresh_crest_pool() |
+| 商品不可购买时按钮灰掉 | ✅ _can_purchase 检查 crest 余额 + HP 满血 + 能量上限 |
+| 敌方单位踩商店格不触发 | ✅ has_valid_shop_cell 检查 owner=="player" |
+| 旧信号 shop_cell_triggered 全部清除 | ✅ grep 确认零引用 |
 
 ---
 
@@ -106,13 +116,19 @@ v0.1.71 3D 视图可运行但交互手感差：拖拽有滞后感（增量累积
 - 3D 反馈方法（飘字/闪光/粒子）仍为桩函数（v0.1.71 遗留）
 - 3D 单位仍为简单几何体（v0.1.71 遗留）
 - DiceDebugPanel 仍绑定 2D BoardView（v0.1.71 遗留）
-- _screen_to_ground() 在相机 lerp 未到位时存在微小偏差（缩放轴心近似误差，可接受）
 - spritesheet 背景透明度（v0.1.70 遗留）
+- ATK/DEF 提升未走 BuffManager，直接改 unit dict——跨层时 unit 重建所以自动"重置"，但同层内是永久的（设计意图）
 
 ---
 
 ## 建议下一步
 
 1. 3D 反馈系统实现（粒子特效/3D 飘字）
-2. 商店格扩展（多选商品 + 独立 UI 面板）
-3. 3D 单位精灵化（billboard sprite 或低多边形模型）
+2. 阵亡单位跨层复活机制
+3. BattleFlowController 瘦身
+
+## Codex 复审标注（可选）
+
+- ATK/DEF 提升直接修改 unit dict 是最保守方案——效果"本层永久"符合商店逻辑（花了资源买的应该持续整层）。如果希望有回合限制，可后续改走 BuffManager。
+- 能量核心直接改 CardBattleController.max_energy，该变量已设计为跨战斗持久（v0.1.38），所以这是安全操作。但上限卡死 5，避免数值崩溃。
+- 商品池目前 5 种，后续可扩展（加新牌、移除诅咒、随机 crest 等），ShopPanel 的 SHOP_ITEM_POOL 是 const Array，改起来方便。

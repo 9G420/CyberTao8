@@ -91,33 +91,17 @@ func check_event_cell(unit_id: String, cell: Vector2i) -> Dictionary:
 			effect_text = "HP-1"
 	return {"triggered": true, "event_id": event_id, "effect_text": effect_text, "killed": killed}
 
-## 检查商店格：消耗 1 move crest 回复 HP（持久，不消失）
-## 返回 {"used": true, "cost_crest": "move", "heal": int, "actual_heal": int} 或 {"used": false}
-func check_shop_cell(unit_id: String, cell: Vector2i) -> Dictionary:
+## 检查是否为商店格且玩家可进入（v0.1.73：仅做存在性+玩家身份检查，不自动购买）
+## 返回 true 时由 Main 打开 ShopPanel 面板
+func has_valid_shop_cell(unit_id: String, cell: Vector2i) -> bool:
 	if not board_manager.shop_cells.has(cell):
-		return {"used": false}
+		return false
 	var unit: Dictionary = unit_manager.get_unit(unit_id)
 	if unit.is_empty():
-		return {"used": false}
-	# 只有玩家单位可以使用商店
+		return false
 	if String(unit.get("owner", "")) != "player":
-		return {"used": false}
-	# 检查 HP 是否已满
-	var current_hp: int = int(unit.get("hp", 0))
-	var max_hp: int = int(unit.get("max_hp", 1))
-	if current_hp >= max_hp:
-		return {"used": false}
-	# 消耗 1 move crest
-	var cost: Dictionary = {"move": 1}
-	if not dice_manager.can_pay(cost):
-		return {"used": false}
-	dice_manager.pay(cost)
-	var heal_amount: int = int(board_manager.shop_cells[cell])
-	var actual_heal: int = min(heal_amount, max_hp - current_hp)
-	unit["hp"] = current_hp + actual_heal
-	unit_manager.units_by_id[unit_id] = unit
-	unit_manager.emit_signal("units_changed")
-	return {"used": true, "cost_crest": "move", "heal": heal_amount, "actual_heal": actual_heal}
+		return false
+	return true
 
 ## 检查宝箱格：随机奖励（一次性，踩后消失）
 ## 返回 {"opened": true, "effect_text": str} 或 {"opened": false}

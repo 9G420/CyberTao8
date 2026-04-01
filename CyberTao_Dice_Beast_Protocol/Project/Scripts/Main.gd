@@ -12,6 +12,7 @@ const DeckViewPanel = preload("res://Scripts/UI/DeckViewPanel.gd")
 const CyberBackground = preload("res://Scripts/UI/CyberBackground.gd")
 const TransitionOverlay = preload("res://Scripts/UI/TransitionOverlay.gd")
 const UnitPortraitHUD = preload("res://Scripts/UI/UnitPortraitHUD.gd")
+const ShopPanelScript = preload("res://Scripts/UI/ShopPanel.gd")
 const BoardView3DScript = preload("res://Scripts/UI3D/BoardView3D.gd")
 
 # v0.1.71：3D/2D 视图切换标志（默认 false = 2D 模式）
@@ -35,6 +36,7 @@ var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
 var _audio: AudioManager
 var _portrait_hud: UnitPortraitHUD
+var _shop_panel: ShopPanel
 var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
@@ -108,6 +110,11 @@ func _build_debug_view() -> void:
 	_deck_view_panel.position = Vector2(160, 120)
 	add_child(_deck_view_panel)
 
+	# 商店面板（v0.1.73 多选商品）
+	_shop_panel = ShopPanel.new()
+	_shop_panel.position = Vector2(400, 170)
+	add_child(_shop_panel)
+
 	_result_label = Label.new()
 	_result_label.position = Vector2(0, 320)
 	_result_label.size = Vector2(1280, 60)
@@ -157,7 +164,8 @@ func _wire_debug_views() -> void:
 	_battle_flow.defend_crest_used.connect(_on_defend_crest_used)
 	_battle_flow.skill_crest_used.connect(_on_skill_crest_used)
 	_battle_flow.trick_crest_used.connect(_on_trick_crest_used)
-	_battle_flow.shop_cell_triggered.connect(_on_shop_cell_triggered)
+	_battle_flow.shop_panel_requested.connect(_on_shop_panel_requested)
+	_shop_panel.shop_closed.connect(_on_shop_closed)
 	_battle_flow.chest_cell_triggered.connect(_on_chest_cell_triggered)
 	_battle_flow.floor_cleared.connect(_on_floor_cleared)
 	_battle_flow.game_won.connect(_on_game_won)
@@ -365,9 +373,14 @@ func _on_skill_crest_used(unit_id: String, heal_amount: int) -> void:
 func _on_trick_crest_used(gained_crest: String) -> void:
 	_active_view().queue_redraw()
 
-func _on_shop_cell_triggered(unit_id: String, cell: Vector2i, cost_crest: String, actual_heal: int) -> void:
-	_active_view().play_shop_feedback(cell, "-1步 HP+" + str(actual_heal))
+func _on_shop_panel_requested(unit_id: String, cell: Vector2i) -> void:
+	_shop_panel.open_shop(unit_id, _battle_flow.dice_manager, _battle_flow.unit_manager, _card_battle_ctrl)
 	_audio.play_sfx("shop")
+	_active_view().play_shop_feedback(cell, "商店")
+	_active_view().queue_redraw()
+
+func _on_shop_closed() -> void:
+	_dice_panel._refresh_crest_pool()
 	_active_view().queue_redraw()
 
 func _on_chest_cell_triggered(unit_id: String, cell: Vector2i, effect_text: String) -> void:
