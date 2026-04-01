@@ -1,6 +1,9 @@
 extends RefCounted
 class_name UnitRenderer
 
+const UnitMeshFactory3D = preload("res://Scripts/UI3D/UnitMeshFactory3D.gd")
+static var _iso_tex_cache: Dictionary = {}
+
 ## 单位渲染器（v0.2.0 咩咩启示录风格：可爱Q版角色 + 发光 + HP条 + 选中脉冲）
 ## Cult of the Lamb inspired chibi art: big round heads, dot pupils, stubby limbs
 ## 颜色 100% 来自 CyberStyle
@@ -453,7 +456,25 @@ static func draw_affinity_star(c: CanvasItem, cell: Vector2i, cs: int, unit: Dic
 		c.draw_string(font, Vector2(sx, sy), "*", HORIZONTAL_ALIGNMENT_LEFT, 14, 13, CyberStyle.NEON_GOLD)
 
 # --- 等距棋盘专用绘制（v0.1.60 相机跟随 + TILE_W=192 放大）---
-# 与 draw_full_unit 相同的角色剪影，但以屏幕中心点定位、放大以适配全屏菱形格
+# v0.1.91：2D 也改用 UnitMeshFactory3D 像素纹理，统一 2D/3D 美术风格
+
+static func _get_iso_unit_tex(unit: Dictionary) -> Texture2D:
+	var owner: String = String(unit.get("owner", ""))
+	var tags: Array = unit.get("tags", [])
+	var is_summoned: bool = tags.has("summoned")
+	if owner == "player" and not is_summoned:
+		if not _iso_tex_cache.has("player"):
+			_iso_tex_cache["player"] = UnitMeshFactory3D._gen_player_hero()
+		return _iso_tex_cache.get("player", null)
+	if is_summoned:
+		if not _iso_tex_cache.has("summoned"):
+			_iso_tex_cache["summoned"] = UnitMeshFactory3D._gen_summoned_ally()
+		return _iso_tex_cache.get("summoned", null)
+	var enc_id: String = String(unit.get("encounter_id", ""))
+	var key: String = "enemy_" + enc_id
+	if not _iso_tex_cache.has(key):
+		_iso_tex_cache[key] = UnitMeshFactory3D._gen_enemy_by_id(enc_id)
+	return _iso_tex_cache.get(key, null)
 
 static func draw_full_unit_iso(c: CanvasItem, center: Vector2, unit: Dictionary, is_selected: bool, pulse: float, idle_y: float, font: Font) -> void:
 	var owner: String = String(unit.get("owner", "player"))
@@ -462,13 +483,23 @@ static func draw_full_unit_iso(c: CanvasItem, center: Vector2, unit: Dictionary,
 	var hp: int = int(unit.get("hp", 1))
 	var max_hp: int = int(unit.get("max_hp", 1))
 	var hp_ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
-	var s: float = 1.1
 	var cx: float = center.x
 	var cy: float = center.y - 20.0 + idle_y
-	if is_player:
-		_draw_player_char(c, Vector2(cx, cy), s, display_name, pulse)
+	var tex: Texture2D = _get_iso_unit_tex(unit)
+	if tex != null:
+		var w: float = 70.0
+		var h: float = 70.0
+		var rect := Rect2(cx - w * 0.5, cy - h * 0.75, w, h)
+		c.draw_texture_rect(tex, rect, false, Color(1, 1, 1, 1))
+		# 轻微脚底辉光
+		var glow_col: Color = CyberStyle.ACCENT_CYAN if is_player else CyberStyle.ACCENT_ORANGE
+		c.draw_circle(Vector2(cx, center.y + 10.0), 12.0, Color(glow_col.r, glow_col.g, glow_col.b, 0.10 + pulse * 0.05))
 	else:
-		_draw_enemy_char(c, Vector2(cx, cy), s, display_name, pulse)
+		var s: float = 1.1
+		if is_player:
+			_draw_player_char(c, Vector2(cx, cy), s, display_name, pulse)
+		else:
+			_draw_enemy_char(c, Vector2(cx, cy), s, display_name, pulse)
 	_draw_hp_bar(c, Vector2(center.x - 36.0, center.y + 16.0), 72.0, hp_ratio, is_player)
 	if is_selected:
 		var col: Color = CyberStyle.NEON_GOLD

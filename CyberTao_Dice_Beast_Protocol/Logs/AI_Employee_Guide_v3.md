@@ -4,7 +4,7 @@
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.90
+**当前版本**: v0.1.91
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.90）
+### 2.2 当前完成状态总览（v0.1.91）
 
 **棋盘走位层（全部稳定）**
 
@@ -154,6 +154,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 3D 可见性与立体感增强（单位黑块兜底 + 功能格抬升 + 切换炫光） | v0.1.88 | 稳定 |
 | 像素美术重设计P0（敌方01~04 GBA风重绘） | v0.1.89 | 稳定 |
 | 卡牌战斗立绘同步像素纹理（BattleCharRenderer 复用 UnitMeshFactory3D） | v0.1.90 | 稳定 |
+| 2D 等距单位绘制同步像素纹理（UnitRenderer 复用 UnitMeshFactory3D） | v0.1.91 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 

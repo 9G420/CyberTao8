@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.91 - 2026-04-02
+
+### 修改（2D 单位美术同步像素重绘）
+- `UnitRenderer.gd`：2D 等距单位绘制改为优先复用 `UnitMeshFactory3D` 的像素纹理（玩家/召唤/敌方 encounter 映射）
+- `draw_full_unit_iso`：不再默认走旧 Q 版矢量角色，改为像素贴图绘制 + 脚底微光
+- 保留旧矢量路径作为纹理异常时 fallback
+
+### 修复
+- **问题**：用户反馈 2D 视图单位仍是旧风格“很丑” —— 根因是之前仅改了 3D 与卡牌战斗立绘，2D 仍走旧 `UnitRenderer` 矢量绘制
+
 ## v0.1.90 - 2026-04-02
 
 ### 修复（卡牌战斗立绘未同步新像素敌方）

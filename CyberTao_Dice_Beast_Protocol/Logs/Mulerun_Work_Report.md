@@ -1,26 +1,25 @@
 # Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.90
+**版本**: v0.1.91
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 本轮任务
 
-- v0.1.90：修复“拉取后卡牌战斗形象没变”的同步问题
+- v0.1.91：2D 单位美术同步像素化（替换旧矢量 Q 版）
 
 ---
 
 ## 根因说明
 
-用户截图是**卡牌战斗界面**（CardBattlePanel），该界面角色来自 `BattleCharRenderer.gd`（矢量绘制）。
+用户反馈 2D 模式仍是旧丑风格。
 
-而 v0.1.89 重绘的是 `UnitMeshFactory3D.gd`（3D 棋盘单位像素纹理）。
-
-所以出现了：
-- 3D棋盘单位已变
-- 卡牌战斗立绘看起来没变
+根因：
+- v0.1.89 改的是 3D 棋盘单位（UnitMeshFactory3D）
+- v0.1.90 改的是卡牌战斗立绘（BattleCharRenderer）
+- 2D 棋盘仍走 `UnitRenderer.draw_full_unit_iso()` 旧矢量路径
 
 ---
 
@@ -28,26 +27,23 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Project/Scripts/UI/BattleCharRenderer.gd` | 增加与 UnitMeshFactory3D 的纹理复用：玩家和敌方优先使用像素纹理绘制；旧矢量方案保留为 fallback |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.90 条目 |
+| `Project/Scripts/UI/UnitRenderer.gd` | 新增 2D 像素纹理缓存与映射（玩家/召唤/敌方）；`draw_full_unit_iso()` 改为优先绘制像素贴图，旧矢量绘制保留 fallback |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.91 条目 |
 | `Logs/Mulerun_Work_Report.md` | 本文件 |
 
 ---
 
 ## 实现内容
 
-1) 新增像素立绘绘制入口 `_draw_pixel_portrait()`
-- 统一贴图绘制区域 + 轻微光晕
+1) 新增 `_get_iso_unit_tex(unit)`：
+- player -> `_gen_player_hero()`
+- summoned -> `_gen_summoned_ally()`
+- enemy -> `_gen_enemy_by_id(encounter_id)`
 
-2) 玩家立绘同步
-- `draw_player_hero()` 优先使用 `UnitMeshFactory3D._gen_player_hero()`
-
-3) 敌方立绘同步
-- `draw_enemy()` 按 `encounter_id` 优先使用 `UnitMeshFactory3D._gen_enemy_by_id()`
-- 与你前一轮重绘（01~04）直接联动
-
-4) 兼容性
-- 若纹理获取失败，仍回退原 `BattleCharRenderer` 的矢量绘制路径，保证不崩
+2) `draw_full_unit_iso()` 改造：
+- 优先 `draw_texture_rect` 绘制像素单位
+- 附加脚底微光（玩家青色 / 敌方橙色）
+- 若纹理异常，回退旧 `_draw_player_char/_draw_enemy_char`
 
 ---
 
@@ -55,12 +51,13 @@
 
 | 测试项 | 结果 |
 |--------|------|
-| 卡牌战斗中玩家形象改为像素纹理 | ✅ |
-| 卡牌战斗中 encounter_01~04 可看到新重绘敌方风格 | ✅ |
-| 纹理异常时仍可回退旧矢量绘制 | ✅ |
+| 2D 模式单位外观已切到像素纹理风格 | ✅ |
+| 2D/3D/卡牌战斗三端风格一致性提升 | ✅ |
+| 选中环与 HP 条逻辑保持不变 | ✅ |
+| 纹理异常时可回退，不影响功能 | ✅ |
 
 ---
 
 ## 下一步
 
-- v0.1.91：继续重绘 encounter_05~07 + Boss，并同步卡牌战斗立绘展示。
+- v0.1.92：继续敌方第二批（05~07 + boss）重绘并微调 2D 渲染尺寸/位置对齐。
