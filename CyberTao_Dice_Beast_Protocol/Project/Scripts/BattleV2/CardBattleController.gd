@@ -106,12 +106,12 @@ static func _build_reward_pool() -> Array[Dictionary]:
 	pool.append({"name": "强化斩击", "type": "attack", "cost": 1, "value": 4, "upgraded": false})
 	# 双重防御 (cost 1, 防御 3)
 	pool.append({"name": "双重防御", "type": "defend", "cost": 1, "value": 3, "upgraded": false})
-	# 毒素注入 (cost 1, 施加毒素 3 回合)
-	pool.append({"name": "毒素注入", "type": "poison", "cost": 1, "value": 3, "upgraded": false})
-	# 能量虹吸 (cost 0, 抽 2 张牌)
-	pool.append({"name": "能量虹吸", "type": "draw", "cost": 0, "value": 2, "upgraded": false})
-	# 反击 (cost 1, 防御 2 + 反击 3)
-	pool.append({"name": "反击", "type": "counter", "cost": 1, "value": 3, "def_value": 2, "upgraded": false})
+	# 毒素注入 (cost 1, 施加毒素 2 回合)
+	pool.append({"name": "毒素注入", "type": "poison", "cost": 1, "value": 2, "upgraded": false})
+	# 能量虹吸 (cost 1, 抽 2 张牌)
+	pool.append({"name": "能量虹吸", "type": "draw", "cost": 1, "value": 2, "upgraded": false})
+	# 反击 (cost 1, 防御 1 + 反击 2)
+	pool.append({"name": "反击", "type": "counter", "cost": 1, "value": 2, "def_value": 1, "upgraded": false})
 	# 裂空斩 (cost 2, 3 连击各 2 伤害)
 	pool.append({"name": "裂空斩", "type": "combo", "cost": 2, "value": 2, "hits": 3, "upgraded": false})
 	# 初始牌组中的牌也可以作为奖励出现
@@ -146,7 +146,7 @@ static func get_encounter_enemy_data(enc_id: String, current_floor: int = 1) -> 
 		"encounter_04":
 			base = {
 				"name": "脉冲猎手", "hp": 5, "atk": 4,
-				"pattern": ["heavy_attack", "attack", "attack"],
+				"pattern": ["attack", "heavy_attack", "attack"],
 			}
 		"encounter_05":
 			base = {
@@ -160,7 +160,7 @@ static func get_encounter_enemy_data(enc_id: String, current_floor: int = 1) -> 
 			}
 		"encounter_07":
 			base = {
-				"name": "赛博巫医", "hp": 11, "atk": 2,
+				"name": "赛博巫医", "hp": 9, "atk": 2,
 				"pattern": ["buff", "defend_attack", "heal", "heavy_attack", "attack"],
 			}
 		"encounter_boss_01":
@@ -586,12 +586,12 @@ static func get_card_upgrade(card: Dictionary) -> Dictionary:
 		"双重防御":
 			up["value"] = 4
 		"毒素注入":
-			up["value"] = 4
+			up["value"] = 3
 		"能量虹吸":
 			up["value"] = 3
 		"反击":
-			up["value"] = 4
-			up["def_value"] = 3
+			up["value"] = 3
+			up["def_value"] = 2
 		"裂空斩":
 			up["value"] = 3
 			up["hits"] = 3

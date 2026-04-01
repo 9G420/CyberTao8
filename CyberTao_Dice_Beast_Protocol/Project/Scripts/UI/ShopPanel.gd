@@ -16,7 +16,7 @@ const SHOP_ITEM_POOL: Array = [
 	{"id": "energy_up", "name": "能量核心", "desc": "最大能量+1（上限5）", "cost_type": "skill", "cost_amount": 2, "effect": "energy_up", "value": 1},
 	{"id": "add_card", "name": "数据芯片", "desc": "随机获得1张卡牌加入牌组", "cost_type": "trick", "cost_amount": 1, "effect": "add_card", "value": 1},
 	{"id": "remove_card", "name": "数据清洗", "desc": "移除牌组中最弱的1张牌", "cost_type": "skill", "cost_amount": 1, "effect": "remove_card", "value": 1},
-	{"id": "random_crest", "name": "赛博彩票", "desc": "随机获得2个crest资源", "cost_type": "move", "cost_amount": 1, "effect": "random_crest", "value": 2},
+	{"id": "random_crest", "name": "赛博彩票", "desc": "随机获得2个crest资源", "cost_type": "move", "cost_amount": 2, "effect": "random_crest", "value": 2},
 	{"id": "max_hp_up", "name": "生体强化", "desc": "最大HP+2（同时回复2HP）", "cost_type": "defend", "cost_amount": 2, "effect": "max_hp_up", "value": 2},
 ]
 
