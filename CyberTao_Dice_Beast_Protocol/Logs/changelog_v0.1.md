@@ -1,5 +1,16 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.90 - 2026-04-02
+
+### 修复（卡牌战斗立绘未同步新像素敌方）
+- `BattleCharRenderer.gd`：卡牌战斗角色绘制改为优先复用 `UnitMeshFactory3D` 的像素纹理缓存
+- 玩家立绘改为使用 `_gen_player_hero()` 像素纹理
+- 敌方立绘改为按 `encounter_id` 使用 `_gen_enemy_by_id()` 像素纹理
+
+### 根因
+- v0.1.89 仅重绘了 3D 棋盘单位纹理生成器（UnitMeshFactory3D）
+- 你截图所在的卡牌战斗界面使用的是 `BattleCharRenderer` 独立矢量立绘路径，因此视觉看起来“没变化”
+
 ## v0.1.89 - 2026-04-02
 
 ### 修改（像素美术重设计 P0 - 敌方第一批）

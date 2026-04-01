@@ -1,13 +1,32 @@
 extends RefCounted
 class_name BattleCharRenderer
 
+const UnitMeshFactory3D = preload("res://Scripts/UI3D/UnitMeshFactory3D.gd")
+
+static var _portrait_cache: Dictionary = {}
+
 ## 卡牌战斗角色渲染器 — Cult of the Lamb 风格重绘
 ## 可爱 chibi 比例：超大圆头、小身体、大眼睛、短粗四肢
 ## 用于全屏 CardBattlePanel 的角色展示区域（大尺寸立绘）
 
 # --- 角色绘制入口 ---
 
+static func _draw_pixel_portrait(c: CanvasItem, center: Vector2, tex: Texture2D, scale_f: float, pulse: float, tint: Color) -> void:
+	if tex == null:
+		return
+	var size: float = 140.0 * scale_f
+	var rect: Rect2 = Rect2(center.x - size * 0.5, center.y - size * 0.72, size, size)
+	_draw_glow_circle(c, center + Vector2(0, -10 * scale_f), 42 * scale_f, Color(tint.r, tint.g, tint.b, 0.08 + pulse * 0.04))
+	c.draw_texture_rect(tex, rect, false, Color(1, 1, 1, 1))
+
 static func draw_player_hero(c: CanvasItem, center: Vector2, scale_f: float, pulse: float) -> void:
+	# v0.1.90：优先使用 UnitMeshFactory3D 的像素纹理，保持棋盘/卡牌战斗角色风格一致
+	if not _portrait_cache.has("player"):
+		_portrait_cache["player"] = UnitMeshFactory3D._gen_player_hero()
+	var p_tex: Texture2D = _portrait_cache.get("player", null)
+	if p_tex != null:
+		_draw_pixel_portrait(c, center, p_tex, scale_f, pulse, CyberStyle.HP_PLAYER)
+		return
 	var col: Color = CyberStyle.HP_PLAYER
 	var cyan: Color = CyberStyle.ACCENT_CYAN
 	var s: float = scale_f
@@ -83,6 +102,14 @@ static func draw_player_hero(c: CanvasItem, center: Vector2, scale_f: float, pul
 	_draw_glow_circle(c, center + Vector2(10 * s, 32 * s), 4.5 * s, Color(cyan.r, cyan.g, cyan.b, 0.4 + pulse * 0.15))
 
 static func draw_enemy(c: CanvasItem, center: Vector2, scale_f: float, pulse: float, encounter_id: String) -> void:
+	# v0.1.90：优先使用 UnitMeshFactory3D 的敌方像素纹理（与3D棋盘美术同步）
+	var key: String = "enemy_" + encounter_id
+	if not _portrait_cache.has(key):
+		_portrait_cache[key] = UnitMeshFactory3D._gen_enemy_by_id(encounter_id)
+	var e_tex: Texture2D = _portrait_cache.get(key, null)
+	if e_tex != null:
+		_draw_pixel_portrait(c, center, e_tex, scale_f, pulse, CyberStyle.HP_ENEMY)
+		return
 	if encounter_id == "encounter_01":
 		_draw_sentinel(c, center, scale_f, pulse)
 	elif encounter_id == "encounter_02":
