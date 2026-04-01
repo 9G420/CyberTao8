@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.92 - 2026-04-02
+
+### 修改（3D 远距离单位可读性修复）
+- `UnitMeshFactory3D.gd`：`Sprite3D.fixed_size = true`，单位在拉远时保持可读屏幕尺寸
+- `UnitMeshFactory3D.gd`：`SPRITE_PIXEL_SIZE` 由 `0.009/0.013` 体系上调到 `0.013`，提升中远距离辨识
+
+### 修复
+- **问题**：3D 模式拉远后单位发黑/过小，看不清；需要拉很近才看到形象
+- **处理**：改为固定屏幕尺寸 billboard + 适度放大基准像素尺寸，拉远时不再“缩成黑点”
+
 ## v0.1.91 - 2026-04-02
 
 ### 修改（2D 单位美术同步像素重绘）
