@@ -1,10 +1,10 @@
 # CyberTao: Dice Beast Protocol — AI 员工上岗指令 v3
 
-**发布时间**: 2026-04-01
+**发布时间**: 2026-04-02
 **替代版本**: v1 / v2（旧版本已归档，本文件为唯一有效版本）
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.82
+**当前版本**: v0.1.83
 **引擎**: Godot 4.6.1 | GDScript | renderer: gl_compatibility
 **视口**: 1280x720 | stretch mode: canvas_items
 
@@ -83,7 +83,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
            → 胜利奖励选牌 → HP同步回棋盘 → 返回棋盘继续
 ```
 
-### 2.2 当前完成状态总览（v0.1.60）
+### 2.2 当前完成状态总览（v0.1.83）
 
 **棋盘走位层（全部稳定）**
 
@@ -146,6 +146,7 @@ Logs 目录下还有 v1/v2 版本的 Snapshot 和旧版 Plan 文件，那些是*
 | 数值平衡调优（能量虹吸/毒素/反击/脉冲猎手/赛博巫医/赛博彩票） | v0.1.80 | 稳定 |
 | 全单位程序化像素风格（BGA宝可梦风格，移除spritesheet，12种生物生成器） | v0.1.81 | 稳定 |
 | 2D渲染路径spritesheet移除（BoardView全程序化，修复默认模式BUG） | v0.1.82 | 稳定 |
+| 商店 remove_card 手动选牌 UI（替换自动移除最弱牌） | v0.1.83 | 稳定 |
 
 **卡牌战斗层（第一版完成，持续深化）**
 
@@ -381,7 +382,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 说明 |
 |------|------|
-| **商店 remove_card 手动选择UI** | 替换自动选最弱牌为弹出牌组选择界面 |
+| **更多遭遇/Boss** | 丰富战斗多样性，增加中后期内容 |
 
 ### 🟡 中优先级
 
@@ -399,6 +400,7 @@ BoardView3D：        Scripts/UI3D/BoardView3D.gd           ✅ v0.1.71 新增
 
 | 任务 | 版本 |
 |------|------|
+| 商店 remove_card 手动选牌 UI（替换自动移除最弱牌） | v0.1.83 |
 | 全单位程序化像素风格（BGA宝可梦风格，移除spritesheet，12种程序化生物） | v0.1.81 |
 | 2D渲染路径spritesheet移除（BoardView全程序化，修复默认模式仍显示旧插图BUG） | v0.1.82 |
 | 数值平衡调优（能量虹吸/毒素/反击/脉冲猎手/赛博巫医/赛博彩票） | v0.1.80 |

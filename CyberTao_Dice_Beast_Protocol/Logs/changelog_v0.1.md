@@ -1,5 +1,24 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.83 - 2026-04-02
+
+### 新增
+- **商店数据清洗手动选牌 UI**：购买 `remove_card` 时不再自动移除最弱牌，改为弹出卡牌列表，由玩家手动选择要移除的卡牌
+- ShopPanel 新增移牌选择弹窗（遮罩层 + 滚动列表 + 单卡移除按钮 + 取消按钮）
+
+### 修改
+- `ShopPanel.gd`：`remove_card` 商品描述更新为“手动选择移除牌组中的1张牌”
+- `ShopPanel.gd`：购买执行接口 `_execute_purchase(item, remove_deck_index=-1)` 增加可选 deck index 参数，用于手动选牌结算
+- `ShopPanel.gd`：购买反馈统一走 `_apply_purchase_result()`，成功/失败提示与颜色反馈保持一致
+- `ShopPanel.gd`：`_refresh_display()` 不再清空状态文本，避免刚购买完提示被立即覆盖
+
+### 修复
+- **交互缺陷**：`remove_card` 原实现按 value/cost 自动删“最弱牌”，剥夺玩家构筑决策；现改为玩家显式选择，符合商店策略设计目标
+
+### 备注
+- 扣费时机保持为“确认移除后再扣费”，取消选择不会消耗 crest
+- 保留原限制：牌组 <=3 张时，`remove_card` 不可购买
+
 ## v0.1.82 - 2026-04-01
 
 ### 修改（2D 渲染路径 spritesheet 移除 — 修复默认模式仍显示旧插图 BUG）

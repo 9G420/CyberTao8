@@ -15,7 +15,7 @@ const SHOP_ITEM_POOL: Array = [
 	{"id": "def_boost", "name": "防御芯片", "desc": "本层 DEF+1", "cost_type": "defend", "cost_amount": 1, "effect": "def_boost", "value": 1},
 	{"id": "energy_up", "name": "能量核心", "desc": "最大能量+1（上限5）", "cost_type": "skill", "cost_amount": 2, "effect": "energy_up", "value": 1},
 	{"id": "add_card", "name": "数据芯片", "desc": "随机获得1张卡牌加入牌组", "cost_type": "trick", "cost_amount": 1, "effect": "add_card", "value": 1},
-	{"id": "remove_card", "name": "数据清洗", "desc": "移除牌组中最弱的1张牌", "cost_type": "skill", "cost_amount": 1, "effect": "remove_card", "value": 1},
+	{"id": "remove_card", "name": "数据清洗", "desc": "手动选择移除牌组中的1张牌", "cost_type": "skill", "cost_amount": 1, "effect": "remove_card", "value": 1},
 	{"id": "random_crest", "name": "赛博彩票", "desc": "随机获得2个crest资源", "cost_type": "move", "cost_amount": 2, "effect": "random_crest", "value": 2},
 	{"id": "max_hp_up", "name": "生体强化", "desc": "最大HP+2（同时回复2HP）", "cost_type": "defend", "cost_amount": 2, "effect": "max_hp_up", "value": 2},
 ]
@@ -42,6 +42,14 @@ var _item_cost_labels: Array[Label] = []
 var _status_label: Label
 var _close_button: Button
 
+# --- remove_card 手动选择 UI ---
+var _remove_picker_overlay: ColorRect
+var _remove_picker_panel: Panel
+var _remove_picker_title: Label
+var _remove_picker_list: VBoxContainer
+var _remove_picker_cancel_btn: Button
+var _pending_remove_item: Dictionary = {}
+
 func _ready() -> void:
 	visible = false
 	custom_minimum_size = Vector2(480, 380)
@@ -49,6 +57,7 @@ func _ready() -> void:
 	pivot_offset = Vector2(240, 190)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_ui()
+	_build_remove_picker_ui()
 
 # --- 公开方法 ---
 
@@ -58,6 +67,7 @@ func open_shop(unit_id: String, dice_mgr, unit_mgr, card_battle_ctrl) -> void:
 	_unit_manager = unit_mgr
 	_card_battle_ctrl = card_battle_ctrl
 	_current_items = _pick_random_items()
+	_status_label.text = ""
 	_refresh_display()
 	UITransitions.popup(self)
 
@@ -109,7 +119,6 @@ func _refresh_display() -> void:
 				_item_cost_labels[i].add_theme_color_override("font_color", Color(0.5, 0.5, 0.5, 0.7))
 		else:
 			_item_containers[i].visible = false
-	_status_label.text = ""
 
 # --- 购买判定 ---
 
@@ -143,7 +152,7 @@ func _can_purchase(item: Dictionary) -> bool:
 
 # --- 购买执行 ---
 
-func _execute_purchase(item: Dictionary) -> String:
+func _execute_purchase(item: Dictionary, remove_deck_index: int = -1) -> String:
 	var cost: Dictionary = {String(item["cost_type"]): int(item["cost_amount"])}
 	if not _dice_manager.pay(cost):
 		return "资源不足"
@@ -199,18 +208,10 @@ func _execute_purchase(item: Dictionary) -> String:
 			var deck: Array = _card_battle_ctrl.persistent_deck
 			if deck.size() <= 3:
 				return "牌组过小"
-			# 移除"最弱"卡牌：按 value/cost 比值最低的
-			var worst_idx: int = 0
-			var worst_score: float = 999.0
-			for i in range(deck.size()):
-				var c: Dictionary = deck[i]
-				var c_cost: int = max(1, int(c.get("cost", 1)))
-				var score: float = float(int(c.get("value", 0))) / float(c_cost)
-				if score < worst_score:
-					worst_score = score
-					worst_idx = i
-			var removed: Dictionary = deck[worst_idx]
-			deck.remove_at(worst_idx)
+			if remove_deck_index < 0 or remove_deck_index >= deck.size():
+				return "未选择卡牌"
+			var removed: Dictionary = deck[remove_deck_index]
+			deck.remove_at(remove_deck_index)
 			return "移除「" + String(removed["name"]) + "」"
 		"random_crest":
 			var crest_types: Array = ["move", "attack", "defend", "skill", "trick", "summon"]
@@ -238,16 +239,88 @@ func _on_buy_pressed(index: int) -> void:
 	if index < 0 or index >= _current_items.size():
 		return
 	var item: Dictionary = _current_items[index]
+	if String(item.get("effect", "")) == "remove_card":
+		_open_remove_picker(item)
+		return
 	var result: String = _execute_purchase(item)
-	if result != "" and result != "资源不足" and result != "单位不存在" and result != "无效":
+	_apply_purchase_result(item, result)
+	_refresh_display()
+
+func _apply_purchase_result(item: Dictionary, result: String) -> void:
+	if result != "" and result != "资源不足" and result != "单位不存在" and result != "无效" and result != "未选择卡牌":
 		_status_label.text = "购买成功：" + String(item["name"]) + "（" + result + "）"
 		_status_label.add_theme_color_override("font_color", CyberStyle.NEON_TEAL)
 	else:
 		_status_label.text = "购买失败：" + result
 		_status_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
+
+func _open_remove_picker(item: Dictionary) -> void:
+	if _card_battle_ctrl == null:
+		_status_label.text = "购买失败：无效"
+		_status_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
+		return
+	if not _can_purchase(item):
+		_status_label.text = "购买失败：条件不足"
+		_status_label.add_theme_color_override("font_color", CyberStyle.ACCENT_ORANGE)
+		return
+	_pending_remove_item = item.duplicate()
+	_refresh_remove_picker_list()
+	_remove_picker_overlay.visible = true
+
+func _refresh_remove_picker_list() -> void:
+	for child in _remove_picker_list.get_children():
+		child.queue_free()
+	if _card_battle_ctrl == null:
+		return
+	var deck: Array = _card_battle_ctrl.persistent_deck
+	for i in range(deck.size()):
+		var card: Dictionary = deck[i]
+		var row: HBoxContainer = HBoxContainer.new()
+		row.custom_minimum_size = Vector2(0, 30)
+		_remove_picker_list.add_child(row)
+
+		var info: Label = Label.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.text = _format_card_entry(card)
+		info.add_theme_font_size_override("font_size", 12)
+		info.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
+		row.add_child(info)
+
+		var remove_btn: Button = Button.new()
+		remove_btn.text = "移除"
+		remove_btn.custom_minimum_size = Vector2(64, 26)
+		CyberStyle.style_button(remove_btn, "orange")
+		if deck.size() <= 3:
+			remove_btn.disabled = true
+		var idx: int = i
+		remove_btn.pressed.connect(func(): _on_remove_card_selected(idx))
+		row.add_child(remove_btn)
+
+func _format_card_entry(card: Dictionary) -> String:
+	var card_name: String = String(card.get("name", "未知卡牌"))
+	var cost: int = int(card.get("cost", 1))
+	var value: int = int(card.get("value", 0))
+	var type_label: String = String(card.get("type", ""))
+	if bool(card.get("upgraded", false)):
+		card_name += "★"
+	return card_name + "   " + str(cost) + "E | " + type_label + " " + str(value)
+
+func _on_remove_card_selected(deck_index: int) -> void:
+	if _pending_remove_item.is_empty():
+		return
+	var result: String = _execute_purchase(_pending_remove_item, deck_index)
+	_apply_purchase_result(_pending_remove_item, result)
+	_pending_remove_item = {}
+	_remove_picker_overlay.visible = false
 	_refresh_display()
 
+func _on_remove_picker_cancel_pressed() -> void:
+	_pending_remove_item = {}
+	_remove_picker_overlay.visible = false
+
 func _on_close_pressed() -> void:
+	_pending_remove_item = {}
+	_remove_picker_overlay.visible = false
 	UITransitions.close(self)
 	emit_signal("shop_closed")
 
@@ -270,6 +343,65 @@ func _crest_display_name(crest_type: String) -> String:
 	return crest_type
 
 # --- UI 构建 ---
+
+func _build_remove_picker_ui() -> void:
+	_remove_picker_overlay = ColorRect.new()
+	_remove_picker_overlay.visible = false
+	_remove_picker_overlay.position = Vector2(0, 0)
+	_remove_picker_overlay.size = Vector2(480, 380)
+	_remove_picker_overlay.color = Color(0.0, 0.0, 0.0, 0.7)
+	_remove_picker_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_remove_picker_overlay)
+
+	_remove_picker_panel = Panel.new()
+	_remove_picker_panel.position = Vector2(30, 36)
+	_remove_picker_panel.size = Vector2(420, 308)
+	_remove_picker_panel.add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.ACCENT_MAGENTA, 8))
+	_remove_picker_overlay.add_child(_remove_picker_panel)
+
+	_remove_picker_title = Label.new()
+	_remove_picker_title.text = "选择要移除的卡牌"
+	_remove_picker_title.position = Vector2(0, 10)
+	_remove_picker_title.size = Vector2(420, 24)
+	_remove_picker_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_remove_picker_title.add_theme_font_size_override("font_size", 16)
+	_remove_picker_title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
+	_remove_picker_panel.add_child(_remove_picker_title)
+
+	var picker_hint: Label = Label.new()
+	picker_hint.text = "数据清洗：选择 1 张卡牌永久移除"
+	picker_hint.position = Vector2(0, 34)
+	picker_hint.size = Vector2(420, 18)
+	picker_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	picker_hint.add_theme_font_size_override("font_size", 11)
+	picker_hint.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
+	_remove_picker_panel.add_child(picker_hint)
+
+	var list_bg: Panel = Panel.new()
+	list_bg.position = Vector2(14, 58)
+	list_bg.size = Vector2(392, 206)
+	list_bg.add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.NEON_TEAL, 4))
+	_remove_picker_panel.add_child(list_bg)
+
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.position = Vector2(6, 6)
+	scroll.size = Vector2(380, 194)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	list_bg.add_child(scroll)
+
+	_remove_picker_list = VBoxContainer.new()
+	_remove_picker_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_remove_picker_list.add_theme_constant_override("separation", 4)
+	scroll.add_child(_remove_picker_list)
+
+	_remove_picker_cancel_btn = Button.new()
+	_remove_picker_cancel_btn.text = "取消"
+	_remove_picker_cancel_btn.position = Vector2(160, 272)
+	_remove_picker_cancel_btn.size = Vector2(100, 28)
+	_remove_picker_cancel_btn.add_theme_font_size_override("font_size", 13)
+	_remove_picker_cancel_btn.pressed.connect(_on_remove_picker_cancel_pressed)
+	CyberStyle.style_button(_remove_picker_cancel_btn, "cyan")
+	_remove_picker_panel.add_child(_remove_picker_cancel_btn)
 
 func _build_ui() -> void:
 	add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.NEON_TEAL, 8))
