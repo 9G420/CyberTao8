@@ -1,43 +1,52 @@
 ﻿# Mulerun 工作报告
 
 **日期**: 2026-04-02
-**版本**: v0.1.104
+**版本**: v0.1.105
 **分支**: `codex/dice-beast-protocol`
 
 ## 本轮任务
-修复核心日志文件的编码可读性，并同步最新交接基线。
+
+清理交接文档遗留问题，重写当前接手主路径所依赖的核心文档，并同步最新交接基线。
 
 ## 根因目标
-近期接手文档存在明显乱码，导致实际上岗与项目分析成本偏高。本轮优先修复最常用日志文件，降低接手误判风险，服务于整个项目的持续推进。
+
+虽然 v0.1.104 已修复部分核心日志的可读性，但 `AI Guide`、`Art Strategy` 与 `Snapshot v3` 的正文仍存在残留乱码或严重过时问题。继续在这些文档上局部缝补，会让接手者同时看到旧事实、坏字和新提示，真实成本仍然偏高。本轮目标是把“当前接手一定会读到的文档”重写为可直接执行的版本。
 
 ## 修改文件
+
 | 文件 | 修改内容 |
 |------|----------|
-| Logs/AI_Employee_Guide_v3.md | 进行保守编码修复，重写顶部说明，明确当前执行应以 Handoff / Work Report / Changelog 为准 |
-| Logs/Art_Beautification_Strategy_zh.md | 进行保守编码修复，补充文档使用说明 |
-| Logs/Mulerun_Work_Report.md | 覆盖为本轮工作报告 |
-| Logs/Handoff_Package_latest.md | 同步当前版本与风险状态说明 |
-| Logs/changelog_v0.1.md | 追加 v0.1.104 日志条目 |
-| Logs/CyberTao_Migration_Snapshot_zh_v3.md | 将顶部提示中的项目真实基线同步到 v0.1.104 |
+| `Logs/AI_Employee_Guide_v3.md` | 重写为当前基线的上岗指令，清理残留乱码，明确接手顺序与交付规则 |
+| `Logs/Art_Beautification_Strategy_zh.md` | 重写为当前版本的美术与表现策略，不再停留在旧阶段路线图 |
+| `Logs/CyberTao_Migration_Snapshot_zh_v3.md` | 重写为当前版本架构快照，同步模块、内容、风险与建议 |
+| `Logs/Handoff_Package_latest.md` | 更新到 v0.1.105，记录本轮已消除的交接风险 |
+| `Logs/Mulerun_Work_Report.md` | 覆盖为本轮工作报告 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.105，并修复最近几个版本条目的可读性 |
 
 ## 实现内容
-- 对 3 份核心日志执行反向转码，恢复主要中文内容可读性。
-- 重写 AI 上岗指令和美术策略文档的顶部说明，避免接手者继续把旧版本正文当成绝对真相。
-- 将最新交接基线推进到 v0.1.104，保证后续接手时优先入口一致。
+
+- 不再对三份核心文档做局部补丁，而是直接按当前代码基线重写。
+- 将接手主路径统一为 `Guide / Handoff / Work Report / changelog / Snapshot`。
+- 将 `Snapshot v3` 从“正文过时、顶部提醒兜底”的状态，改回“正文可信”的结构快照。
+- 已将最近几版 changelog 的顶端条目同步为干净中文，避免新接手者一打开就碰到乱码。
 
 ## 接口变更
-无代码接口变更；本轮仅调整日志与交接文档。
+
+无代码接口变更；本轮仅调整交接文档与版本记录。
 
 ## 测试确认
-- 回读 `AI_Employee_Guide_v3.md`、`Art_Beautification_Strategy_zh.md`、`Mulerun_Work_Report.md`
-- 确认关键标题、版本号、说明文字可正常阅读
-- 确认 Git 工作区仅包含本轮日志改动
+
+- 回读三份重写文档，确认标题、版本、模块说明和接手路径一致。
+- 用关键词搜索检查目标文档中是否仍残留明显乱码模式或问号占位。
+- 检查 Git 工作区只包含本轮文档改动。
 
 ## 剩余问题
-- AI Guide 与 Art Strategy 主体仍残留少量历史损坏字符 `?`
-- `Snapshot v3` 正文主体仍停留在较早版本，目前只补了顶部提示，没有完整重写
+
+- 更早历史 changelog 段落仍可能保留归档时期的编码遗留，本轮优先处理最新接手路径。
+- `Main.gd` 入口层膨胀问题仍在，本轮没有处理代码结构。
 
 ## 建议下一步
-1. 单独开一轮“日志精修”，继续清理 `AI_Employee_Guide_v3.md` 与 `Art_Beautification_Strategy_zh.md` 的正文残留坏字。
-2. 若要继续代码推进，优先处理 `Main.gd` 入口层持续膨胀问题。
-3. 后续每轮提交后都保持 Handoff / Work Report / Changelog 三处同步，避免再次出现接手基线漂移。
+
+1. 继续处理 `Main.gd` 的拆分，把入口协调层从纯中转逻辑里减负。
+2. 若继续推进玩法，优先接通第二个可玩单位，而不是只停留在资源文件层。
+3. 若继续推进表现层，优先补 2D / 3D 反馈统一，而不是继续堆外场装饰。
