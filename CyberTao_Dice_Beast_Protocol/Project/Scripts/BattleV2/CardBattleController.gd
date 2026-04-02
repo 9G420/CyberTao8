@@ -1,6 +1,8 @@
 extends Node
 class_name CardBattleController
 
+const CardBattleData = preload("res://Scripts/BattleV2/CardBattleData.gd")
+
 ## 卡牌战斗状态机（v0.1.79：卡牌战斗层深化）
 ## 能量系统 + 双牌堆抽牌 + 5 种敌方行为模式 + 敌方意图预告
 ## 持久牌组 + 战斗胜利选牌构筑
@@ -68,117 +70,17 @@ const REWARD_CHOICES: int = 3
 # ======== 牌库定义 ========
 
 static func _build_deck() -> Array[Dictionary]:
-	var deck: Array[Dictionary] = []
-	# 斩击 x2 (cost 1, 3 伤害)
-	deck.append({"name": "斩击", "type": "attack", "cost": 1, "value": 3, "upgraded": false})
-	deck.append({"name": "斩击", "type": "attack", "cost": 1, "value": 3, "upgraded": false})
-	# 重击 x1 (cost 2, 5 伤害)
-	deck.append({"name": "重击", "type": "attack", "cost": 2, "value": 5, "upgraded": false})
-	# 防御 x2 (cost 1, 减伤 2)
-	deck.append({"name": "防御", "type": "defend", "cost": 1, "value": 2, "upgraded": false})
-	deck.append({"name": "防御", "type": "defend", "cost": 1, "value": 2, "upgraded": false})
-	# 修复 x1 (cost 1, 回复 2)
-	deck.append({"name": "修复", "type": "heal", "cost": 1, "value": 2, "upgraded": false})
-	# 连斩 x2 (cost 1, 2 伤害)
-	deck.append({"name": "连斩", "type": "attack", "cost": 1, "value": 2, "upgraded": false})
-	deck.append({"name": "连斩", "type": "attack", "cost": 1, "value": 2, "upgraded": false})
-	# 猛攻 x1 (cost 3, 8 伤害)
-	deck.append({"name": "猛攻", "type": "attack", "cost": 3, "value": 8, "upgraded": false})
-	# 急救 x1 (cost 2, 回复 4)
-	deck.append({"name": "急救", "type": "heal", "cost": 2, "value": 4, "upgraded": false})
-	return deck
+	return CardBattleData.build_starter_deck()
 
 # ======== 奖励卡池（不在初始牌组中的可获得卡牌） ========
 
 static func _build_reward_pool() -> Array[Dictionary]:
-	var pool: Array[Dictionary] = []
-	# 穿刺 (cost 2, 4 伤害，无视敌方防御)
-	pool.append({"name": "穿刺", "type": "pierce", "cost": 2, "value": 4, "upgraded": false})
-	# 铁壁 (cost 2, 防御 4)
-	pool.append({"name": "铁壁", "type": "defend", "cost": 2, "value": 4, "upgraded": false})
-	# 吸血斩 (cost 2, 3 伤害 + 回复 1)
-	pool.append({"name": "吸血斩", "type": "lifesteal", "cost": 2, "value": 3, "heal_value": 1, "upgraded": false})
-	# 超频修复 (cost 3, 回复 6)
-	pool.append({"name": "超频修复", "type": "heal", "cost": 3, "value": 6, "upgraded": false})
-	# 电弧 (cost 1, 2 伤害 + 下回合敌方 ATK-1)
-	pool.append({"name": "电弧", "type": "shock", "cost": 1, "value": 2, "upgraded": false})
-	# 强化斩击 (cost 1, 4 伤害)
-	pool.append({"name": "强化斩击", "type": "attack", "cost": 1, "value": 4, "upgraded": false})
-	# 双重防御 (cost 1, 防御 3)
-	pool.append({"name": "双重防御", "type": "defend", "cost": 1, "value": 3, "upgraded": false})
-	# 毒素注入 (cost 1, 施加毒素 2 回合)
-	pool.append({"name": "毒素注入", "type": "poison", "cost": 1, "value": 2, "upgraded": false})
-	# 能量虹吸 (cost 1, 抽 2 张牌)
-	pool.append({"name": "能量虹吸", "type": "draw", "cost": 1, "value": 2, "upgraded": false})
-	# 反击 (cost 1, 防御 1 + 反击 2)
-	pool.append({"name": "反击", "type": "counter", "cost": 1, "value": 2, "def_value": 1, "upgraded": false})
-	# 裂空斩 (cost 2, 3 连击各 2 伤害)
-	pool.append({"name": "裂空斩", "type": "combo", "cost": 2, "value": 2, "hits": 3, "upgraded": false})
-	# 初始牌组中的牌也可以作为奖励出现
-	pool.append({"name": "斩击", "type": "attack", "cost": 1, "value": 3, "upgraded": false})
-	pool.append({"name": "重击", "type": "attack", "cost": 2, "value": 5, "upgraded": false})
-	pool.append({"name": "防御", "type": "defend", "cost": 1, "value": 2, "upgraded": false})
-	pool.append({"name": "修复", "type": "heal", "cost": 1, "value": 2, "upgraded": false})
-	pool.append({"name": "猛攻", "type": "attack", "cost": 3, "value": 8, "upgraded": false})
-	pool.append({"name": "急救", "type": "heal", "cost": 2, "value": 4, "upgraded": false})
-	return pool
+	return CardBattleData.build_reward_pool()
 
 # ======== 遭遇敌方数据 ========
 
 static func get_encounter_enemy_data(enc_id: String, current_floor: int = 1) -> Dictionary:
-	var base: Dictionary = {}
-	match enc_id:
-		"encounter_01":
-			base = {
-				"name": "异常哨兵", "hp": 8, "atk": 2,
-				"pattern": ["attack", "attack", "defend_attack", "heavy_attack"],
-			}
-		"encounter_02":
-			base = {
-				"name": "赛博游魂", "hp": 6, "atk": 3,
-				"pattern": ["attack", "heavy_attack", "attack"],
-			}
-		"encounter_03":
-			base = {
-				"name": "暗网爬虫", "hp": 12, "atk": 1,
-				"pattern": ["defend_attack", "defend_attack", "heavy_attack", "attack"],
-			}
-		"encounter_04":
-			base = {
-				"name": "脉冲猎手", "hp": 5, "atk": 4,
-				"pattern": ["attack", "heavy_attack", "attack"],
-			}
-		"encounter_05":
-			base = {
-				"name": "数据幽灵", "hp": 9, "atk": 2,
-				"pattern": ["attack", "defend_attack", "heavy_attack", "heavy_attack", "attack"],
-			}
-		"encounter_06":
-			base = {
-				"name": "量子分裂体", "hp": 7, "atk": 2,
-				"pattern": ["attack", "buff", "multi_attack", "attack", "heavy_attack"],
-			}
-		"encounter_07":
-			base = {
-				"name": "赛博巫医", "hp": 9, "atk": 2,
-				"pattern": ["buff", "defend_attack", "heal", "heavy_attack", "attack"],
-			}
-		"encounter_boss_01":
-			base = {
-				"name": "零号协议", "hp": 20, "atk": 3, "is_boss": true,
-				"pattern": ["attack", "defend_attack", "heavy_attack", "heal", "attack", "mega_attack"],
-			}
-		_:
-			base = {
-				"name": "未知敌人", "hp": 5, "atk": 2,
-				"pattern": ["attack", "attack"],
-			}
-	# 层间难度缩放：第1层=基准，第2层 HP+30%/ATK+1，第3层 HP+60%/ATK+2
-	var floor_offset: int = max(0, current_floor - 1)
-	if floor_offset > 0:
-		base["hp"] = int(ceil(float(int(base["hp"])) * (1.0 + 0.3 * float(floor_offset))))
-		base["atk"] = int(base["atk"]) + floor_offset
-	return base
+	return CardBattleData.get_encounter_enemy_data(enc_id, current_floor)
 
 # ======== 战斗流程 ========
 
@@ -551,54 +453,7 @@ func get_reward_options() -> Array[Dictionary]:
 ## 返回指定卡牌的升级版本（值提升，费用不变，名称加"+"后缀）
 ## 升级规则参考 STS：数值提升约 30%~50%，费用不变
 static func get_card_upgrade(card: Dictionary) -> Dictionary:
-	var up: Dictionary = card.duplicate()
-	up["upgraded"] = true
-	var base_name: String = String(card["name"])
-	up["name"] = base_name + "+"
-	match base_name:
-		"斩击":
-			up["value"] = 4
-		"重击":
-			up["value"] = 7
-		"防御":
-			up["value"] = 3
-		"修复":
-			up["value"] = 3
-		"连斩":
-			up["value"] = 3
-		"猛攻":
-			up["value"] = 11
-		"急救":
-			up["value"] = 6
-		"穿刺":
-			up["value"] = 6
-		"铁壁":
-			up["value"] = 6
-		"吸血斩":
-			up["value"] = 4
-			up["heal_value"] = 2
-		"超频修复":
-			up["value"] = 9
-		"电弧":
-			up["value"] = 3
-		"强化斩击":
-			up["value"] = 6
-		"双重防御":
-			up["value"] = 4
-		"毒素注入":
-			up["value"] = 3
-		"能量虹吸":
-			up["value"] = 3
-		"反击":
-			up["value"] = 3
-			up["def_value"] = 2
-		"裂空斩":
-			up["value"] = 3
-			up["hits"] = 3
-		_:
-			# 未知牌：默认 value+1
-			up["value"] = int(card.get("value", 0)) + 1
-	return up
+	return CardBattleData.get_card_upgrade(card)
 
 ## 获取持久牌组中所有可升级卡牌的索引列表
 func get_upgradeable_indices() -> Array[int]:

@@ -181,8 +181,11 @@ func _spawn_unit_from_data(res_path: String, cell: Vector2i) -> void:
 		}, cell)
 
 func _spawn_player_units() -> void:
-	# 玩家主角：刀盾狗（前排坦克，路径适性）— 唯一出场单位
+	if floor_manager != null:
+		floor_manager.spawn_initial_player_units()
+		return
 	_spawn_unit_from_data("res://Data/Units/blade_shield_dog.tres", Vector2i(0, 10))
+	_spawn_unit_from_data("res://Data/Units/hacker_fox.tres", Vector2i(1, 11))
 
 # ─── 格子效果薄代理（委托 CellEffectHandler，BFC 负责信号和结算） ───
 

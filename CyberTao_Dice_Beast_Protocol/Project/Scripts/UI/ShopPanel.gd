@@ -35,9 +35,12 @@ var _current_items: Array = []
 var _title_label: Label
 var _crest_info_label: Label
 var _item_containers: Array[Control] = []
+var _item_panels: Array[Panel] = []
+var _item_tag_labels: Array[Label] = []
 var _buy_buttons: Array[Button] = []
 var _item_name_labels: Array[Label] = []
 var _item_desc_labels: Array[Label] = []
+var _item_meta_labels: Array[Label] = []
 var _item_cost_labels: Array[Label] = []
 var _status_label: Label
 var _close_button: Button
@@ -52,9 +55,9 @@ var _pending_remove_item: Dictionary = {}
 
 func _ready() -> void:
 	visible = false
-	custom_minimum_size = Vector2(480, 380)
-	size = Vector2(480, 380)
-	pivot_offset = Vector2(240, 190)
+	custom_minimum_size = Vector2(520, 430)
+	size = Vector2(520, 430)
+	pivot_offset = Vector2(260, 215)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_ui()
 	_build_remove_picker_ui()
@@ -105,16 +108,23 @@ func _refresh_display() -> void:
 		if i < _current_items.size():
 			var item: Dictionary = _current_items[i]
 			_item_containers[i].visible = true
+			var can_buy: bool = _can_purchase(item)
+			var accent: Color = _item_accent(item)
 			_item_name_labels[i].text = String(item["name"])
 			_item_desc_labels[i].text = String(item["desc"])
+			_item_meta_labels[i].text = _item_meta_text(item)
+			_item_tag_labels[i].text = _item_category_label(item)
 			var cost_type: String = String(item["cost_type"])
 			var cost_amount: int = int(item["cost_amount"])
-			_item_cost_labels[i].text = _crest_display_name(cost_type) + " x" + str(cost_amount)
-			# 检查是否可购买
-			var can_buy: bool = _can_purchase(item)
+			_item_cost_labels[i].text = "消耗 " + _crest_display_name(cost_type) + " ×" + str(cost_amount)
 			_buy_buttons[i].disabled = not can_buy
+			_item_panels[i].add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(accent if can_buy else Color(0.24, 0.26, 0.30, 0.55), 8))
+			_item_name_labels[i].add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY if can_buy else CyberStyle.TEXT_MUTED)
+			_item_desc_labels[i].add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY if can_buy else CyberStyle.TEXT_MUTED)
+			_item_meta_labels[i].add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY if can_buy else CyberStyle.TEXT_MUTED)
+			_item_tag_labels[i].add_theme_color_override("font_color", accent if can_buy else CyberStyle.TEXT_MUTED)
 			if can_buy:
-				_item_cost_labels[i].add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
+				_item_cost_labels[i].add_theme_color_override("font_color", accent)
 			else:
 				_item_cost_labels[i].add_theme_color_override("font_color", Color(0.5, 0.5, 0.5, 0.7))
 		else:
@@ -272,38 +282,18 @@ func _refresh_remove_picker_list() -> void:
 		child.queue_free()
 	if _card_battle_ctrl == null:
 		return
-	var deck: Array = _card_battle_ctrl.persistent_deck
-	for i in range(deck.size()):
-		var card: Dictionary = deck[i]
-		var row: HBoxContainer = HBoxContainer.new()
-		row.custom_minimum_size = Vector2(0, 30)
+	var deck: Array[Dictionary] = _card_battle_ctrl.persistent_deck
+	var entries: Array[Dictionary] = CardRenderer.build_grouped_deck_entries(deck)
+	for entry in entries:
+		var row: Panel = CardRenderer.create_card_row(entry.get("card", {}), {
+			"width": 372.0,
+			"count": int(entry.get("count", 1)),
+			"interactive": true,
+			"callback": Callable(self, "_on_remove_card_selected"),
+			"index": int(entry.get("first_index", -1)),
+			"footer_text": "点击移除 1 张",
+		})
 		_remove_picker_list.add_child(row)
-
-		var info: Label = Label.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.text = _format_card_entry(card)
-		info.add_theme_font_size_override("font_size", 12)
-		info.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
-		row.add_child(info)
-
-		var remove_btn: Button = Button.new()
-		remove_btn.text = "移除"
-		remove_btn.custom_minimum_size = Vector2(64, 26)
-		CyberStyle.style_button(remove_btn, "orange")
-		if deck.size() <= 3:
-			remove_btn.disabled = true
-		var idx: int = i
-		remove_btn.pressed.connect(func(): _on_remove_card_selected(idx))
-		row.add_child(remove_btn)
-
-func _format_card_entry(card: Dictionary) -> String:
-	var card_name: String = String(card.get("name", "未知卡牌"))
-	var cost: int = int(card.get("cost", 1))
-	var value: int = int(card.get("value", 0))
-	var type_label: String = String(card.get("type", ""))
-	if bool(card.get("upgraded", false)):
-		card_name += "★"
-	return card_name + "   " + str(cost) + "E | " + type_label + " " + str(value)
 
 func _on_remove_card_selected(deck_index: int) -> void:
 	if _pending_remove_item.is_empty():
@@ -342,27 +332,79 @@ func _crest_display_name(crest_type: String) -> String:
 			return "召"
 	return crest_type
 
+func _item_category_label(item: Dictionary) -> String:
+	match String(item.get("effect", "")):
+		"heal", "max_hp_up":
+			return "修复"
+		"atk_boost", "def_boost":
+			return "战斗模组"
+		"energy_up":
+			return "能量成长"
+		"add_card", "remove_card":
+			return "构筑操作"
+		"random_crest":
+			return "资源补给"
+	return "商店物资"
+
+func _item_meta_text(item: Dictionary) -> String:
+	match String(item.get("effect", "")):
+		"heal":
+			return "即时恢复生命值，适合残局补给"
+		"atk_boost":
+			return "本层有效，提升当前单位输出"
+		"def_boost":
+			return "本层有效，提升当前单位承伤"
+		"energy_up":
+			return "永久提升能量上限，便于后续出牌"
+		"add_card":
+			return "来源：奖励卡池随机牌，共 " + str(CardBattleController._build_reward_pool().size()) + " 种"
+		"remove_card":
+			return "来源：当前牌组，点击后选择 1 张进行精简"
+		"random_crest":
+			return "立刻补充随机 crest 资源"
+		"max_hp_up":
+			return "永久提升最大生命，并同步回复"
+	return "标准商店商品"
+
+func _item_accent(item: Dictionary) -> Color:
+	match String(item.get("effect", "")):
+		"heal", "max_hp_up":
+			return CyberStyle.TEXT_SUCCESS
+		"atk_boost":
+			return CyberStyle.ACCENT_ORANGE
+		"def_boost":
+			return CyberStyle.ACCENT_CYAN
+		"energy_up":
+			return CyberStyle.ACCENT_MAGENTA
+		"add_card":
+			return CardRenderer.get_type_color("draw")
+		"remove_card":
+			return CyberStyle.TEXT_WARN
+		"random_crest":
+			return CyberStyle.NEON_TEAL
+	return CyberStyle.TEXT_CYAN
+
 # --- UI 构建 ---
 
 func _build_remove_picker_ui() -> void:
 	_remove_picker_overlay = ColorRect.new()
 	_remove_picker_overlay.visible = false
 	_remove_picker_overlay.position = Vector2(0, 0)
-	_remove_picker_overlay.size = Vector2(480, 380)
+	_remove_picker_overlay.size = Vector2(520, 430)
 	_remove_picker_overlay.color = Color(0.0, 0.0, 0.0, 0.7)
 	_remove_picker_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_remove_picker_overlay)
 
 	_remove_picker_panel = Panel.new()
-	_remove_picker_panel.position = Vector2(30, 36)
-	_remove_picker_panel.size = Vector2(420, 308)
+	_remove_picker_panel.position = Vector2(28, 36)
+	_remove_picker_panel.size = Vector2(464, 340)
 	_remove_picker_panel.add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.ACCENT_MAGENTA, 8))
 	_remove_picker_overlay.add_child(_remove_picker_panel)
 
 	_remove_picker_title = Label.new()
 	_remove_picker_title.text = "选择要移除的卡牌"
 	_remove_picker_title.position = Vector2(0, 10)
-	_remove_picker_title.size = Vector2(420, 24)
+	_remove_picker_title.size = Vector2(464, 24)
 	_remove_picker_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_remove_picker_title.add_theme_font_size_override("font_size", 16)
 	_remove_picker_title.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
@@ -371,32 +413,32 @@ func _build_remove_picker_ui() -> void:
 	var picker_hint: Label = Label.new()
 	picker_hint.text = "数据清洗：选择 1 张卡牌永久移除"
 	picker_hint.position = Vector2(0, 34)
-	picker_hint.size = Vector2(420, 18)
+	picker_hint.size = Vector2(464, 18)
 	picker_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	picker_hint.add_theme_font_size_override("font_size", 11)
 	picker_hint.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
 	_remove_picker_panel.add_child(picker_hint)
 
 	var list_bg: Panel = Panel.new()
-	list_bg.position = Vector2(14, 58)
-	list_bg.size = Vector2(392, 206)
+	list_bg.position = Vector2(18, 62)
+	list_bg.size = Vector2(428, 222)
 	list_bg.add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.NEON_TEAL, 4))
 	_remove_picker_panel.add_child(list_bg)
 
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.position = Vector2(6, 6)
-	scroll.size = Vector2(380, 194)
+	scroll.size = Vector2(416, 210)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	list_bg.add_child(scroll)
 
 	_remove_picker_list = VBoxContainer.new()
 	_remove_picker_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_remove_picker_list.add_theme_constant_override("separation", 4)
+	_remove_picker_list.add_theme_constant_override("separation", 8)
 	scroll.add_child(_remove_picker_list)
 
 	_remove_picker_cancel_btn = Button.new()
 	_remove_picker_cancel_btn.text = "取消"
-	_remove_picker_cancel_btn.position = Vector2(160, 272)
+	_remove_picker_cancel_btn.position = Vector2(182, 296)
 	_remove_picker_cancel_btn.size = Vector2(100, 28)
 	_remove_picker_cancel_btn.add_theme_font_size_override("font_size", 13)
 	_remove_picker_cancel_btn.pressed.connect(_on_remove_picker_cancel_pressed)
@@ -406,106 +448,127 @@ func _build_remove_picker_ui() -> void:
 func _build_ui() -> void:
 	add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.NEON_TEAL, 8))
 
-	# 标题
 	_title_label = Label.new()
 	_title_label.text = "赛博商店"
 	_title_label.position = Vector2(0, 10)
-	_title_label.size = Vector2(480, 28)
+	_title_label.size = Vector2(520, 28)
 	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title_label.add_theme_font_size_override("font_size", 18)
 	_title_label.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
 	add_child(_title_label)
 
-	# Crest 信息
 	_crest_info_label = Label.new()
 	_crest_info_label.text = "持有资源：—"
 	_crest_info_label.position = Vector2(0, 38)
-	_crest_info_label.size = Vector2(480, 18)
+	_crest_info_label.size = Vector2(520, 18)
 	_crest_info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_crest_info_label.add_theme_font_size_override("font_size", 11)
 	_crest_info_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
 	add_child(_crest_info_label)
 
-	# 分隔线
 	var sep := ColorRect.new()
 	sep.position = Vector2(20, 58)
-	sep.size = Vector2(440, 1)
+	sep.size = Vector2(480, 1)
 	sep.color = Color(CyberStyle.NEON_TEAL.r, CyberStyle.NEON_TEAL.g, CyberStyle.NEON_TEAL.b, 0.3)
 	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep)
 
-	# 商品槽位（3 个横排）
-	var slot_w: float = 140.0
-	var slot_h: float = 200.0
-	var gap: float = 10.0
+	var slot_w: float = 156.0
+	var slot_h: float = 236.0
+	var gap: float = 12.0
 	var total_w: float = ITEMS_PER_SHOP * slot_w + (ITEMS_PER_SHOP - 1) * gap
-	var start_x: float = (480.0 - total_w) / 2.0
-	var start_y: float = 68.0
+	var start_x: float = (520.0 - total_w) / 2.0
+	var start_y: float = 72.0
 
 	for i in range(ITEMS_PER_SHOP):
 		var container := Control.new()
 		container.position = Vector2(start_x + i * (slot_w + gap), start_y)
 		container.size = Vector2(slot_w, slot_h)
-		container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		container.mouse_filter = Control.MOUSE_FILTER_STOP
 		add_child(container)
 		_item_containers.append(container)
 
-		# 商品名
+		var tile := Panel.new()
+		tile.position = Vector2.ZERO
+		tile.size = Vector2(slot_w, slot_h)
+		tile.add_theme_stylebox_override("panel", CyberStyle.make_panel_bg(CyberStyle.NEON_TEAL, 8))
+		container.add_child(tile)
+		_item_panels.append(tile)
+
+		var tag_lbl := Label.new()
+		tag_lbl.position = Vector2(12, 10)
+		tag_lbl.size = Vector2(slot_w - 24, 16)
+		tag_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tag_lbl.add_theme_font_size_override("font_size", 10)
+		tag_lbl.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
+		tile.add_child(tag_lbl)
+		_item_tag_labels.append(tag_lbl)
+
 		var name_lbl := Label.new()
-		name_lbl.position = Vector2(0, 0)
-		name_lbl.size = Vector2(slot_w, 24)
+		name_lbl.position = Vector2(12, 30)
+		name_lbl.size = Vector2(slot_w - 24, 24)
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.add_theme_font_size_override("font_size", 15)
-		name_lbl.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
-		container.add_child(name_lbl)
+		name_lbl.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
+		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+		tile.add_child(name_lbl)
 		_item_name_labels.append(name_lbl)
 
-		# 描述
 		var desc_lbl := Label.new()
-		desc_lbl.position = Vector2(0, 26)
-		desc_lbl.size = Vector2(slot_w, 40)
+		desc_lbl.position = Vector2(12, 64)
+		desc_lbl.size = Vector2(slot_w - 24, 54)
 		desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		desc_lbl.add_theme_font_size_override("font_size", 11)
+		desc_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		desc_lbl.add_theme_font_size_override("font_size", 12)
 		desc_lbl.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		container.add_child(desc_lbl)
+		tile.add_child(desc_lbl)
 		_item_desc_labels.append(desc_lbl)
 
-		# 费用
+		var meta_lbl := Label.new()
+		meta_lbl.position = Vector2(12, 126)
+		meta_lbl.size = Vector2(slot_w - 24, 34)
+		meta_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		meta_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		meta_lbl.add_theme_font_size_override("font_size", 10)
+		meta_lbl.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
+		meta_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+		tile.add_child(meta_lbl)
+		_item_meta_labels.append(meta_lbl)
+
 		var cost_lbl := Label.new()
-		cost_lbl.position = Vector2(0, 68)
-		cost_lbl.size = Vector2(slot_w, 18)
+		cost_lbl.position = Vector2(12, 168)
+		cost_lbl.size = Vector2(slot_w - 24, 18)
 		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cost_lbl.add_theme_font_size_override("font_size", 12)
 		cost_lbl.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
-		container.add_child(cost_lbl)
+		tile.add_child(cost_lbl)
 		_item_cost_labels.append(cost_lbl)
 
-		# 购买按钮
 		var buy_btn := Button.new()
 		buy_btn.text = "购买"
-		buy_btn.position = Vector2(20, 92)
-		buy_btn.size = Vector2(100, 32)
+		buy_btn.position = Vector2(16, 194)
+		buy_btn.size = Vector2(slot_w - 32, 30)
 		buy_btn.add_theme_font_size_override("font_size", 13)
 		CyberStyle.style_button(buy_btn, "orange")
 		var idx: int = i
 		buy_btn.pressed.connect(func(): _on_buy_pressed(idx))
-		container.add_child(buy_btn)
+		tile.add_child(buy_btn)
 		_buy_buttons.append(buy_btn)
 
-	# 状态标签
 	_status_label = Label.new()
-	_status_label.position = Vector2(0, 310)
-	_status_label.size = Vector2(480, 20)
+	_status_label.position = Vector2(18, 320)
+	_status_label.size = Vector2(484, 28)
 	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_status_label.add_theme_font_size_override("font_size", 12)
 	_status_label.add_theme_color_override("font_color", CyberStyle.NEON_TEAL)
+	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	add_child(_status_label)
 
-	# 关闭按钮
 	_close_button = Button.new()
 	_close_button.text = "离开商店"
-	_close_button.position = Vector2(175, 335)
+	_close_button.position = Vector2(195, 374)
 	_close_button.size = Vector2(130, 36)
 	_close_button.add_theme_font_size_override("font_size", 14)
 	_close_button.pressed.connect(_on_close_pressed)

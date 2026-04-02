@@ -16,20 +16,17 @@ var _upgrade_mode: bool = false
 var _title_label: Label
 var _subtitle_label: Label
 var _deck_info_label: Label
-var _card_buttons: Array[Button] = []
-var _card_detail_labels: Array[Label] = []
+var _options_scroll: ScrollContainer
+var _options_grid: GridContainer
 var _skip_button: Button
 var _upgrade_toggle_button: Button
 var _back_button: Button
 
-# --- 升级模式数据 ---
-var _upgrade_indices: Array[int] = []
-
 func _ready() -> void:
 	visible = false
-	custom_minimum_size = Vector2(520, 340)
-	size = Vector2(520, 340)
-	pivot_offset = Vector2(260, 170)
+	custom_minimum_size = Vector2(560, 420)
+	size = Vector2(560, 420)
+	pivot_offset = Vector2(280, 210)
 	_build_ui()
 
 func bind_controller(controller: CardBattleController) -> void:
@@ -80,9 +77,7 @@ func _on_card_option_pressed(index: int) -> void:
 	if _controller == null:
 		return
 	if _upgrade_mode:
-		# 升级模式：index 对应 _upgrade_indices 中的持久牌组索引
-		if index >= 0 and index < _upgrade_indices.size():
-			_controller.upgrade_deck_card(_upgrade_indices[index])
+		_controller.upgrade_deck_card(index)
 	else:
 		_controller.select_reward_card(index)
 
@@ -115,37 +110,16 @@ func _on_back_pressed() -> void:
 
 func _rebuild_card_options(options: Array) -> void:
 	_clear_card_options()
-	var btn_w: float = 150.0
-	var btn_h: float = 100.0
-	var gap: float = 12.0
-	var total_w: float = options.size() * btn_w + (options.size() - 1) * gap
-	var start_x: float = (520.0 - total_w) / 2.0
-	var start_y: float = 80.0
+	_options_grid.columns = 3
 	for i in range(options.size()):
 		var card: Dictionary = options[i]
-		var btn := Button.new()
-		btn.position = Vector2(start_x + i * (btn_w + gap), start_y)
-		btn.size = Vector2(btn_w, btn_h)
-		btn.text = String(card["name"])
-		btn.add_theme_font_size_override("font_size", 16)
-		CyberStyle.style_button(btn, "orange")
-		var idx: int = i
-		btn.pressed.connect(func(): _on_card_option_pressed(idx))
-		add_child(btn)
-		_card_buttons.append(btn)
-		# 卡牌详情标签
-		var detail := Label.new()
-		var type_text: String = _get_type_display(String(card["type"]))
-		var cost_text: String = str(int(card.get("cost", 1))) + "E"
-		var value_text: String = str(int(card.get("value", 0)))
-		detail.text = type_text + "\n" + cost_text + " | " + value_text
-		detail.position = Vector2(start_x + i * (btn_w + gap), start_y + btn_h + 4)
-		detail.size = Vector2(btn_w, 36)
-		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		detail.add_theme_font_size_override("font_size", 11)
-		detail.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
-		add_child(detail)
-		_card_detail_labels.append(detail)
+		var tile: Panel = CardRenderer.create_collection_tile(card, {
+			"interactive": true,
+			"callback": Callable(self, "_on_card_option_pressed"),
+			"index": i,
+			"footer_text": "点击纳入牌组",
+		})
+		_options_grid.add_child(tile)
 
 # --- 动态卡牌选项（升级模式） ---
 
@@ -153,80 +127,39 @@ func _rebuild_upgrade_options() -> void:
 	_clear_card_options()
 	if _controller == null:
 		return
-	_upgrade_indices = _controller.get_upgradeable_indices()
-	# 合并同名牌：只显示唯一的牌名，点击升级第一张同名的
-	var seen_names: Dictionary = {}
-	var display_list: Array[Dictionary] = []
-	var display_indices: Array[int] = []
-	for idx in _upgrade_indices:
-		var card: Dictionary = _controller.persistent_deck[idx]
-		var cname: String = String(card["name"])
-		if not seen_names.has(cname):
-			seen_names[cname] = true
-			display_list.append(card)
-			display_indices.append(idx)
-	# 用实际的 display_indices 替换 _upgrade_indices
-	_upgrade_indices = display_indices
-	# 布局：每行 4 个按钮（紧凑），显示当前值 → 升级后值
-	var btn_w: float = 118.0
-	var btn_h: float = 68.0
-	var gap: float = 8.0
-	var cols: int = 4
-	var start_x: float = 16.0
-	var start_y: float = 80.0
-	for i in range(display_list.size()):
-		var card: Dictionary = display_list[i]
+	var grouped: Dictionary = {}
+	for deck_index in _controller.get_upgradeable_indices():
+		var card: Dictionary = _controller.persistent_deck[deck_index]
+		var key: String = String(card.get("name", "")) + "|" + CardRenderer.format_card_meta(card) + "|" + CardRenderer.format_card_summary(card)
+		if grouped.has(key):
+			grouped[key]["count"] = int(grouped[key]["count"]) + 1
+		else:
+			grouped[key] = {
+				"card": card,
+				"count": 1,
+				"deck_index": deck_index,
+			}
+	var entries: Array[Dictionary] = []
+	for entry in grouped.values():
+		entries.append(entry)
+	entries.sort_custom(func(a, b): return CardRenderer.is_card_before(a.get("card", {}), b.get("card", {})))
+	_options_grid.columns = 3
+	for entry in entries:
+		var card: Dictionary = entry.get("card", {})
 		var upgraded: Dictionary = CardBattleController.get_card_upgrade(card)
-		var col: int = i % cols
-		var row: int = i / cols
-		var btn := Button.new()
-		btn.position = Vector2(start_x + col * (btn_w + gap), start_y + row * (btn_h + 22))
-		btn.size = Vector2(btn_w, btn_h)
-		btn.text = String(card["name"])
-		btn.add_theme_font_size_override("font_size", 13)
-		CyberStyle.style_button(btn, "cyan")
-		var idx: int = i
-		btn.pressed.connect(func(): _on_card_option_pressed(idx))
-		add_child(btn)
-		_card_buttons.append(btn)
-		# 升级详情标签：显示 "value → upgraded_value"
-		var detail := Label.new()
-		var old_val: String = str(int(card.get("value", 0)))
-		var new_val: String = str(int(upgraded.get("value", 0)))
-		detail.text = str(int(card.get("cost", 1))) + "E | " + old_val + " → " + new_val
-		detail.position = Vector2(btn.position.x, btn.position.y + btn_h + 2)
-		detail.size = Vector2(btn_w, 16)
-		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		detail.add_theme_font_size_override("font_size", 10)
-		detail.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
-		add_child(detail)
-		_card_detail_labels.append(detail)
+		var tile: Panel = CardRenderer.create_collection_tile(card, {
+			"interactive": true,
+			"callback": Callable(self, "_on_card_option_pressed"),
+			"index": int(entry.get("deck_index", -1)),
+			"count": int(entry.get("count", 1)),
+			"compare_card": upgraded,
+			"footer_text": "点击升级该牌",
+		})
+		_options_grid.add_child(tile)
 
 func _clear_card_options() -> void:
-	for btn in _card_buttons:
-		if is_instance_valid(btn):
-			btn.queue_free()
-	_card_buttons = []
-	for lbl in _card_detail_labels:
-		if is_instance_valid(lbl):
-			lbl.queue_free()
-	_card_detail_labels = []
-
-func _get_type_display(card_type: String) -> String:
-	match card_type:
-		"attack":
-			return "攻击"
-		"defend":
-			return "防御"
-		"heal":
-			return "回复"
-		"pierce":
-			return "穿透攻击"
-		"lifesteal":
-			return "吸血攻击"
-		"shock":
-			return "电击削弱"
-	return card_type
+	for child in _options_grid.get_children():
+		child.queue_free()
 
 # --- UI 构建 ---
 
@@ -235,8 +168,8 @@ func _build_ui() -> void:
 
 	_title_label = Label.new()
 	_title_label.text = "战斗胜利 — 选择奖励卡牌"
-	_title_label.position = Vector2(0, 10)
-	_title_label.size = Vector2(520, 28)
+	_title_label.position = Vector2(0, 12)
+	_title_label.size = Vector2(560, 28)
 	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title_label.add_theme_font_size_override("font_size", 18)
 	_title_label.add_theme_color_override("font_color", CyberStyle.TEXT_TITLE)
@@ -244,8 +177,8 @@ func _build_ui() -> void:
 
 	_subtitle_label = Label.new()
 	_subtitle_label.text = "选择 1 张加入牌组，或升级已有牌，或跳过"
-	_subtitle_label.position = Vector2(0, 38)
-	_subtitle_label.size = Vector2(520, 20)
+	_subtitle_label.position = Vector2(0, 42)
+	_subtitle_label.size = Vector2(560, 20)
 	_subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_subtitle_label.add_theme_font_size_override("font_size", 12)
 	_subtitle_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
@@ -253,36 +186,45 @@ func _build_ui() -> void:
 
 	_deck_info_label = Label.new()
 	_deck_info_label.text = "当前牌组：10 张"
-	_deck_info_label.position = Vector2(0, 56)
-	_deck_info_label.size = Vector2(520, 18)
+	_deck_info_label.position = Vector2(0, 62)
+	_deck_info_label.size = Vector2(560, 18)
 	_deck_info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_deck_info_label.add_theme_font_size_override("font_size", 11)
 	_deck_info_label.add_theme_color_override("font_color", CyberStyle.TEXT_CYAN)
 	add_child(_deck_info_label)
 
-	# 分隔线
 	var sep := ColorRect.new()
-	sep.position = Vector2(20, 74)
-	sep.size = Vector2(480, 1)
+	sep.position = Vector2(20, 86)
+	sep.size = Vector2(520, 1)
 	sep.color = Color(1.0, 0.2, 0.55, 0.3)
 	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sep)
 
-	# 底部按钮区
-	# 升级卡牌切换按钮
+	_options_scroll = ScrollContainer.new()
+	_options_scroll.position = Vector2(18, 98)
+	_options_scroll.size = Vector2(524, 244)
+	_options_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(_options_scroll)
+
+	_options_grid = GridContainer.new()
+	_options_grid.columns = 3
+	_options_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_options_grid.add_theme_constant_override("h_separation", 10)
+	_options_grid.add_theme_constant_override("v_separation", 10)
+	_options_scroll.add_child(_options_grid)
+
 	_upgrade_toggle_button = Button.new()
 	_upgrade_toggle_button.text = "升级卡牌"
-	_upgrade_toggle_button.position = Vector2(40, 290)
+	_upgrade_toggle_button.position = Vector2(40, 362)
 	_upgrade_toggle_button.size = Vector2(130, 36)
 	_upgrade_toggle_button.add_theme_font_size_override("font_size", 14)
 	_upgrade_toggle_button.pressed.connect(_on_upgrade_toggle_pressed)
 	CyberStyle.style_button(_upgrade_toggle_button, "orange")
 	add_child(_upgrade_toggle_button)
 
-	# 返回按钮（升级模式下可见）
 	_back_button = Button.new()
 	_back_button.text = "返回选牌"
-	_back_button.position = Vector2(40, 290)
+	_back_button.position = Vector2(40, 362)
 	_back_button.size = Vector2(130, 36)
 	_back_button.add_theme_font_size_override("font_size", 14)
 	_back_button.visible = false
@@ -290,10 +232,9 @@ func _build_ui() -> void:
 	CyberStyle.style_button(_back_button, "cyan")
 	add_child(_back_button)
 
-	# 跳过按钮
 	_skip_button = Button.new()
 	_skip_button.text = "跳过"
-	_skip_button.position = Vector2(350, 290)
+	_skip_button.position = Vector2(390, 362)
 	_skip_button.size = Vector2(130, 36)
 	_skip_button.add_theme_font_size_override("font_size", 14)
 	_skip_button.pressed.connect(_on_skip_pressed)

@@ -1,19 +1,7 @@
 extends Control
 
-const BattleFlowController = preload("res://Scripts/BattleV2/BattleFlowController.gd")
-const CardBattleController = preload("res://Scripts/BattleV2/CardBattleController.gd")
-const BoardView = preload("res://Scripts/UI/BoardView.gd")
-const DiceDebugPanel = preload("res://Scripts/UI/DiceDebugPanel.gd")
-const DisplaySettings = preload("res://Scripts/System/DisplaySettings.gd")
-const SettingsPanel = preload("res://Scripts/UI/SettingsPanel.gd")
-const CardBattlePanel = preload("res://Scripts/UI/CardBattlePanel.gd")
-const CardRewardPanel = preload("res://Scripts/UI/CardRewardPanel.gd")
-const DeckViewPanel = preload("res://Scripts/UI/DeckViewPanel.gd")
-const CyberBackground = preload("res://Scripts/UI/CyberBackground.gd")
-const TransitionOverlay = preload("res://Scripts/UI/TransitionOverlay.gd")
-const UnitPortraitHUD = preload("res://Scripts/UI/UnitPortraitHUD.gd")
-const ShopPanelScript = preload("res://Scripts/UI/ShopPanel.gd")
-const BoardView3DScript = preload("res://Scripts/UI3D/BoardView3D.gd")
+const MainViewCoordinatorScript = preload("res://Scripts/App/MainViewCoordinator.gd")
+const OpenAIImageServiceScript = preload("res://Scripts/System/OpenAIImageService.gd")
 
 # v0.1.71：3D/2D 视图切换标志（默认 false = 2D 模式）
 var _use_3d: bool = false
@@ -30,11 +18,13 @@ var _settings_panel: SettingsPanel
 var _card_battle_panel: CardBattlePanel
 var _card_reward_panel: CardRewardPanel
 var _deck_view_panel: DeckViewPanel
+var _image_generation_panel: ImageGenerationPanel
 var _result_label: Label
 var _restart_btn: Button
 var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
 var _audio: AudioManager
+var _image_service: OpenAIImageService
 var _portrait_hud: UnitPortraitHUD
 var _shop_panel: ShopPanel
 var _view_switch_fx: ColorRect = null
@@ -42,16 +32,20 @@ var _last_attack_damage: int = 0
 var _last_attack_killed: bool = false
 var _floor_clear_pending: bool = false
 var _last_operated_unit_id: String = ""
+var _view_coordinator = null
 
 func _ready() -> void:
 	_display_settings = DisplaySettings.new()
 	add_child(_display_settings)
 	_audio = AudioManager.new()
 	add_child(_audio)
+	_image_service = OpenAIImageServiceScript.new()
+	add_child(_image_service)
 	_battle_flow = BattleFlowController.new()
 	add_child(_battle_flow)
 	_card_battle_ctrl = CardBattleController.new()
 	add_child(_card_battle_ctrl)
+	_view_coordinator = MainViewCoordinatorScript.new()
 	_build_debug_view()
 	_wire_debug_views()
 	# v0.1.71：3D 视图初始化（默认隐藏）
@@ -62,161 +56,30 @@ func _ready() -> void:
 	_audio.play_bgm("bgm_map")
 
 func _build_debug_view() -> void:
-	# 自定义鼠标光标（v0.1.63：赛博风格十字光标）
-	_setup_custom_cursor()
-
-	var cyber_bg := CyberBackground.new()
-	cyber_bg.set_board_rect(Vector2(0, 0), Vector2(1280, 720))
-	add_child(cyber_bg)
-
-	# 棋盘占满全屏
-	_board_view = BoardView.new()
-	_board_view.position = Vector2(0, 0)
-	add_child(_board_view)
-
-	# 顶部单位头像 HUD（v0.1.69）
-	_portrait_hud = UnitPortraitHUD.new()
-	add_child(_portrait_hud)
-
-	# 底部右侧操作面板（v0.1.63 紧凑HUD）
-	_dice_panel = DiceDebugPanel.new()
-	_dice_panel.position = Vector2(1012, 512)
-	add_child(_dice_panel)
-
-	var settings_btn := Button.new()
-	settings_btn.text = "设置"
-	settings_btn.position = Vector2(8, 8)
-	settings_btn.size = Vector2(72, 28)
-	settings_btn.add_theme_font_size_override("font_size", 12)
-	settings_btn.pressed.connect(_on_settings_pressed)
-	CyberStyle.style_button(settings_btn, "cyan")
-	add_child(settings_btn)
-
-	_settings_panel = SettingsPanel.new()
-	_settings_panel.position = Vector2(420, 100)
-	add_child(_settings_panel)
-	_settings_panel.bind_display_settings(_display_settings)
-	_settings_panel.bind_audio_manager(_audio)
-
-	# 卡牌战斗面板（v0.1.54 全屏独立界面，自带战斗背景）
-	_card_battle_panel = CardBattlePanel.new()
-	_card_battle_panel.position = Vector2(0, 0)
-	add_child(_card_battle_panel)
-
-	_card_reward_panel = CardRewardPanel.new()
-	_card_reward_panel.position = Vector2(380, 200)
-	add_child(_card_reward_panel)
-
-	_deck_view_panel = DeckViewPanel.new()
-	_deck_view_panel.position = Vector2(160, 120)
-	add_child(_deck_view_panel)
-
-	# 商店面板（v0.1.73 多选商品）
-	_shop_panel = ShopPanel.new()
-	_shop_panel.position = Vector2(400, 170)
-	add_child(_shop_panel)
-
-	# 2D/3D 切换特效覆盖层（v0.1.88）
-	_view_switch_fx = ColorRect.new()
-	_view_switch_fx.position = Vector2.ZERO
-	_view_switch_fx.size = Vector2(1280, 720)
-	_view_switch_fx.color = Color(0.7, 0.1, 1.0, 0.0)
-	_view_switch_fx.visible = false
-	_view_switch_fx.z_index = 999
-	_view_switch_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_view_switch_fx)
-
-	_result_label = Label.new()
-	_result_label.position = Vector2(0, 320)
-	_result_label.size = Vector2(1280, 60)
-	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_result_label.add_theme_font_size_override("font_size", 36)
-	_result_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_result_label.visible = false
-	add_child(_result_label)
-
-	_restart_btn = Button.new()
-	_restart_btn.text = "重新开始"
-	_restart_btn.position = Vector2(540, 384)
-	_restart_btn.size = Vector2(200, 40)
-	_restart_btn.add_theme_font_size_override("font_size", 16)
-	_restart_btn.visible = false
-	_restart_btn.pressed.connect(_on_restart_pressed)
-	CyberStyle.style_button(_restart_btn, "orange")
-	add_child(_restart_btn)
-
-	# 掷骰演出（全屏居中等距 3D 骰子，覆盖在最上层）
-	_dice_anim = DiceRollAnimation.new()
-	_dice_anim.set_board_center(Vector2(640, 360))
-	add_child(_dice_anim)
-
-	# 百叶窗过渡动画（CanvasLayer 10，覆盖一切）
-	_transition = TransitionOverlay.new()
-	add_child(_transition)
+	_view_coordinator.build_views(self, _display_settings, _audio, _image_service)
+	_sync_view_refs()
 
 func _wire_debug_views() -> void:
-	_board_view.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
-	_board_view.bind_battle_flow(_battle_flow)
-	_board_view.move_requested.connect(_on_move_requested)
-	_board_view.attack_requested.connect(_on_attack_requested)
-	_board_view.summon_requested.connect(_on_summon_requested)
-	_battle_flow.phase_changed.connect(_on_phase_changed)
-	_battle_flow.attack_completed.connect(_on_attack_completed)
-	_battle_flow.enemy_attack_completed.connect(_on_enemy_attack_completed)
-	_battle_flow.summon_completed.connect(_on_summon_completed)
-	_battle_flow.terrain_damage_triggered.connect(_on_terrain_damage_triggered)
-	_battle_flow.item_picked_up.connect(_on_item_picked_up)
-	_battle_flow.enemy_action_announced.connect(_on_enemy_action_announced)
-	_battle_flow.enemy_turn_ended.connect(_on_enemy_turn_ended)
-	_battle_flow.encounter_triggered.connect(_on_encounter_triggered)
-	_battle_flow.encounter_resolved.connect(_on_encounter_resolved)
-	_battle_flow.heal_cell_triggered.connect(_on_heal_cell_triggered)
-	_battle_flow.event_cell_triggered.connect(_on_event_cell_triggered)
-	_battle_flow.defend_crest_used.connect(_on_defend_crest_used)
-	_battle_flow.skill_crest_used.connect(_on_skill_crest_used)
-	_battle_flow.trick_crest_used.connect(_on_trick_crest_used)
-	_battle_flow.shop_panel_requested.connect(_on_shop_panel_requested)
-	_shop_panel.shop_closed.connect(_on_shop_closed)
-	_battle_flow.chest_cell_triggered.connect(_on_chest_cell_triggered)
-	_battle_flow.floor_cleared.connect(_on_floor_cleared)
-	_battle_flow.game_won.connect(_on_game_won)
-	_battle_flow.boss_unlocked.connect(_on_boss_unlocked)
-	_battle_flow.portal_spawned.connect(_on_portal_spawned)
-	_battle_flow.hero_warped.connect(_on_hero_warped)
-	# v0.1.64：敌方回合开始前将相机给到敌方单位
-	_battle_flow.enemy_turn_starting.connect(_on_enemy_turn_starting)
-	# v0.1.65：掷骰动画结束后通知 BFC 可以继续
-	_dice_anim.animation_finished.connect(_on_dice_anim_finished_forward)
-	# 移动完成后更新相机（v0.1.60）
-	_battle_flow.move_completed.connect(_on_move_completed_camera)
-	# v0.1.67：逐格移动动画信号链
-	_battle_flow.move_step_visual.connect(_on_move_step_visual)
-	_board_view.move_anim_done.connect(_on_board_move_anim_done)
-	# 卡牌战斗控制器信号
-	_card_battle_ctrl.battle_ended.connect(_on_card_battle_ended)
-	_card_battle_ctrl.victory_reward.connect(_on_card_battle_reward)
-	_card_battle_ctrl.card_played.connect(_on_card_played_sfx)
-	_card_battle_ctrl.enemy_acted.connect(_on_enemy_acted_sfx)
-	_card_battle_ctrl.hand_changed.connect(_on_hand_changed_sfx)
-	# 卡牌战斗面板绑定控制器
-	_card_battle_panel.bind_controller(_card_battle_ctrl)
-	# 卡牌奖励面板绑定控制器
-	_card_reward_panel.bind_controller(_card_battle_ctrl)
-	# 牌组查看面板绑定控制器
-	_deck_view_panel.bind_controller(_card_battle_ctrl)
-	_dice_panel.bind_battle_flow(_battle_flow)
-	_dice_panel.bind_board_view(_board_view)
-	_dice_panel.set_dice_animation(_dice_anim)
-	_dice_panel.test_card_battle_requested.connect(_on_test_card_battle_requested)
-	_dice_panel.deck_view_requested.connect(_on_deck_view_requested)
-	# v0.1.69：顶部单位头像 HUD
-	_portrait_hud.bind_unit_manager(_battle_flow.unit_manager)
-	_portrait_hud.portrait_clicked.connect(_on_portrait_clicked)
-	_board_view.unit_selected.connect(func(uid: String): _portrait_hud.set_selected(uid))
-	_board_view.unit_deselected.connect(func(): _portrait_hud.set_selected(""))
-	# 掷骰音效
-	if _battle_flow.dice_manager and _battle_flow.dice_manager.has_signal("dice_rolled"):
-		_battle_flow.dice_manager.dice_rolled.connect(_on_dice_rolled_sfx)
+	_view_coordinator.wire_views(self, _battle_flow, _card_battle_ctrl)
+
+func _sync_view_refs() -> void:
+	_board_view = _view_coordinator.board_view
+	_board_view_3d = _view_coordinator.board_view_3d
+	_sub_viewport = _view_coordinator.sub_viewport
+	_sub_viewport_container = _view_coordinator.sub_viewport_container
+	_dice_panel = _view_coordinator.dice_panel
+	_settings_panel = _view_coordinator.settings_panel
+	_card_battle_panel = _view_coordinator.card_battle_panel
+	_card_reward_panel = _view_coordinator.card_reward_panel
+	_deck_view_panel = _view_coordinator.deck_view_panel
+	_image_generation_panel = _view_coordinator.image_generation_panel
+	_result_label = _view_coordinator.result_label
+	_restart_btn = _view_coordinator.restart_btn
+	_dice_anim = _view_coordinator.dice_anim
+	_transition = _view_coordinator.transition
+	_portrait_hud = _view_coordinator.portrait_hud
+	_shop_panel = _view_coordinator.shop_panel
+	_view_switch_fx = _view_coordinator.view_switch_fx
 
 func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	if not _battle_flow.validate_move(unit_id, target_cell):
@@ -523,6 +386,11 @@ func _on_settings_pressed() -> void:
 	_audio.play_sfx("click")
 	_settings_panel.open()
 
+func _on_image_generation_pressed() -> void:
+	_audio.play_sfx("click")
+	if _image_generation_panel:
+		_image_generation_panel.open()
+
 func _on_test_card_battle_requested() -> void:
 	# 调试快捷键：直接用第一个玩家单位的 HP 启动卡牌战斗（encounter_01）
 	var player_ids: Array[String] = _battle_flow.unit_manager.get_player_units()
@@ -603,34 +471,8 @@ func _get_encounter_display_name(encounter_id: String) -> String:
 
 ## v0.1.71：初始化 3D 视图（SubViewport + SubViewportContainer）
 func _setup_3d_view() -> void:
-	# 创建 SubViewportContainer（全屏覆盖，初始隐藏）
-	_sub_viewport_container = SubViewportContainer.new()
-	_sub_viewport_container.position = Vector2(0, 0)
-	_sub_viewport_container.size = Vector2(1280, 720)
-	_sub_viewport_container.stretch = true
-	_sub_viewport_container.visible = false
-	# 插入到 BoardView 后面（背景之后、HUD 之前）
-	var bv_idx: int = _board_view.get_index()
-	add_child(_sub_viewport_container)
-	move_child(_sub_viewport_container, bv_idx + 1)
-	# 创建 SubViewport
-	_sub_viewport = SubViewport.new()
-	_sub_viewport.size = Vector2i(1280, 720)
-	_sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_sub_viewport.transparent_bg = false
-	_sub_viewport_container.add_child(_sub_viewport)
-	# 创建 BoardView3D 并添加到 SubViewport
-	_board_view_3d = BoardView3DScript.new()
-	_sub_viewport.add_child(_board_view_3d)
-	# 绑定管理器和信号
-	_board_view_3d.bind_managers(_battle_flow.board_manager, _battle_flow.unit_manager)
-	_board_view_3d.bind_battle_flow(_battle_flow)
-	_board_view_3d.move_requested.connect(_on_move_requested)
-	_board_view_3d.attack_requested.connect(_on_attack_requested)
-	_board_view_3d.summon_requested.connect(_on_summon_requested)
-	_board_view_3d.move_anim_done.connect(_on_board_move_anim_done)
-	_board_view_3d.unit_selected.connect(func(uid: String): _portrait_hud.set_selected(uid))
-	_board_view_3d.unit_deselected.connect(func(): _portrait_hud.set_selected(""))
+	_view_coordinator.setup_3d_view(self, _battle_flow)
+	_sync_view_refs()
 
 ## v0.1.71：获取当前活动视图（duck typing — 2D 和 3D 视图共享信号/方法接口）
 func _active_view():
@@ -711,4 +553,3 @@ func _setup_custom_cursor() -> void:
 			img.set_pixel(center + dx, center + dy * (arm - 1), col_dim)
 	var tex := ImageTexture.create_from_image(img)
 	Input.set_custom_mouse_cursor(tex, Input.CURSOR_ARROW, Vector2(15, 15))
-

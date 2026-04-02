@@ -233,17 +233,20 @@ func _update_unit_readability_scale() -> void:
 # --- 反馈方法（v0.1.74 — 3D 反馈系统完整实现）---
 
 func play_attack_feedback(cell: Vector2i, damage: int, is_kill: bool = false) -> void:
-	var world_pos: Vector3 = GridMapper3D.cell_to_world(cell, _grid_size)
 	# 1) 格子闪光
 	var flash_color: Color = CyberStyle.NEON_GOLD if is_kill else Color(1.0, 1.0, 1.0, 0.9)
-	var flash_dur: float = 0.45 if is_kill else 0.35
-	_spawn_cell_flash_3d(cell, flash_color, flash_dur)
-	# 2) 相机震动
-	var shake_intensity: float = 0.6 if is_kill else 0.35
-	_shake_camera_3d(shake_intensity, 0.3)
-	# 3) 命中粒子
 	var particle_color: Color = CyberStyle.NEON_GOLD if is_kill else CyberStyle.NEON_RED
-	_spawn_hit_particles_3d(world_pos, particle_color, is_kill)
+	_play_cell_burst_feedback_3d(
+		cell,
+		flash_color,
+		0.45 if is_kill else 0.35,
+		particle_color,
+		is_kill,
+		0.6 if is_kill else 0.35,
+		0.3
+	)
+	# 2) 相机震动
+	# 3) 命中粒子
 	# 4) 伤害飘字
 	var dmg_color: Color = CyberStyle.NEON_GOLD if is_kill else CyberStyle.NEON_RED
 	var dmg_size: float = 0.9 if is_kill else 0.65
@@ -272,17 +275,47 @@ func play_encounter_feedback(cell: Vector2i, text: String) -> void:
 	_spawn_float_text_3d(cell, text, CyberStyle.ACCENT_ORANGE, 0.7, 3.5, 0.9)
 
 func play_heal_feedback(cell: Vector2i, text: String) -> void:
-	_spawn_float_text_3d(cell, text, CyberStyle.NEON_BLUE, 0.55, 3.0, 0.7)
+	_play_cell_burst_feedback_3d(
+		cell,
+		Color(CyberStyle.NEON_BLUE.r, CyberStyle.NEON_BLUE.g, CyberStyle.NEON_BLUE.b, 0.55),
+		0.5,
+		CyberStyle.NEON_BLUE
+	)
+	_spawn_float_text_3d(cell, text, CyberStyle.NEON_BLUE, 0.6, 3.1, 0.7)
 
 func play_event_feedback(cell: Vector2i, text: String, is_positive: bool) -> void:
 	var col: Color = CyberStyle.NEON_GOLD if is_positive else CyberStyle.NEON_RED
-	_spawn_float_text_3d(cell, text, col, 0.55, 3.0, 0.7)
+	_play_cell_burst_feedback_3d(
+		cell,
+		Color(col.r, col.g, col.b, 0.58),
+		0.55,
+		col,
+		not is_positive,
+		0.22 if not is_positive else 0.0,
+		0.2
+	)
+	_spawn_float_text_3d(cell, text, col, 0.6, 3.1, 0.72)
 
 func play_shop_feedback(cell: Vector2i, text: String) -> void:
-	_spawn_float_text_3d(cell, text, CyberStyle.NEON_TEAL, 0.55, 3.0, 0.7)
+	_play_cell_burst_feedback_3d(
+		cell,
+		Color(CyberStyle.NEON_TEAL.r, CyberStyle.NEON_TEAL.g, CyberStyle.NEON_TEAL.b, 0.55),
+		0.55,
+		CyberStyle.NEON_TEAL
+	)
+	_spawn_float_text_3d(cell, text, CyberStyle.NEON_TEAL, 0.6, 3.1, 0.72)
 
 func play_chest_feedback(cell: Vector2i, text: String) -> void:
-	_spawn_float_text_3d(cell, text, CyberStyle.NEON_GOLD, 0.65, 3.2, 0.8)
+	_play_cell_burst_feedback_3d(
+		cell,
+		Color(CyberStyle.NEON_GOLD.r, CyberStyle.NEON_GOLD.g, CyberStyle.NEON_GOLD.b, 0.7),
+		0.65,
+		CyberStyle.NEON_GOLD,
+		true,
+		0.28,
+		0.24
+	)
+	_spawn_float_text_3d(cell, text, CyberStyle.NEON_GOLD, 0.72, 3.4, 0.8)
 
 # ============================
 #  3D 反馈辅助方法（v0.1.74）
@@ -312,6 +345,20 @@ func _spawn_float_text_3d(cell: Vector2i, text: String, color: Color, font_size:
 	tw.tween_property(lbl, "modulate:a", 0.0, duration).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 	tw.set_parallel(false)
 	tw.tween_callback(lbl.queue_free)
+
+func _play_cell_burst_feedback_3d(
+	cell: Vector2i,
+	flash_color: Color,
+	flash_duration: float,
+	particle_color: Color,
+	strong_particles: bool = false,
+	shake_intensity: float = 0.0,
+	shake_duration: float = 0.0
+) -> void:
+	_spawn_cell_flash_3d(cell, flash_color, flash_duration)
+	_spawn_hit_particles_3d(GridMapper3D.cell_to_world(cell, _grid_size), particle_color, strong_particles)
+	if shake_intensity > 0.0 and shake_duration > 0.0:
+		_shake_camera_3d(shake_intensity, shake_duration)
 
 ## 3D 格子闪光覆盖层（半透明 PlaneMesh 叠放在格子上方，渐隐后释放）
 func _spawn_cell_flash_3d(cell: Vector2i, color: Color, duration: float) -> void:
