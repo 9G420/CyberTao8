@@ -18,13 +18,13 @@ var _settings_panel: SettingsPanel
 var _card_battle_panel: CardBattlePanel
 var _card_reward_panel: CardRewardPanel
 var _deck_view_panel: DeckViewPanel
-var _image_generation_panel: ImageGenerationPanel
+var _image_generation_panel = null
 var _result_label: Label
 var _restart_btn: Button
 var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
 var _audio: AudioManager
-var _image_service: OpenAIImageService
+var _image_service = null
 var _portrait_hud: UnitPortraitHUD
 var _shop_panel: ShopPanel
 var _view_switch_fx: ColorRect = null

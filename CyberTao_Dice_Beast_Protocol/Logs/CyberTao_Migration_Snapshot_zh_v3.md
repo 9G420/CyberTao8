@@ -4,8 +4,8 @@
 
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
-**更新时间**: 2026-04-02
-**当前版本**: v0.1.105
+**更新时间**: 2026-04-03
+**当前版本**: v0.1.107
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
@@ -60,7 +60,7 @@
 
 ## 2. 当前一句话状态
 
-v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可玩闭环稳定、内容和表现继续扩展”的阶段，主循环是 12x12 三层棋盘推进 + 遭遇触发卡牌战斗 + 2D/3D 双视图并行表现。
+v0.1.107 已完成 v0.1.106 功能状态回补和日志同步；当前项目处于“可玩闭环稳定、双英雄开局、OpenAI 生图入口已接入、2D/3D 双视图并行表现”的阶段。
 
 ---
 
@@ -112,6 +112,7 @@ v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可�
 ### 4.2 卡牌战斗层
 
 - `CardBattleController` 独立状态机
+- `CardBattleData` 统一维护起始牌组、奖励池、升级规则与遭遇敌人数据
 - 起始牌组 10 张
 - 奖励池含扩展牌，并允许基础牌回流
 - 奖励选牌、跳过奖励、升级卡牌全部可用
@@ -128,6 +129,8 @@ v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可�
 - 奖励与升级面板：`CardRewardPanel.gd`
 - 牌组面板：`DeckViewPanel.gd`
 - 商店面板：`ShopPanel.gd`
+- 生图服务：`OpenAIImageService.gd`
+- 生图面板：`ImageGenerationPanel.gd`
 - 顶部单位头像：`UnitPortraitHUD.gd`
 - 音频：`AudioManager.gd` + `SFXGenerator.gd`
 
@@ -140,23 +143,28 @@ v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可�
 | 路径 | 角色 | 当前规模 |
 |------|------|----------|
 | `Project/Scenes/Main.tscn` | 场景入口 | 1 个主场景 |
-| `Project/Scripts/Main.gd` | 入口协调层，负责视图、过渡、音频、信号转发 | 714 行 |
-| `Project/Scripts/BattleV2/BattleFlowController.gd` | 棋盘层主控 | 791 行 |
-| `Project/Scripts/BattleV2/CardBattleController.gd` | 卡牌战斗主控 | 657 行 |
+| `Project/Scripts/Main.gd` | 入口协调层，负责流程切换、结算、音频与主信号转发 | 472 行 |
+| `Project/Scripts/App/MainViewCoordinator.gd` | 主界面视图构建与信号接线协调层 | 192 行 |
+| `Project/Scripts/BattleV2/BattleFlowController.gd` | 棋盘层主控 | 727 行 |
+| `Project/Scripts/BattleV2/CardBattleController.gd` | 卡牌战斗主控 | 459 行 |
+| `Project/Scripts/BattleV2/CardBattleData.gd` | 卡牌与遭遇数据中心 | 309 行 |
 | `Project/Scripts/BattleV2/BoardGenerator.gd` | 棋盘随机生成 | 228 行 |
 | `Project/Scripts/BattleV2/BoardManager.gd` | 棋盘状态存储 | 249 行 |
-| `Project/Scripts/BattleV2/FloorManager.gd` | 楼层推进与 Boss / 传送门 | 161 行 |
-| `Project/Scripts/UI/BoardView.gd` | 2D 棋盘交互与表现 | 635 行 |
-| `Project/Scripts/UI3D/BoardView3D.gd` | 3D 棋盘交互与表现 | 801 行 |
-| `Project/Scripts/UI/ShopPanel.gd` | 商店 UI 与购买结算 | 513 行 |
-| `Project/Scripts/System/AudioManager.gd` | BGM / SFX 管理 | 165 行 |
+| `Project/Scripts/BattleV2/FloorManager.gd` | 楼层推进、双英雄出生与跨层状态 | 145 行 |
+| `Project/Scripts/UI/BoardView.gd` | 2D 棋盘交互与表现 | 574 行 |
+| `Project/Scripts/UI3D/BoardView3D.gd` | 3D 棋盘交互与表现 | 773 行 |
+| `Project/Scripts/UI/ShopPanel.gd` | 商店 UI 与购买结算 | 520 行 |
+| `Project/Scripts/System/OpenAIImageService.gd` | OpenAI 生图请求、配置与文件保存 | 210 行 |
+| `Project/Scripts/UI/ImageGenerationPanel.gd` | 生图参数设置、状态显示与预览 | 295 行 |
+| `Project/Scripts/System/AudioManager.gd` | BGM / SFX 管理 | 144 行 |
 
 ### 5.2 模块目录现状
 
 - `Project/Scripts/BattleV2/`：核心玩法层
+- `Project/Scripts/App/`：入口 UI 协调层
 - `Project/Scripts/UI/`：2D 与通用 UI
 - `Project/Scripts/UI3D/`：3D 表现层
-- `Project/Scripts/System/`：音频与显示设置
+- `Project/Scripts/System/`：音频、显示设置与生图服务
 - `Project/Scripts/Data/`：资源脚本定义
 - `Project/Data/`：单位、技能、道具、骰面、核心等 `.tres` 资源
 
@@ -176,8 +184,8 @@ v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可�
 
 ### 6.2 当前启用的内容
 
-- 主流程当前只生成 1 个可玩英雄：`blade_shield_dog`
-- `hacker_fox` 与 `crow_caster` 资源存在，但尚未接入主循环
+- 主流程当前会生成 2 个可玩英雄：`blade_shield_dog` 与 `hacker_fox`
+- `crow_caster` 资源存在，但尚未接入主循环
 - 棋盘生成会随机放置：
   - 普通遭遇 4 到 6 个
   - 高地 3 到 5 个
@@ -193,6 +201,7 @@ v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可�
   - 普通遭遇 `encounter_01` 到 `encounter_07`
   - Boss 遭遇 `encounter_boss_01`
 - 商店当前支持 9 类商品，包括回复、临时属性强化、能量上限、加牌、删牌、随机 crest、最大 HP 提升等
+- 当前主菜单已接入独立的 OpenAI 生图面板，支持 API Key、本地配置、尺寸 / 质量选项与 PNG 保存
 
 ---
 
@@ -241,9 +250,10 @@ v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可�
 
 | 问题 | 严重度 | 是否阻塞 | 说明 |
 |------|--------|----------|------|
-| `Main.gd` 持续膨胀 | 中 | 否 | 入口层已承担较多中转、视图切换和信号接线 |
+| `Main.gd` 仍承担较多协调职责 | 中 | 否 | 虽已拆出 `MainViewCoordinator`，但主入口仍负责流程切换、结算和多路信号转发 |
 | 2D / 3D 表现一致性仍在追赶 | 中 | 否 | 3D 可玩，但反馈和可读性仍不完全追平 2D |
-| 第二、第三个玩家单位尚未接入主流程 | 中 | 否 | 数据资源已在，但当前阵营差异仍主要停留在资源层 |
+| 第三个玩家单位 `crow_caster` 尚未接入主流程 | 中 | 否 | 当前双英雄已接通，但第三单位仍停留在资源层 |
+| OpenAI 生图链路仍缺少真实 API 回归 | 中 | 否 | 界面与服务已接入，但仍依赖 API Key、网络和系统证书环境 |
 | 更早历史日志仍可能残留编码遗留 | 低 | 否 | 当前接手主路径已清洗，旧历史段落不影响本轮执行 |
 
 ---
@@ -253,9 +263,9 @@ v0.1.105 已完成交接文档清洗和结构同步；当前项目处于“可�
 按优先级建议：
 
 1. 继续拆分 `Main.gd` 的纯中转和协调逻辑。
-2. 把第二个可玩单位真正接进主流程，而不是只保留资源。
-3. 统一 2D / 3D 的关键反馈与可读性。
-4. 如继续做交接治理，保持 `Handoff / Work Report / changelog / Snapshot` 四处同步。
+2. 用真实 API Key 做一次 OpenAI 生图端到端回归。
+3. 决定 `crow_caster` 是否进入主流程。
+4. 统一 2D / 3D 的关键反馈与可读性，并继续保持 `Handoff / Work Report / changelog / Snapshot` 同步。
 
 ---
 

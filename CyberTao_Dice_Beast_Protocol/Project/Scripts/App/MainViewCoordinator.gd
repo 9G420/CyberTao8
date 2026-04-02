@@ -23,7 +23,7 @@ var settings_panel: SettingsPanel = null
 var card_battle_panel: CardBattlePanel = null
 var card_reward_panel: CardRewardPanel = null
 var deck_view_panel: DeckViewPanel = null
-var image_generation_panel: ImageGenerationPanel = null
+var image_generation_panel = null
 var result_label: Label = null
 var restart_btn: Button = null
 var dice_anim: DiceRollAnimation = null
@@ -32,7 +32,7 @@ var portrait_hud: UnitPortraitHUD = null
 var shop_panel: ShopPanel = null
 var view_switch_fx: ColorRect = null
 
-func build_views(owner: Control, display_settings: DisplaySettings, audio: AudioManager, image_service: OpenAIImageService) -> void:
+func build_views(owner: Control, display_settings: DisplaySettings, audio: AudioManager, image_service) -> void:
 	_call_owner(owner, "_setup_custom_cursor")
 
 	var cyber_bg := CyberBackgroundScript.new()

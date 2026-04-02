@@ -1,5 +1,40 @@
 ﻿# CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.107 - 2026-04-03
+
+### 修复
+- `Main.gd`：移除对 `ImageGenerationPanel` 的强类型依赖，避免 headless 首次装载时出现类型解析失败
+- `MainViewCoordinator.gd`：移除对 `OpenAIImageService` / `ImageGenerationPanel` 的强依赖，降低 `class_name` 注册顺序造成的装载风险
+- `ImageGenerationPanel.gd`：移除对 `OpenAIImageService` 的强类型依赖，保持生图面板在最小启动时可装载
+
+### 修改
+- `Handoff_Package_latest.md`：同步到 v0.1.107，回补 v0.1.106 的真实状态与当前风险
+- `Mulerun_Work_Report.md`：覆盖为本轮工作报告
+- `CyberTao_Migration_Snapshot_zh_v3.md`：更新为当前结构快照，修正 `hacker_fox` 已接入主流程这一事实
+
+### 备注
+- 本轮清理了本地 Godot 测试产物，不再把 `.codex_tmp` / `godot_headless.log` 留在仓库状态中
+- 隔离用户目录下的最小 headless 启动已通过；当前仍有根证书读取警告和退出资源未释放警告
+
+## v0.1.106 - 2026-04-02
+
+### 新增
+- `MainViewCoordinator.gd`：抽离主界面视图构建、按钮创建、面板绑定与 3D 视图初始化
+- `OpenAIImageService.gd`：接入 OpenAI 图片生成请求、本地配置保存与 PNG 输出
+- `ImageGenerationPanel.gd`：新增独立生图面板，支持 API Key、Prompt、尺寸 / 质量与预览
+- `CardBattleData.gd`：集中管理起始牌组、奖励池、升级规则与遭遇敌人数据
+
+### 修改
+- `Main.gd`：将大段界面搭建与连线逻辑下沉到 `MainViewCoordinator.gd`，并增加生图面板入口
+- `CardBattleController.gd`：改为读取 `CardBattleData.gd`，不再维护大块内嵌数据表
+- `FloorManager.gd` / `BattleFlowController.gd`：把 `hacker_fox` 接入主流程出生与跨层恢复逻辑
+- `CardRenderer.gd`、`CardRewardPanel.gd`、`DeckViewPanel.gd`、`ShopPanel.gd`：统一到新的构筑展示方案
+- `BoardView3D.gd`：整理 3D 格子爆发反馈与相机震动调用
+
+### 备注
+- 当前项目已从“单英雄主循环”进入“双英雄开局”状态，`crow_caster` 仍保留在资源层
+- OpenAI 生图功能依赖 API Key、网络和本机证书环境，v0.1.106 时未补完正式验证记录
+
 ## v0.1.105 - 2026-04-02
 
 ### 修复

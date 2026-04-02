@@ -1,7 +1,7 @@
 extends Panel
 class_name ImageGenerationPanel
 
-var _service: OpenAIImageService = null
+var _service = null
 
 var _api_key_input: LineEdit
 var _api_key_status: Label
@@ -21,7 +21,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_ui()
 
-func bind_service(next_service: OpenAIImageService) -> void:
+func bind_service(next_service) -> void:
 	_service = next_service
 	if _service == null:
 		return

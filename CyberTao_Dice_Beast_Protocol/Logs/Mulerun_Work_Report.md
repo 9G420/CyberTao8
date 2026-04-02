@@ -1,52 +1,61 @@
 ﻿# Mulerun 工作报告
 
-**日期**: 2026-04-02
-**版本**: v0.1.105
+**日期**: 2026-04-03
+**版本**: v0.1.107
 **分支**: `codex/dice-beast-protocol`
 
 ## 本轮任务
 
-清理交接文档遗留问题，重写当前接手主路径所依赖的核心文档，并同步最新交接基线。
+清理本地 Godot 测试日志，回查 v0.1.106 之后的真实项目状态，并把交接 / 汇报文档同步到当前基线。
 
 ## 根因目标
 
-虽然 v0.1.104 已修复部分核心日志的可读性，但 `AI Guide`、`Art Strategy` 与 `Snapshot v3` 的正文仍存在残留乱码或严重过时问题。继续在这些文档上局部缝补，会让接手者同时看到旧事实、坏字和新提示，真实成本仍然偏高。本轮目标是把“当前接手一定会读到的文档”重写为可直接执行的版本。
+仓库日志仍停留在 v0.1.105，已经和当前代码状态脱节。最典型的问题是日志还在写“`hacker_fox` 尚未接入主流程”，但代码里 `FloorManager.gd` 已经把它加入出生列表。与此同时，本地 headless 日志还记录过一次 `ImageGenerationPanel` / `OpenAIImageService` 的类型解析报错，需要确认这不是当前真实状态并做最小修补。
 
 ## 修改文件
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Logs/AI_Employee_Guide_v3.md` | 重写为当前基线的上岗指令，清理残留乱码，明确接手顺序与交付规则 |
-| `Logs/Art_Beautification_Strategy_zh.md` | 重写为当前版本的美术与表现策略，不再停留在旧阶段路线图 |
-| `Logs/CyberTao_Migration_Snapshot_zh_v3.md` | 重写为当前版本架构快照，同步模块、内容、风险与建议 |
-| `Logs/Handoff_Package_latest.md` | 更新到 v0.1.105，记录本轮已消除的交接风险 |
+| `Project/Scripts/Main.gd` | 去掉对 `OpenAIImageService` / `ImageGenerationPanel` 的强类型依赖，避免 headless 首次装载时的类型解析风险 |
+| `Project/Scripts/App/MainViewCoordinator.gd` | 去掉对新生图服务类型的强依赖，保持入口协调层装载稳定 |
+| `Project/Scripts/UI/ImageGenerationPanel.gd` | 去掉对 `OpenAIImageService` 的强类型依赖，减少 `class_name` 注册顺序影响 |
+| `Logs/Handoff_Package_latest.md` | 更新到 v0.1.107，补齐 v0.1.106 的真实功能状态与当前风险 |
 | `Logs/Mulerun_Work_Report.md` | 覆盖为本轮工作报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.105，并修复最近几个版本条目的可读性 |
+| `Logs/CyberTao_Migration_Snapshot_zh_v3.md` | 同步最新版本、结构、风险和主流程内容基线 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.106 / v0.1.107 两轮变更说明 |
 
 ## 实现内容
 
-- 不再对三份核心文档做局部补丁，而是直接按当前代码基线重写。
-- 将接手主路径统一为 `Guide / Handoff / Work Report / changelog / Snapshot`。
-- 将 `Snapshot v3` 从“正文过时、顶部提醒兜底”的状态，改回“正文可信”的结构快照。
-- 已将最近几版 changelog 的顶端条目同步为干净中文，避免新接手者一打开就碰到乱码。
+- 清理了仓库内遗留的 `.codex_tmp/` 和 `Project/godot_headless.log` 本地测试产物。
+- 回查 v0.1.106 代码后，确认以下事实已成立：
+  - `Main.gd` 已抽出 `MainViewCoordinator.gd`
+  - `CardBattleData.gd` 已统一卡牌与遭遇数据
+  - `OpenAIImageService.gd` 与 `ImageGenerationPanel.gd` 已接入
+  - `hacker_fox` 已进入主流程出生列表
+- 对三处脚本做了小范围稳定性修补，避免新加 `class_name` 在 headless 装载时触发类型解析报错。
+- 补跑一次隔离用户目录下的最小 headless 启动，确认脚本可装载，当前剩余的是系统根证书读取警告和退出资源未释放警告。
 
 ## 接口变更
 
-无代码接口变更；本轮仅调整交接文档与版本记录。
+- 无外部玩法接口变更。
+- 本轮仅做装载稳定性修补与项目日志同步。
 
 ## 测试确认
 
-- 回读三份重写文档，确认标题、版本、模块说明和接手路径一致。
-- 用关键词搜索检查目标文档中是否仍残留明显乱码模式或问号占位。
-- 检查 Git 工作区只包含本轮文档改动。
+- 删除本地 Godot 测试日志与临时目录后，确认它们不再是仓库未跟踪项。
+- 使用隔离的 `APPDATA / LOCALAPPDATA / USERPROFILE` 目录执行 Godot headless 最小启动。
+- 确认不再出现 `Could not find type "ImageGenerationPanel"` / `Could not find type "OpenAIImageService"` 报错。
+- 复核 `FloorManager.gd`、`BattleFlowController.gd`、`CardBattleData.gd` 与日志文档中的关键事实是否一致。
 
 ## 剩余问题
 
-- 更早历史 changelog 段落仍可能保留归档时期的编码遗留，本轮优先处理最新接手路径。
-- `Main.gd` 入口层膨胀问题仍在，本轮没有处理代码结构。
+- 系统环境下仍有 `Failed to read the root certificate store` 警告，这会影响后续需要 HTTPS 证书链的运行场景评估。
+- 退出时仍有 1 处资源未释放警告，本轮只做记录，没有继续深挖资源泄漏来源。
+- `crow_caster` 仍未进入主循环。
 
 ## 建议下一步
 
-1. 继续处理 `Main.gd` 的拆分，把入口协调层从纯中转逻辑里减负。
-2. 若继续推进玩法，优先接通第二个可玩单位，而不是只停留在资源文件层。
-3. 若继续推进表现层，优先补 2D / 3D 反馈统一，而不是继续堆外场装饰。
+1. 用真实 API Key 做一次生图端到端回归，确认 UI、HTTP 请求和本地保存链路都正常。
+2. 继续拆分 `Main.gd`，把剩余的结算和纯转发逻辑继续下沉。
+3. 单独排查 headless 的根证书与资源释放警告，避免后续把环境问题误判成玩法问题。
+4. 若继续扩阵营，优先决定 `crow_caster` 的接入方案。
