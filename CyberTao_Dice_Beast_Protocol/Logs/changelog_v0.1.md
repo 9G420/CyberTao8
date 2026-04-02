@@ -1,5 +1,16 @@
 ﻿# CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.108 - 2026-04-03
+
+### 修改
+- `AI_Employee_Guide_v3.md`：同步到 v0.1.108，补齐当前真实状态与文档同步硬规则
+- `Art_Beautification_Strategy_zh.md`：同步到 v0.1.108，补齐构筑界面与生图面板的当前视觉基线
+- `Handoff_Package_latest.md`：更新当前版本并记录本轮文档补齐
+- `Mulerun_Work_Report.md`：覆盖为本轮工作报告
+
+### 备注
+- 本轮无代码行为变化；目标是把入口文档重新拉回和主日志同一基线
+
 ## v0.1.107 - 2026-04-03
 
 ### 修复

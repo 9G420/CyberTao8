@@ -1,9 +1,9 @@
 ﻿# CyberTao: Dice Beast Protocol - AI 员工上岗指令 v3
 
-**发布时间**: 2026-04-02
+**发布时间**: 2026-04-03
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.105
+**当前版本**: v0.1.108
 **引擎**: Godot 4.6.1 | GDScript | renderer: `gl_compatibility`
 **视口**: 1280x720 | stretch mode: `canvas_items`
 
@@ -73,13 +73,14 @@
 
 ---
 
-## 3. 当前真实状态（v0.1.105）
+## 3. 当前真实状态（v0.1.108）
 
-- 棋盘走位层稳定：`BattleFlowController`、`BoardGenerator`、`FloorManager`、`ShopPanel`、`CellEffectHandler` 全部接通。
-- 卡牌战斗层稳定：`CardBattleController` 已支持起始牌组、奖励牌池、升级、Boss、能量成长、战斗结算回写。
+- 棋盘走位层稳定：`BattleFlowController`、`BoardGenerator`、`FloorManager`、`ShopPanel`、`CellEffectHandler` 全部接通，当前主流程会生成 `blade_shield_dog` 与 `hacker_fox` 两个玩家单位。
+- 卡牌战斗层稳定：`CardBattleController` 已支持起始牌组、奖励牌池、升级、Boss、能量成长、战斗结算回写，卡牌与遭遇数据已抽到 `CardBattleData.gd`。
 - 视图层为双轨：2D `BoardView.gd` 与 3D `BoardView3D.gd` 并存，公共交互接口尽量对齐。
-- 表现层已具备基本氛围：像素化单位纹理、卡牌界面、商店面板、顶部头像 HUD、音效与外部 BGM 回退。
-- 本轮已完成交接文档清洗：`AI Guide`、`Art Strategy`、`Snapshot v3` 已重写为当前基线。
+- 入口协调层已拆出 `MainViewCoordinator.gd`，主菜单已接入 `OpenAIImageService.gd` + `ImageGenerationPanel.gd` 的生图入口。
+- 表现层已具备基本氛围：像素化单位纹理、卡牌界面、商店/奖励/牌组统一构筑展示、顶部头像 HUD、音效与外部 BGM 回退。
+- 当前接手主路径与表现策略文档均已同步到 v0.1.108 基线。
 
 ---
 
@@ -93,6 +94,9 @@
   - `Logs/Mulerun_Work_Report.md`
   - `Logs/changelog_v0.1.md`
 - 如果本轮改动改变了架构事实、模块边界或接手路径，再同步 `Logs/CyberTao_Migration_Snapshot_zh_v3.md`。
+- 如果本轮让 `AI Guide` 或 `Art Strategy` 的版本、执行边界或现状描述过时，也必须一并同步：
+  - `Logs/AI_Employee_Guide_v3.md`
+  - `Logs/Art_Beautification_Strategy_zh.md`
 - 不为了“顺手整理”大面积改名、迁移或重排目录；非任务必需的整洁化一律后置。
 
 ---
@@ -160,7 +164,7 @@
 ## 8. 常见误区
 
 - 不要把 `Snapshot v3` 当作唯一真相，它是结构快照，不是逐提交流水账。
-- 不要因为看到 `Project/Data/Units/hacker_fox.tres`、`crow_caster.tres` 就假设它们已经接入主流程。
+- 不要因为看到 `Project/Data/Units/crow_caster.tres` 就假设它已经接入主流程；当前真正接通的是 `blade_shield_dog` + `hacker_fox`。
 - 不要把 2D 和 3D 视图当成两套独立游戏逻辑；它们只是两条表现路径。
 - 不要只改文档顶部版本号而不改正文事实。
 - 不要把“帮接手的人省事”理解成写长篇背景文；交接文档优先写准确事实和操作入口。

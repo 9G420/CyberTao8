@@ -1,8 +1,8 @@
 ﻿# CyberTao: Dice Beast Protocol - 美术与表现推进策略
 
-**更新日期**: 2026-04-02
-**当前基线**: v0.1.105
-**适用范围**: 2D/3D 棋盘表现、卡牌战斗界面、商店/奖励/HUD、音频氛围
+**更新日期**: 2026-04-03
+**当前基线**: v0.1.108
+**适用范围**: 2D/3D 棋盘表现、卡牌战斗界面、商店/奖励/牌组/生图面板、音频氛围
 
 > 本文已按当前代码基线重写。旧文档里的 Phase 1~6 目标已经完成，现在只记录当前视觉现状、后续优先级和实现约束。
 
@@ -18,7 +18,8 @@
 | 3D 棋盘 | 已接通 | `BoardView3D.gd` + `TileMeshFactory3D.gd` + `UnitMeshFactory3D.gd`，支持 F5 切换、拖拽、缩放、基础反馈 |
 | 单位表现 | 已升级 | 2D 和卡牌战斗均已复用像素化单位纹理，3D 侧使用 billboard 纹理与程序化模型 |
 | 卡牌战斗界面 | 已稳定 | `CardBattlePanel.gd`、`CardRenderer.gd`、`CardRewardPanel.gd` 已可用，支持拖拽出牌与奖励选牌 |
-| 辅助面板 | 已可用 | 商店、牌组、设置、顶部头像 HUD 全部接入主流程 |
+| 构筑相关界面 | 已统一一轮 | `CardRewardPanel.gd`、`DeckViewPanel.gd`、`ShopPanel.gd` 已共用更接近的卡牌 tile / row 语法 |
+| 辅助面板 | 已可用 | 商店、牌组、设置、顶部头像 HUD、生图面板全部接入主流程 |
 | 音频氛围 | 已可用 | `AudioManager.gd` + `SFXGenerator.gd`，并支持外部 BGM 文件优先加载 |
 
 ---
@@ -30,10 +31,10 @@
 - 2D 侧的命中、悬停、格子识别、外场层次更完整。
 - 3D 侧已经可玩，但部分反馈仍是占位实现或简化版本。
 
-### 2.2 多个面板的风格语言还不够统一
+### 2.2 多个面板的风格语言还没有完全并轨
 
-- `CardBattlePanel`、`CardRewardPanel`、`DeckViewPanel`、`ShopPanel` 已能使用，但“同一系统”的视觉关系还不够强。
-- 卡牌、奖励、商店商品的类型色和信息层级仍可进一步统一。
+- `CardRewardPanel`、`DeckViewPanel`、`ShopPanel` 已完成第一轮统一，但 `CardBattlePanel` 与 `ImageGenerationPanel` 还没有完全并入同一视觉语法。
+- 卡牌、奖励、商店商品的类型色和信息层级已更接近，但标题层级、按钮语言和空状态表现仍可进一步统一。
 
 ### 2.3 棋盘外场氛围已经建立，但信息分层还能更清晰
 
@@ -61,7 +62,7 @@
 
 目标：
 
-- 让 `CardBattlePanel`、`CardRewardPanel`、`DeckViewPanel`、`ShopPanel` 使用更一致的色彩、标题、边框和信息分区。
+- 让 `CardBattlePanel`、`CardRewardPanel`、`DeckViewPanel`、`ShopPanel`、`ImageGenerationPanel` 使用更一致的色彩、标题、边框和信息分区。
 - 让“卡牌”“商品”“升级选项”这三类对象在信息密度上更接近，不再各写一套视觉语法。
 
 ### P2：整理棋盘环境表现
@@ -101,9 +102,11 @@
 | `Project/Scripts/UI/CardRewardPanel.gd` | 奖励与升级界面表现 |
 | `Project/Scripts/UI/DeckViewPanel.gd` | 牌组展示 |
 | `Project/Scripts/UI/ShopPanel.gd` | 商店界面与商品呈现 |
+| `Project/Scripts/UI/ImageGenerationPanel.gd` | 生图面板布局与状态呈现 |
 | `Project/Scripts/UI3D/BoardView3D.gd` | 3D 棋盘输入、3D 相机、3D 反馈触发 |
 | `Project/Scripts/UI3D/TileMeshFactory3D.gd` | 3D 格子造型语言 |
 | `Project/Scripts/UI3D/UnitMeshFactory3D.gd` | 3D 单位与像素纹理生成 |
+| `Project/Scripts/App/MainViewCoordinator.gd` | 入口层按钮与各面板装配关系 |
 | `Project/Scripts/System/AudioManager.gd` | BGM/SFX 管理与播放策略 |
 
 ---
@@ -136,5 +139,5 @@
 如果下一轮继续做表现层，推荐顺序：
 
 1. 先补 3D 反馈与 2D/3D 可读性统一。
-2. 再统一卡牌相关面板的视觉语法。
+2. 再把 `CardBattlePanel` 与 `ImageGenerationPanel` 拉回统一的面板视觉语法。
 3. 最后再考虑新增更重的场景氛围和素材投入。

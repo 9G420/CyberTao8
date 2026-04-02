@@ -1,14 +1,14 @@
 ﻿# CyberTao: Dice Beast Protocol - 交接包
 
 **生成时间**: 2026-04-03
-**当前版本**: v0.1.107
+**当前版本**: v0.1.108
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 1. 此刻的精确状态（一句话）
 
-v0.1.107 已完成 v0.1.106 的状态回补、项目日志同步和一处新生图入口的类型解析稳定性修补；当前项目处于“可玩闭环稳定 + 双英雄开局 + OpenAI 生图入口已接入”的阶段。
+v0.1.108 已补齐 `AI Guide` 与 `Art Strategy` 的当前基线，同步接手规则与表现策略；当前项目仍处于“可玩闭环稳定 + 双英雄开局 + OpenAI 生图入口已接入”的阶段。
 
 ---
 
@@ -21,6 +21,7 @@ v0.1.107 已完成 v0.1.106 的状态回补、项目日志同步和一处新生�
 | v0.1.105 | 重写 `AI Guide`、`Art Strategy`、`Snapshot v3`，并清理最新交接路径 | 完成 |
 | v0.1.106 | 接入 OpenAI 生图入口；抽离 `MainViewCoordinator`；抽离 `CardBattleData`；重构商店/奖励/牌组 UI；接通 `hacker_fox` 主流程出生 | 完成 |
 | v0.1.107 | 同步 `Handoff / Work Report / Snapshot / changelog`，并修复 headless 下新类型解析风险 | 完成 |
+| v0.1.108 | 同步 `AI_Employee_Guide_v3.md` 与 `Art_Beautification_Strategy_zh.md`，补齐文档更新规则 | 完成 |
 
 ---
 
