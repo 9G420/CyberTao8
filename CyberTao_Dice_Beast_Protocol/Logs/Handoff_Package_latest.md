@@ -1,87 +1,60 @@
-# CyberTao: Dice Beast Protocol — 交接包
+﻿# CyberTao: Dice Beast Protocol - 交接包
 
-**生成时间**: 2026-04-01
-**当前版本**: v0.1.82
+**生成时间**: 2026-04-02
+**当前版本**: v0.1.103
 **分支**: codex/dice-beast-protocol
 
 ---
 
 ## 1. 此刻的精确状态（一句话）
 
-v0.1.82 修复 2D 默认模式仍显示旧 spritesheet 插图的 BUG：BoardView.gd 移除 PlayerSpriteAnimator 依赖，所有单位统一走 UnitRenderer 程序化渲染。至此 2D/3D 两种渲染路径均无外部美术资源依赖。下一步可选商店手动选牌UI或新遭遇/Boss。
+v0.1.103 已完成外场固定边框台座、四角结构件和 2D/3D 拖拽自动回正移除；项目当前是双层玩法闭环可玩的原型，真实基线应以 v0.1.103 的 Guide / Work Report / Changelog 为准，而不是旧版 Snapshot 文案。
 
 ---
 
-## 2. 本账号完成的工作
+## 2. 最近完成的工作
 
 | 版本 | 任务 | 状态 |
 |------|------|------|
-| v0.1.74 | 3D 反馈系统实现 | 完成 |
-| v0.1.75 | 阵亡单位跨层复活 + 存活单位跨层回复 | 完成 |
-| v0.1.76 | BFC 瘦身：FloorManager 独立类 | 完成 |
-| v0.1.77 | 3D 单位精灵化 + BUG-002 修复 | 完成 |
-| v0.1.78 | 商品池扩展（5→9种商品） | 完成 |
-| v0.1.79 | 卡牌战斗层深化（4新卡+2新行为+2新遭遇） | 完成 |
-| v0.1.80 | 数值平衡调优（6项修正） | 完成 |
-| v0.1.81 | 全单位程序化 BGA 宝可梦像素风格重构（3D路径） | 完成 |
-| v0.1.82 | 2D 渲染路径 spritesheet 移除（修复默认模式BUG） | 完成 |
+| v0.1.100 | 修复 2D 棋盘歪斜与自动回正到奇怪位置 | 完成 |
+| v0.1.101 | 优化 2D 棋盘大视角外场铺底与舞台感 | 完成 |
+| v0.1.102 | 补充外场平台和边缘层次表现 | 完成 |
+| v0.1.103 | 外场固定边框台座 + 四角结构件；取消 2D/3D 拖拽自动回正 | 完成 |
 
 ---
 
-## 3. 最后版本关键变更
+## 3. 当前真实结构
 
-**版本号**: v0.1.82
-
-**修改文件**:
-- `Scripts/UI/BoardView.gd` — 移除 PlayerSpriteAnimator 依赖（变量/初始化/tick/方向/停止/渲染分支/`_draw_player_sprite()`方法），全单位统一走 UnitRenderer 程序化渲染
-- `Scripts/UI/DiceDebugPanel.gd` — 版本标记 → v0.1.82
-
-**无接口变更**（BoardView 公开接口签名不变）
-
----
-
-## 4. 下一步任务
-
-**任务队列**:
-1. 商店 remove_card 手动选择UI
-2. 更多遭遇/Boss 丰富战斗多样性
-3. 如需行走动画：可添加移动中弹跳 tween（无需 spritesheet）
+- 入口: `Project/Scenes/Main.tscn`
+- 主控入口: `Project/Scripts/Main.gd`
+- 棋盘外层: `Project/Scripts/BattleV2/BattleFlowController.gd`
+- 卡牌内层: `Project/Scripts/BattleV2/CardBattleController.gd`
+- 2D 视图: `Project/Scripts/UI/BoardView.gd`
+- 3D 视图: `Project/Scripts/UI3D/BoardView3D.gd`
+- 商店 UI: `Project/Scripts/UI/ShopPanel.gd`
 
 ---
 
-## 5. 当前未解决问题清单
+## 4. 已处理的接手风险
 
-| 问题 | 严重程度 | 是否阻塞 | 建议处理时机 |
-|------|----------|----------|--------------|
-| PlayerSpriteAnimator.gd 已无引用 | 低 | 否 | 清理轮次移除 |
-| 2D/3D 风格略有差异（Q版 vs BGA像素） | 低 | 否 | 如需统一时改 UnitRenderer |
-| remove_card 自动选择 | 低 | 否 | 需手动选择时 |
-| DiceDebugPanel 绑定 2D BoardView | 低 | 否 | 3D 完善轮次 |
-| 商店 ATK/DEF 未走 BuffManager | 低 | 否 | 如需回合限制时改 |
+- 已同步 `Handoff_Package_latest.md` 到当前版本，避免继续误导到 v0.1.82。
+- 已给 `CyberTao_Migration_Snapshot_zh_v3.md` 增加显式提示：正文不是最新版本时，以 Guide / Work Report / Changelog 为准。
+- 已删除未引用遗留文件 `Project/Scripts/UI/PlayerSpriteAnimator.gd`。
 
 ---
 
-## 6. 新账号启动指令
+## 5. 仍需继续处理的风险
 
-```bash
-git clone https://github.com/9G420/CyberTao8.git
-cd CyberTao8
-git checkout codex/dice-beast-protocol
-git pull origin codex/dice-beast-protocol
-```
-
-然后按顺序阅读：
-1. `Logs/AI_Employee_Guide_v3.md`
-2. 本文件
-3. `Logs/CyberTao_Migration_Snapshot_zh_v3.md`
-4. `Logs/Mulerun_Work_Report.md`
+| 问题 | 严重程度 | 是否阻塞 | 说明 |
+|------|----------|----------|------|
+| 中文文本存在编码污染 | 中 | 否 | 目前已影响部分脚本注释和界面文本可读性，属于批量文本修复任务，不能草率全量替换 |
+| `Main.gd` 入口层连接持续膨胀 | 中 | 否 | 现在仍可维护，但后续功能继续堆叠会提高联调成本 |
+| `Snapshot v3` 主体内容落后于当前版本 | 低 | 否 | 已加顶部警告，后续建议做一次完整同步 |
 
 ---
 
-## 7. 给下一个账号的备注
+## 6. 下一步建议
 
-- v0.1.82 修复了 v0.1.81 遗漏的 2D 渲染路径 — 现在 2D 和 3D 模式均无外部美术资源依赖
-- 2D 模式使用 UnitRenderer（咩咩启示录 Q 版程序化风格），3D 模式使用 UnitMeshFactory3D（BGA 宝可梦像素风格）
-- PlayerSpriteAnimator.gd 可安全删除（已无引用方）
-- Assets/Tiles/刀盾向X走.png 文件仍存在于仓库但不再被代码引用
-- 复活/回复比例（50%/30%）仍未调整，如测试发现过难/过易可调 FloorManager 常量
+1. 单独开一个轮次处理“中文编码修复”，先限定范围在 `Logs/` 和 UI 文本层，不要直接全项目全量替换。
+2. 继续把 `Main.gd` 里纯连接/转发逻辑往独立协调层收拢，但不要把新逻辑反向塞回 `BattleFlowController`。
+3. 若继续做表现层，优先补 `Snapshot v3` 的最近版本说明，避免再次出现接手基线混乱。
