@@ -1,5 +1,10 @@
 ﻿# CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.109 - 2026-04-03
+
+### 修复
+- `Main.gd` / `BoardView.gd` / `BoardView3D.gd`：高亮格子数组 (`highlight_cells`、`attack_highlight_cells`、`summon_highlight_cells`) 不再直接赋 `[]`，而是调用 `.clear()`，避免在数组声明为 `Array[Vector2i]` 的场景中被赋入未指定类型的空值导致 `_on_card_battle_ended` 报错。
+
 ## v0.1.108 - 2026-04-03
 
 ### 修改
