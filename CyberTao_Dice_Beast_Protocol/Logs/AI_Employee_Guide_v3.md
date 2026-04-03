@@ -3,7 +3,7 @@
 **发布时间**: 2026-04-03
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.108
+**当前版本**: v0.1.109
 **引擎**: Godot 4.6.1 | GDScript | renderer: `gl_compatibility`
 **视口**: 1280x720 | stretch mode: `canvas_items`
 
@@ -73,11 +73,12 @@
 
 ---
 
-## 3. 当前真实状态（v0.1.108）
+## 3. 当前真实状态（v0.1.109）
 
 - 棋盘走位层稳定：`BattleFlowController`、`BoardGenerator`、`FloorManager`、`ShopPanel`、`CellEffectHandler` 全部接通，当前主流程会生成 `blade_shield_dog` 与 `hacker_fox` 两个玩家单位。
 - 卡牌战斗层稳定：`CardBattleController` 已支持起始牌组、奖励牌池、升级、Boss、能量成长、战斗结算回写，卡牌与遭遇数据已抽到 `CardBattleData.gd`。
 - 视图层为双轨：2D `BoardView.gd` 与 3D `BoardView3D.gd` 并存，公共交互接口尽量对齐。
+- 最新稳定性修复：主流程与 2D/3D 棋盘视图清理高亮格子时统一使用 `.clear()`，避免 `Array[Vector2i]` 字段被空数组直接赋值后触发运行时类型错误。
 - 入口协调层已拆出 `MainViewCoordinator.gd`，主菜单已接入 `OpenAIImageService.gd` + `ImageGenerationPanel.gd` 的生图入口。
 - 表现层已具备基本氛围：像素化单位纹理、卡牌界面、商店/奖励/牌组统一构筑展示、顶部头像 HUD、音效与外部 BGM 回退。
 - 当前接手主路径与表现策略文档均已同步到 v0.1.108 基线。
