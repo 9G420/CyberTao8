@@ -1,43 +1,40 @@
 ﻿# Mulerun 工作报告
 
 **日期**: 2026-04-03
-**版本**: v0.1.108
+**版本**: v0.1.109
 **分支**: `codex/dice-beast-protocol`
 
 ## 本轮任务
 
-补齐 `AI_Employee_Guide_v3.md` 与 `Art_Beautification_Strategy_zh.md` 的当前基线，并把这轮文档同步记录写回主日志。
+修复卡牌与棋盘高亮数组清理路径的类型崩溃，并把这次修复写回主日志。
 
 ## 根因目标
 
-上一轮已经把 `Handoff / Work Report / Snapshot / changelog` 提升到了 `v0.1.107`，但 `AI_Employee_Guide_v3.md` 和 `Art_Beautification_Strategy_zh.md` 仍停留在 `v0.1.105`。这样会让接手者在“行为边界”和“表现策略”两份入口文档里读到过期事实，所以本轮目标是把它们补到同一基线，并把“以后也要同步这两份文档”的规则写清。
+`Main.gd` 里在战斗结束、重试与取消选择等路径直接用 `view.highlight_cells = []` 赋值，但这些字段在 `BoardView` / `BoardView3D` 里声明为 `Array[Vector2i]`，Godot 运行时会因此抛出 “Invalid assignment” 错误并中止 `_on_card_battle_ended`。本轮目标是把所有高亮数组清理改成 `.clear()`，维持原数组实例的类型正确，并同步日志以便接手时主日志、行为指南与实际结构一致。
 
 ## 修改文件
 
 | 文件 | 修改内容 |
 |------|----------|
-| `Logs/AI_Employee_Guide_v3.md` | 更新到 v0.1.108，补齐当前真实状态并加入文档同步硬规则 |
-| `Logs/Art_Beautification_Strategy_zh.md` | 更新到 v0.1.108，补齐构筑界面与生图面板的当前视觉基线 |
-| `Logs/Handoff_Package_latest.md` | 更新到 v0.1.108，记录本轮文档补齐 |
-| `Logs/Mulerun_Work_Report.md` | 覆盖为本轮工作报告 |
-| `Logs/changelog_v0.1.md` | 追加 v0.1.108 变更说明 |
+| `Project/Scripts/Main.gd` | 所有重置/取消选择路径里的高亮数组清理改为 `.clear()`，避免 `Array[Vector2i]` 字段赋值空数组导致 crash |
+| `Project/Scripts/UI/BoardView.gd` | `_select_unit` / `_deselect()` / 其他分支的高亮清理同步改为 `.clear()`，保持 2D/3D 接口一致性 |
+| `Project/Scripts/UI3D/BoardView3D.gd` | 同步清理逻辑，防止 3D 视图也触发类型错误 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.109 条目，说明高亮数组 `.clear()` 修复与本轮日志同步操作 |
 
 ## 实现内容
 
-- 将 `AI Guide` 的版本、当前状态、常见误区与文档同步规则提升到 `v0.1.108`。
-- 将 `Art Strategy` 的视觉基线、主要视觉债务、P1 优先级与文件归属建议同步到当前代码现状。
-- 在 `AI Guide` 中明确：如果 `AI Guide` 或 `Art Strategy` 的版本、执行边界或现状描述变旧，也必须和主日志一起同步。
-- 在 `Handoff` 与 `changelog` 中补记本轮文档更新，避免再次出现“主日志变了、入口文档没跟上”的情况。
+- `Main.gd` 在 `_on_card_battle_ended`、`_on_restart_pressed`、`_select_unit`、`_clear_highlight_arrays` 等路径里统一用 `.clear()` 清理 `BoardView` / `BoardView3D` 传下来的三类高亮字段，保持 `Array[Vector2i]` 实例不变。
+- `BoardView.gd` 和 `BoardView3D.gd` 的 `_select_unit` / `_deselect()` / 选中判断里的 “else” 分支也同步改写为 `.clear()`，避免 2D/3D 在一边修复另一边崩溃。
+- `Logs/changelog_v0.1.md` 追加 v0.1.109 条目，说明此次高亮数组 `.clear()` 修复及文档同步，告知接手者主日志已经覆盖最新运行时风险。
 
 ## 接口变更
 
-- 无代码接口变更。
-- 本轮仅同步文档基线与交付规则。
+- 无代码接口变更；仅清理内部高亮状态数组并同步日志。
 
 ## 测试确认
 
-- 回读 `AI_Employee_Guide_v3.md` 与 `Art_Beautification_Strategy_zh.md`，确认版本号、事实描述和当前日志基线一致。
-- 复核 `Handoff / Work Report / changelog` 已记录本轮文档更新，而不是只改入口文档正文。
+- 手动进入一次卡牌战斗触发 `_on_card_battle_ended`，确认高亮数组清理不再抛 `Invalid assignment`。
+- 分别在 2D/3D BoardView 中选中/取消选中单位，确认 `highlight_cells`、`attack_highlight_cells`、`summon_highlight_cells` 被 `.clear()` 清理但仍按类型存在。
 
 ## 剩余问题
 
