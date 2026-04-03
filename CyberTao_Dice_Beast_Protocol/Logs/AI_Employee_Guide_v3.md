@@ -90,6 +90,8 @@
 - 只在 `CyberTao_Dice_Beast_Protocol/Project/` 和必要的 `Logs/` 内工作。
 - 不修改旧项目根目录的历史逻辑，不把新模式强塞回旧 `BattleManager.gd`。
 - 所有日志文档用中文。
+- 所有新增或更新的日志文件，顶部时间字段必须写到分钟，禁止只写日期。
+- 统一时间格式为：`YYYY-MM-DD HH:mm SGT`。
 - 每轮任务结束后至少同步：
   - `Logs/Handoff_Package_latest.md`
   - `Logs/Mulerun_Work_Report.md`
@@ -128,6 +130,8 @@
 - 剩余问题
 - 建议下一步
 
+并且顶部 `日期` 字段必须写成 `YYYY-MM-DD HH:mm SGT`，不能只写 `YYYY-MM-DD`。
+
 ### 6.2 `changelog_v0.1.md`
 
 必须追加新版本条目，明确区分：
@@ -138,6 +142,7 @@
 - 备注
 
 只写本轮事实，不写“可能以后会做什么”。
+如果本轮是同一天内的再次更新，必须在条目内补一行记录时间，格式为 `记录时间: YYYY-MM-DD HH:mm SGT`。
 
 ### 6.3 `Handoff_Package_latest.md`
 
@@ -147,6 +152,8 @@
 - 一句话状态
 - 最近完成工作
 - 当前风险与下一步建议
+
+顶部 `生成时间` 必须写成 `YYYY-MM-DD HH:mm SGT`，不能只写日期。
 
 ---
 

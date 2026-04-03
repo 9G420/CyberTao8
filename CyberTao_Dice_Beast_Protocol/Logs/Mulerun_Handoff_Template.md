@@ -41,6 +41,8 @@ Write a short summary here:
 - New work goes into `CyberTao_Dice_Beast_Protocol/Project/`.
 - Do not continue expanding the old `BattleManager.gd`.
 - Keep logs updated after each meaningful milestone.
+- Every updated log file must include a timestamp with minute precision, not date only.
+- Use the unified timestamp format: `YYYY-MM-DD HH:mm SGT`.
 - Create a new migration snapshot whenever major architecture or goals change.
 - Update changelog after each implementation batch.
 
@@ -132,6 +134,7 @@ Before handing off to a new account:
 - Confirm all latest files are committed or clearly identified as uncommitted
 - Update `CyberTao_Migration_Snapshot.md`
 - Update the latest changelog file
+- Ensure every updated log header includes `YYYY-MM-DD HH:mm SGT`
 - Fill in this handoff template
 - Record the exact next coding target
 
