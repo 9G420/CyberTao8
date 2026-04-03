@@ -272,9 +272,9 @@ func _select_unit(unit_id: String) -> void:
 		attack_highlight_cells = battle_flow.get_attackable_cells_for(unit_id)
 		summon_highlight_cells = _filter_summon_cells(battle_flow.get_summon_cells_for(unit_id))
 	else:
-		highlight_cells = []
-		attack_highlight_cells = []
-		summon_highlight_cells = []
+		highlight_cells.clear()
+		attack_highlight_cells.clear()
+		summon_highlight_cells.clear()
 	# v0.1.64：选中单位时立即将相机居中到该单位
 	if unit_manager:
 		var unit: Dictionary = unit_manager.get_unit(unit_id)
@@ -287,9 +287,9 @@ func _select_unit(unit_id: String) -> void:
 
 func _deselect() -> void:
 	selected_unit_id = ""
-	highlight_cells = []
-	attack_highlight_cells = []
-	summon_highlight_cells = []
+	highlight_cells.clear()
+	attack_highlight_cells.clear()
+	summon_highlight_cells.clear()
 	emit_signal("unit_deselected")
 	queue_redraw()
 

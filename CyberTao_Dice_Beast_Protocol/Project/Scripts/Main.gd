@@ -1,7 +1,10 @@
 extends Control
 
 const MainViewCoordinatorScript = preload("res://Scripts/App/MainViewCoordinator.gd")
+const ChapterContent = preload("res://Scripts/App/ChapterContent.gd")
 const OpenAIImageServiceScript = preload("res://Scripts/System/OpenAIImageService.gd")
+const BoardViewScript = preload("res://Scripts/UI/BoardView.gd")
+const BoardView3DScript = preload("res://Scripts/UI3D/BoardView3D.gd")
 
 # v0.1.71：3D/2D 视图切换标志（默认 false = 2D 模式）
 var _use_3d: bool = false
@@ -19,10 +22,13 @@ var _card_battle_panel: CardBattlePanel
 var _card_reward_panel: CardRewardPanel
 var _deck_view_panel: DeckViewPanel
 var _image_generation_panel = null
+var _chapter_label: Label
+var _objective_label: Label
 var _result_label: Label
 var _restart_btn: Button
 var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
+var _mission_brief_overlay = null
 var _audio: AudioManager
 var _image_service = null
 var _portrait_hud: UnitPortraitHUD
@@ -54,6 +60,8 @@ func _ready() -> void:
 	_update_camera_to_player()
 	# 启动棋盘 BGM
 	_audio.play_bgm("bgm_map")
+	_refresh_chapter_banner()
+	call_deferred("_show_opening_briefing")
 
 func _build_debug_view() -> void:
 	_view_coordinator.build_views(self, _display_settings, _audio, _image_service)
@@ -73,10 +81,13 @@ func _sync_view_refs() -> void:
 	_card_reward_panel = _view_coordinator.card_reward_panel
 	_deck_view_panel = _view_coordinator.deck_view_panel
 	_image_generation_panel = _view_coordinator.image_generation_panel
+	_chapter_label = _view_coordinator.chapter_label
+	_objective_label = _view_coordinator.objective_label
 	_result_label = _view_coordinator.result_label
 	_restart_btn = _view_coordinator.restart_btn
 	_dice_anim = _view_coordinator.dice_anim
 	_transition = _view_coordinator.transition
+	_mission_brief_overlay = _view_coordinator.mission_brief_overlay
 	_portrait_hud = _view_coordinator.portrait_hud
 	_shop_panel = _view_coordinator.shop_panel
 	_view_switch_fx = _view_coordinator.view_switch_fx
@@ -114,20 +125,20 @@ func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
 
 func _on_phase_changed(phase_name: String) -> void:
 	if phase_name == "VICTORY":
-		_result_label.text = "通关胜利！"
+		_result_label.text = ChapterContent.get_victory_text()
 		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 		_result_label.visible = true
 		_restart_btn.visible = true
 		_audio.play_sfx("victory")
 	elif phase_name == "DEFEAT":
-		_result_label.text = "失败"
+		_result_label.text = "突破失败"
 		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_WARN)
 		_result_label.visible = true
 		_restart_btn.visible = true
 		_audio.play_sfx("defeat")
 	elif phase_name == "FLOOR_CLEAR":
 		var floor_num: int = _battle_flow.get_current_floor()
-		_result_label.text = "第 " + str(floor_num) + " 层通关！"
+		_result_label.text = ChapterContent.get_floor_clear_text(floor_num)
 		_result_label.add_theme_color_override("font_color", CyberStyle.TEXT_SUCCESS)
 		_result_label.visible = true
 		_restart_btn.visible = false
@@ -215,7 +226,7 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 	await _transition.reveal()
 
 func _on_encounter_resolved(encounter_id: String, cell: Vector2i) -> void:
-	_active_view().play_pickup_feedback(cell, "遭遇清除")
+	_active_view().play_pickup_feedback(cell, ChapterContent.get_encounter_resolved_text())
 	_active_view().queue_redraw()
 
 func _on_heal_cell_triggered(unit_id: String, cell: Vector2i, heal_amount: int, actual_heal: int) -> void:
@@ -250,7 +261,7 @@ func _on_trick_crest_used(gained_crest: String) -> void:
 func _on_shop_panel_requested(unit_id: String, cell: Vector2i) -> void:
 	_shop_panel.open_shop(unit_id, _battle_flow.dice_manager, _battle_flow.unit_manager, _card_battle_ctrl)
 	_audio.play_sfx("shop")
-	_active_view().play_shop_feedback(cell, "商店")
+	_active_view().play_shop_feedback(cell, ChapterContent.get_shop_feedback_label())
 	_active_view().queue_redraw()
 
 func _on_shop_closed() -> void:
@@ -269,11 +280,10 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 		_floor_clear_pending = false
 		_result_label.visible = false
 		view.selected_unit_id = ""
-		view.highlight_cells = []
-		view.attack_highlight_cells = []
-		view.summon_highlight_cells = []
+		_clear_highlight_arrays(view)
 		_battle_flow.advance_to_next_floor()
 		_update_camera_to_player()
+		_refresh_chapter_banner()
 		view.queue_redraw()
 		if _use_3d and _board_view_3d:
 			_board_view_3d.rebuild_board()
@@ -290,10 +300,10 @@ func _on_card_battle_ended(victory: bool, player_hp_remaining: int) -> void:
 	_battle_flow.resolve_encounter(victory, player_hp_remaining)
 	# 反馈飘字
 	if victory and encounter_cell.x >= 0:
-		view.play_pickup_feedback(encounter_cell, "战斗胜利！")
+		view.play_pickup_feedback(encounter_cell, ChapterContent.get_encounter_victory_text())
 		_audio.play_sfx("victory")
 	elif not victory and encounter_cell.x >= 0:
-		view.play_encounter_feedback(encounter_cell, "战斗失败...")
+		view.play_encounter_feedback(encounter_cell, ChapterContent.get_encounter_defeat_text())
 	view.queue_redraw()
 	# 百叶窗展开，回到棋盘
 	await _transition.reveal()
@@ -318,30 +328,31 @@ func _on_game_won() -> void:
 	pass
 
 func _on_boss_unlocked(cell: Vector2i) -> void:
-	_active_view().play_encounter_feedback(cell, "BOSS 解锁！")
+	_active_view().play_encounter_feedback(cell, ChapterContent.get_boss_unlock_text())
 	_audio.play_sfx("encounter")
 	_active_view().queue_redraw()
 
 func _on_hero_warped(unit_id: String, target_cell: Vector2i) -> void:
 	_active_view().set_camera_target(target_cell)
-	_active_view().play_pickup_feedback(target_cell, "传送至 Boss！")
+	_active_view().play_pickup_feedback(target_cell, ChapterContent.get_warp_text())
 	_active_view().queue_redraw()
 
 func _on_portal_spawned(cell: Vector2i) -> void:
-	_active_view().play_pickup_feedback(cell, "传送门！")
+	_active_view().play_pickup_feedback(cell, ChapterContent.get_portal_text())
 	_active_view().queue_redraw()
 
 func _on_restart_pressed() -> void:
 	var view = _active_view()
 	view.selected_unit_id = ""
-	view.highlight_cells = []
-	view.attack_highlight_cells = []
-	view.summon_highlight_cells = []
+	view.highlight_cells.clear()
+	view.attack_highlight_cells.clear()
+	view.summon_highlight_cells.clear()
 	_floor_clear_pending = false
 	_last_operated_unit_id = ""
 	_card_battle_ctrl.reset_persistent_deck()
 	_battle_flow.restart_battle()
 	_update_camera_to_player()
+	_refresh_chapter_banner()
 	view.queue_redraw()
 	if _use_3d and _board_view_3d:
 		_board_view_3d.rebuild_board()
@@ -402,7 +413,7 @@ func _on_test_card_battle_requested() -> void:
 	var p_hp: int = int(unit.get("hp", 1))
 	var p_max_hp: int = int(unit.get("max_hp", 1))
 	# 调试也走宝可梦式过渡
-	await _transition.transition_to_battle("异常哨兵", false)
+	await _transition.transition_to_battle(ChapterContent.get_encounter_display_name("encounter_01"), false)
 	_card_battle_panel.visible = true
 	_portrait_hud.visible = false
 	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp, _battle_flow.get_current_floor())
@@ -453,21 +464,29 @@ func _on_hand_changed_sfx(_hand: Array, _energy: int, _max_energy: int) -> void:
 
 ## 遭遇 ID → 显示名称映射（用于过渡动画闪字）
 func _get_encounter_display_name(encounter_id: String) -> String:
-	var names: Dictionary = {
-		"encounter_01": "异常哨兵",
-		"encounter_02": "赛博游魂",
-		"encounter_03": "暗网爬虫",
-		"encounter_04": "脉冲猎手",
-		"encounter_05": "数据幽灵",
-		"encounter_06": "量子分裂体",
-		"encounter_07": "赛博巫医",
-		"encounter_boss_01": "零号协议",
-	}
-	if names.has(encounter_id):
-		return String(names[encounter_id])
-	if encounter_id.begins_with("encounter_boss_"):
-		return "BOSS"
-	return "未知遭遇"
+	return ChapterContent.get_encounter_display_name(encounter_id)
+
+func _refresh_chapter_banner() -> void:
+	if _battle_flow == null:
+		return
+	var floor_num: int = _battle_flow.get_current_floor()
+	if _chapter_label:
+		_chapter_label.text = ChapterContent.get_run_header(floor_num)
+	if _objective_label:
+		_objective_label.text = ChapterContent.get_run_objective(floor_num)
+
+func _show_opening_briefing() -> void:
+	if _mission_brief_overlay == null:
+		return
+	var briefing: Dictionary = ChapterContent.get_opening_briefing()
+	_mission_brief_overlay.show_briefing(
+		String(briefing.get("tag", "")),
+		String(briefing.get("title", "")),
+		String(briefing.get("subtitle", "")),
+		String(briefing.get("body", "")),
+		String(briefing.get("footer", "")),
+		String(briefing.get("button", "继续"))
+	)
 
 ## v0.1.71：初始化 3D 视图（SubViewport + SubViewportContainer）
 func _setup_3d_view() -> void:
@@ -517,6 +536,8 @@ func _play_view_switch_fx() -> void:
 
 ## v0.1.71：处理 3D 视图输入转发
 func _input(event: InputEvent) -> void:
+	if _mission_brief_overlay != null and _mission_brief_overlay.is_open():
+		return
 	# F5 切换 2D/3D
 	if event is InputEventKey:
 		var key: InputEventKey = event as InputEventKey
@@ -528,6 +549,17 @@ func _input(event: InputEvent) -> void:
 	if _use_3d and _board_view_3d and _sub_viewport_container.visible:
 		if event is InputEventMouse:
 			_board_view_3d.handle_input(event)
+
+func _clear_highlight_arrays(view: Node) -> void:
+	if view is BoardViewScript:
+		view.highlight_cells.clear()
+		view.attack_highlight_cells.clear()
+		view.summon_highlight_cells.clear()
+		return
+	if view is BoardView3DScript:
+		view.highlight_cells.clear()
+		view.attack_highlight_cells.clear()
+		view.summon_highlight_cells.clear()
 
 ## 生成赛博风格十字光标纹理（v0.1.63）
 func _setup_custom_cursor() -> void:
