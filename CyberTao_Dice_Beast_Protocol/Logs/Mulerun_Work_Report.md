@@ -34,3 +34,19 @@
 ### Validation
 - `godot4 --headless --path Project --quit` passed.
 - Residual warning remains: Godot historical resource-leak warning on exit (known existing issue).
+
+---
+
+## 2026-04-05 01:12 SGT Re-Alignment Addendum
+### Goal
+- Correct drift from archived `CyberTao_Battle_Rebirth_Scheme_v1.md` and restore v1-first execution.
+
+### Actions
+- Added active anchor doc: `Logs/Rebirth_v1_Anchor.md`.
+- Switched current task definition to `RV1-P1_command_chain_playtest`.
+- Added trial interaction in debug UI:
+  - queue by board clicks
+  - execute chain / clear chain buttons
+
+### Expected playtest value
+- Player can feel “program first, resolve later” loop without waiting for full UI rewrite.

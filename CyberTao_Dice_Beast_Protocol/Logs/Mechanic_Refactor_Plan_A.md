@@ -30,3 +30,10 @@
 ## 2026-04-05 00:57 SGT Progress
 - `A2_path_loop_resonance`: baseline completed and integrated.
 - `A3_enemy_counterplay`: promoted as the next primary implementation task.
+
+---
+
+## 2026-04-05 01:12 SGT Rebirth Correction
+- This plan is now secondary support doc.
+- Primary mechanism anchor moved to: `Logs/Rebirth_v1_Anchor.md`.
+- Current implementation task switched to: `RV1-P1_command_chain_playtest`.

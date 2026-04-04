@@ -1,5 +1,24 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.120-docs - 2026-04-05
+
+记录时间: 2026-04-05 01:18 SGT
+
+- 修改: `Execution_Command_Center.md` 新增 Workflow Protocol，锁定 `推进任务` 触发行为与“新方案覆盖旧方案”规则。
+- 修改: `AI_Employee_Guide_v3.md` 新增用户口令规则、方案替换规则、自动存档推送规则。
+- 修改: `Handoff_Package_latest.md` 增加 Workflow Lock，确保新会话按最高优先级任务直接推进。
+- 备注: 本条为工作流治理更新，不修改战斗机制数值。
+
+## v0.1.119-dev - 2026-04-05
+
+记录时间: 2026-04-05 01:12 SGT
+
+- 新增: `Logs/Rebirth_v1_Anchor.md`，将归档中的 `CyberTao_Battle_Rebirth_Scheme_v1.md` 提升为当前执行锚点。
+- 修改: `Execution_Command_Center` / `Mechanic_Refactor_Plan_A` / `Handoff` / `Work_Report` 同步纠偏到 Rebirth v1 主线。
+- 新增: `DiceDebugPanel.gd` 增加命令链试玩入口（执行链 / 清空链 + 命令链预览）。
+- 修改: `MainViewCoordinator.gd` 连接命令链试玩信号。
+- 修改: `Main.gd` 新增 Rebirth 试玩模式（棋盘点击先入链，再统一执行）。
+
 ## v0.1.118-dev - 2026-04-05
 
 记录时间: 2026-04-05 00:57 SGT

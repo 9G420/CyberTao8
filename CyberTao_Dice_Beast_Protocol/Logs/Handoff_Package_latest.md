@@ -38,3 +38,34 @@
   - UI shows board feedback text on trigger.
 - Verification:
   - `godot4 --headless --path Project --quit` passed.
+
+---
+
+## 2026-04-05 01:12 SGT Rebirth Correction
+- User requested alignment back to Rebirth v1 mechanism direction.
+- Active anchor is now `Logs/Rebirth_v1_Anchor.md` (source from archived v1 file).
+- New immediate playable target: `RV1-P1_command_chain_playtest`.
+- Implemented in code:
+  - Added command-chain execute/clear controls in `DiceDebugPanel`.
+  - Board click actions can queue commands first (trial mode in `Main.gd`).
+
+---
+
+## 2026-04-05 01:32 SGT Tomorrow Start Task
+- 固定开场任务: `RV1-P1.1_formal_command_chain_turnflow`
+- 执行顺序:
+  1. 命令链编辑闭环
+  2. 整链预检与失败定位
+  3. GhostPath预演
+  4. 执行后统一结算刷新
+- 交付定义:
+  - 命令链玩法不再是试玩状态，而是默认可用流程
+  - 新对话进入后先读 `Execution_Command_Center` 的 Next-Day Lock 再编码
+
+---
+
+## 2026-04-05 01:18 SGT Workflow Lock
+- User-level trigger `推进任务` is now a hard handoff contract:
+  - New session should execute highest-priority task directly.
+  - Do not pause for a planning-only response.
+- Any new scheme/task update must replace old active plan references in logs within the same round.
