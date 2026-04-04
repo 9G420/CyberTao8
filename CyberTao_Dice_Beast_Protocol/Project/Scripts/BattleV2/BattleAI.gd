@@ -30,6 +30,9 @@ func find_nearest_player_cell(from_cell: Vector2i) -> Vector2i:
 	return best_cell
 
 func find_priority_player_cell(from_cell: Vector2i) -> Vector2i:
+	var taunt_cell: Vector2i = _find_nearest_player_cell_with_tag(from_cell, "taunt")
+	if taunt_cell.x >= 0:
+		return taunt_cell
 	var best_cell: Vector2i = Vector2i(-1, -1)
 	var best_score: int = 999999
 	for uid in unit_manager.units_by_id.keys():
@@ -65,9 +68,22 @@ func get_adjacent_player_cells(from_cell: Vector2i) -> Array[Vector2i]:
 
 func pick_best_adjacent_target_cell(from_cell: Vector2i) -> Vector2i:
 	var adjacent: Array[Vector2i] = get_adjacent_player_cells(from_cell)
+	var taunt_targets: Array[Vector2i] = []
+	for cell in adjacent:
+		var uid_t: String = String(unit_manager.units_by_cell.get(cell, ""))
+		if uid_t == "":
+			continue
+		var state_t: Dictionary = unit_manager.get_unit(uid_t)
+		if _has_tag(state_t, "taunt"):
+			taunt_targets.append(cell)
+	if not taunt_targets.is_empty():
+		return _pick_lowest_hp_cell(taunt_targets)
+	return _pick_lowest_hp_cell(adjacent)
+
+func _pick_lowest_hp_cell(cells: Array[Vector2i]) -> Vector2i:
 	var best_cell: Vector2i = Vector2i(-1, -1)
 	var best_score: int = 999999
-	for cell in adjacent:
+	for cell in cells:
 		var uid: String = String(unit_manager.units_by_cell.get(cell, ""))
 		if uid == "":
 			continue
@@ -105,3 +121,25 @@ func _is_hero_unit(unit_id: String, state: Dictionary) -> bool:
 		return bool(unit_manager.is_player_hero_unit(unit_id))
 	var tags: Array = state.get("tags", [])
 	return not tags.has("summoned")
+
+func _has_tag(state: Dictionary, tag_name: String) -> bool:
+	if state.is_empty():
+		return false
+	var tags: Array = state.get("tags", [])
+	return tags.has(tag_name)
+
+func _find_nearest_player_cell_with_tag(from_cell: Vector2i, tag_name: String) -> Vector2i:
+	var best_cell: Vector2i = Vector2i(-1, -1)
+	var best_dist: int = 9999
+	for uid in unit_manager.units_by_id.keys():
+		var state: Dictionary = unit_manager.units_by_id[uid]
+		if String(state.get("owner", "")) != "player":
+			continue
+		if not _has_tag(state, tag_name):
+			continue
+		var cell: Vector2i = state["cell"]
+		var dist: int = absi(cell.x - from_cell.x) + absi(cell.y - from_cell.y)
+		if dist < best_dist:
+			best_dist = dist
+			best_cell = cell
+	return best_cell

@@ -1,9 +1,9 @@
 ﻿# CyberTao: Dice Beast Protocol - AI 员工上岗指令 v3
 
-**发布时间**: 2026-04-04 13:15 SGT
+**发布时间**: 2026-04-04 14:15 SGT
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.110
+**当前版本**: v0.1.113
 **引擎**: Godot 4.6.1 | GDScript | renderer: `gl_compatibility`
 **视口**: 1280x720 | stretch mode: `canvas_items`
 
@@ -73,7 +73,7 @@
 
 ---
 
-## 3. 当前真实状态（v0.1.110）
+## 3. 当前真实状态（v0.1.113）
 
 - 棋盘走位层稳定：`BattleFlowController`、`BoardGenerator`、`FloorManager`、`ShopPanel`、`CellEffectHandler` 全部接通，当前主流程会生成 `blade_shield_dog` 与 `hacker_fox` 两个玩家单位。
 - 卡牌战斗层稳定：`CardBattleController` 已支持起始牌组、奖励牌池、升级、Boss、能量成长、战斗结算回写，卡牌与遭遇数据已抽到 `CardBattleData.gd`。
@@ -82,8 +82,10 @@
 - 最新规则边界修复：召唤物不再触发事件/遭遇/商店/宝箱/传送门，不再混入主角头像与主视角选择链路，主角与召唤物职责已拆分。
 - 最新叙事命名收口：第一章遭遇与 Boss 命名切到“灰链封锁区 / 天枢治域”语境，Boss 不再过早使用“零号协议”外显命名。
 - 入口协调层已拆出 `MainViewCoordinator.gd`，主菜单保留设置入口，OpenAI 生图按钮与主链路调用已从运行流程中移除。
+- DM 资源战深化：`DiceManager` 已支持玩家/敌方双 crest 资源池、跨回合保留与同面连锁奖励，回合爆发与资源规划意义增强。
+- 召唤体系深化：召唤单位已从单模板升级为侦察/突击/护卫三职业，接入登场收益、回合收益、嘲讽与主角邻接减伤光环。
 - 表现层已具备基本氛围：像素化单位纹理、卡牌界面、商店/奖励/牌组统一构筑展示、顶部头像 HUD、音效与外部 BGM 回退。
-- 当前接手主路径与表现策略文档均已同步到 v0.1.108 基线。
+- 当前接手主路径与日志基线已同步到 v0.1.113。
 
 ---
 

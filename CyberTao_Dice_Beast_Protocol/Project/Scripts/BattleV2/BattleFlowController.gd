@@ -64,8 +64,8 @@ var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
 var _summon_counter: int = 0
 var _summon_this_floor: int = 0      # 本层已部署次数
-const SUMMON_FLOOR_LIMIT: int = 2   # 每层部署上限
-const SUMMON_FIELD_LIMIT: int = 1   # 场上伙伴上限
+const SUMMON_FLOOR_LIMIT: int = 3   # 每层部署上限
+const SUMMON_FIELD_LIMIT: int = 2   # 场上伙伴上限
 var _encounter_unit_id: String = ""
 var _encounter_id: String = ""
 var _encounter_cell: Vector2i = Vector2i(-1, -1)
@@ -381,6 +381,7 @@ func _advance_to_next_player_round() -> void:
 	buff_manager.tick_turn()
 	round_index += 1
 	dice_manager.set_active_side("player")
+	_apply_summoned_command_income()
 	current_phase = BattlePhase.PLAYER_ROLL
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
@@ -541,6 +542,8 @@ func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> in
 	var temp_def: int = int(defender.get("temp_def", 0))
 	var attacker_id: String = String(attacker.get("id", ""))
 	var defender_id: String = String(defender.get("id", ""))
+	if _has_guardian_aura(defender_id, defender_cell):
+		def_bonus += 1
 	var atk_mod: int = buff_manager.get_stat_modifier(attacker_id, "atk") if attacker_id != "" else 0
 	var def_mod: int = buff_manager.get_stat_modifier(defender_id, "def") if defender_id != "" else 0
 	var raw_attack: int = int(attacker.get("atk", 0)) + atk_mod
@@ -726,13 +729,10 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 		extended_paths.append(best_ext)
 	_summon_counter += 1
 	_summon_this_floor += 1
-	var summon_id: String = "summoned_fox_" + str(_summon_counter)
-	var summon_data: Dictionary = {
-		"max_hp": 4, "atk": 2, "def": 0,
-		"move_range": 2, "attack_range": 1,
-		"owner": "player", "tags": ["summoned", "fox"],
-		"display_name": "协议灵狐",
-	}
+	var profile: Dictionary = _build_summon_profile(target_cell)
+	var summon_id: String = String(profile.get("id_prefix", "summoned_unit_")) + str(_summon_counter)
+	var summon_data: Dictionary = profile.get("unit_data", {})
+	_apply_summon_arrival_effect(profile, target_cell)
 	unit_manager.spawn_unit(summon_id, summon_data, target_cell)
 	emit_signal("summon_completed", summon_id, extended_paths, target_cell)
 	return true
@@ -760,6 +760,111 @@ func get_current_floor() -> int:
 
 func get_max_floor() -> int:
 	return floor_manager.get_max_floor()
+
+func _build_summon_profile(target_cell: Vector2i) -> Dictionary:
+	var move_pool: int = int(dice_manager.crest_pool.get("move", 0))
+	var attack_pool: int = int(dice_manager.crest_pool.get("attack", 0))
+	var defend_pool: int = int(dice_manager.crest_pool.get("defend", 0))
+	if attack_pool >= move_pool and attack_pool >= defend_pool:
+		return {
+			"id_prefix": "summoned_hunter_",
+			"role": "assault",
+			"unit_data": {
+				"max_hp": 4, "atk": 3, "def": 0,
+				"move_range": 2, "attack_range": 1,
+				"owner": "player", "tags": ["summoned", "assault", "hunter"],
+				"display_name": "猎阵狐",
+			}
+		}
+	if defend_pool >= move_pool:
+		return {
+			"id_prefix": "summoned_guard_",
+			"role": "guardian",
+			"unit_data": {
+				"max_hp": 6, "atk": 1, "def": 2,
+				"move_range": 1, "attack_range": 1,
+				"owner": "player", "tags": ["summoned", "guardian", "taunt"],
+				"display_name": "护阵龟",
+			}
+		}
+	return {
+		"id_prefix": "summoned_scout_",
+		"role": "scout",
+		"unit_data": {
+			"max_hp": 3, "atk": 1, "def": 0,
+			"move_range": 3, "attack_range": 1,
+			"owner": "player", "tags": ["summoned", "scout"],
+			"display_name": "斥候蜂",
+		}
+	}
+
+func _apply_summon_arrival_effect(profile: Dictionary, summon_cell: Vector2i) -> void:
+	var role: String = String(profile.get("role", ""))
+	match role:
+		"assault":
+			if _has_enemy_within_manhattan(summon_cell, 2):
+				dice_manager.crest_pool["attack"] = int(dice_manager.crest_pool.get("attack", 0)) + 1
+			else:
+				dice_manager.crest_pool["move"] = int(dice_manager.crest_pool.get("move", 0)) + 1
+		"guardian":
+			dice_manager.crest_pool["defend"] = int(dice_manager.crest_pool.get("defend", 0)) + 1
+		"scout":
+			dice_manager.crest_pool["move"] = int(dice_manager.crest_pool.get("move", 0)) + 1
+			dice_manager.crest_pool["trick"] = int(dice_manager.crest_pool.get("trick", 0)) + 1
+		_:
+			pass
+
+func _has_enemy_within_manhattan(center: Vector2i, radius: int) -> bool:
+	for uid in unit_manager.units_by_id.keys():
+		var unit: Dictionary = unit_manager.get_unit(String(uid))
+		if String(unit.get("owner", "")) != "enemy":
+			continue
+		var cell: Vector2i = unit.get("cell", Vector2i(-99, -99))
+		var dist: int = absi(cell.x - center.x) + absi(cell.y - center.y)
+		if dist <= radius:
+			return true
+	return false
+
+func _apply_summoned_command_income() -> void:
+	var got_move: bool = false
+	var got_attack: bool = false
+	var got_defend: bool = false
+	for uid in unit_manager.units_by_id.keys():
+		var unit: Dictionary = unit_manager.get_unit(String(uid))
+		if String(unit.get("owner", "")) != "player":
+			continue
+		var tags: Array = unit.get("tags", [])
+		if not tags.has("summoned"):
+			continue
+		if tags.has("scout") and not got_move:
+			dice_manager.crest_pool["move"] = int(dice_manager.crest_pool.get("move", 0)) + 1
+			got_move = true
+		if tags.has("assault") and not got_attack:
+			dice_manager.crest_pool["attack"] = int(dice_manager.crest_pool.get("attack", 0)) + 1
+			got_attack = true
+		if tags.has("guardian") and not got_defend:
+			dice_manager.crest_pool["defend"] = int(dice_manager.crest_pool.get("defend", 0)) + 1
+			got_defend = true
+
+func _has_guardian_aura(defender_id: String, defender_cell: Vector2i) -> bool:
+	if defender_id == "" or defender_cell.x < 0:
+		return false
+	if not unit_manager.has_method("is_player_hero_unit"):
+		return false
+	if not bool(unit_manager.is_player_hero_unit(defender_id)):
+		return false
+	var neighbors: Array[Vector2i] = board_manager.get_neighbors(defender_cell)
+	for nb in neighbors:
+		if not unit_manager.units_by_cell.has(nb):
+			continue
+		var uid: String = String(unit_manager.units_by_cell[nb])
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		if String(unit.get("owner", "")) != "player":
+			continue
+		var tags: Array = unit.get("tags", [])
+		if tags.has("summoned") and tags.has("guardian"):
+			return true
+	return false
 
 # ─── 工具方法 ───
 
