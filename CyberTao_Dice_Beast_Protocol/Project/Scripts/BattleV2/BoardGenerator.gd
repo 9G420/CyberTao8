@@ -20,6 +20,7 @@ const SHOP_COUNT: int = 2
 const CHEST_COUNT_MIN: int = 2
 const CHEST_COUNT_MAX: int = 3
 const ENEMY_COUNT: int = 3
+const CONTROL_NODE_COUNT: int = 4
 
 # 可用遭遇 ID 池
 const ENCOUNTER_IDS: Array[String] = [
@@ -60,6 +61,13 @@ static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i
 	for cell in trap_cells:
 		board_mgr.add_terrain_cell(cell, "trap")
 		used_cells[cell] = true
+	# 2.5 控制据点（中路争夺核心）
+	var node_cells: Array[Vector2i] = _pick_control_node_cells(board_size, used_cells, CONTROL_NODE_COUNT)
+	var node_types: Array[String] = ["energy", "command", "repulse", "energy"]
+	for i in range(node_cells.size()):
+		var node_type: String = node_types[i % node_types.size()]
+		board_mgr.add_control_node(node_cells[i], node_type)
+		used_cells[node_cells[i]] = true
 	# 3. 道具
 	var item_cells: Array[Vector2i] = _pick_random_cells(board_size, ITEM_COUNT, used_cells, false)
 	for i in range(item_cells.size()):
@@ -230,3 +238,35 @@ static func _shuffle_strings(arr: Array[String]) -> Array[String]:
 		arr[i] = arr[j]
 		arr[j] = tmp
 	return arr
+
+static func _pick_control_node_cells(board_size: Vector2i, used_cells: Dictionary, count: int) -> Array[Vector2i]:
+	var cx: int = board_size.x / 2
+	var cy: int = board_size.y / 2
+	var seed_cells: Array[Vector2i] = [
+		Vector2i(cx, cy),
+		Vector2i(cx - 2, cy),
+		Vector2i(cx + 2, cy),
+		Vector2i(cx, cy - 2),
+		Vector2i(cx, cy + 2),
+		Vector2i(cx - 1, cy + 2),
+		Vector2i(cx + 1, cy - 2),
+	]
+	var candidates: Array[Vector2i] = []
+	for c in seed_cells:
+		if c.x < 0 or c.y < 0 or c.x >= board_size.x or c.y >= board_size.y:
+			continue
+		if used_cells.has(c):
+			continue
+		if _is_player_zone(c):
+			continue
+		candidates.append(c)
+	for i in range(candidates.size() - 1, 0, -1):
+		var j: int = randi() % (i + 1)
+		var tmp: Vector2i = candidates[i]
+		candidates[i] = candidates[j]
+		candidates[j] = tmp
+	var result: Array[Vector2i] = []
+	var pick: int = min(count, candidates.size())
+	for i in range(pick):
+		result.append(candidates[i])
+	return result

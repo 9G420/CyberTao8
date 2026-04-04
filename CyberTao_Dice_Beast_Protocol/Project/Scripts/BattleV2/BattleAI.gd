@@ -51,6 +51,32 @@ func find_priority_player_cell(from_cell: Vector2i) -> Vector2i:
 			best_cell = cell
 	return best_cell
 
+func find_priority_enemy_destination(from_cell: Vector2i) -> Vector2i:
+	var node_target: Vector2i = find_priority_control_node_for_enemy(from_cell)
+	if node_target.x >= 0:
+		return node_target
+	return find_priority_player_cell(from_cell)
+
+func find_priority_control_node_for_enemy(from_cell: Vector2i) -> Vector2i:
+	if board_manager == null:
+		return Vector2i(-1, -1)
+	if not board_manager.has_method("get_control_node_owner"):
+		return Vector2i(-1, -1)
+	var best_cell: Vector2i = Vector2i(-1, -1)
+	var best_score: int = 999999
+	for cell in board_manager.control_nodes.keys():
+		var owner: String = String(board_manager.get_control_node_owner(cell))
+		if owner == "enemy":
+			continue
+		var dist: int = absi(cell.x - from_cell.x) + absi(cell.y - from_cell.y)
+		var score: int = dist * 10
+		if owner == "player":
+			score -= 25
+		if score < best_score:
+			best_score = score
+			best_cell = cell
+	return best_cell
+
 ## 获取相邻格中包含玩家单位的格子列表
 func get_adjacent_player_cells(from_cell: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []

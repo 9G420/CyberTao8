@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.114 - 2026-04-04
+
+记录时间: 2026-04-04 14:47 SGT
+
+- 新增: 棋盘中路控制据点系统（能量/指挥/驱逐），支持开局生成可争夺目标点。
+- 新增: `BoardManager` 据点数据结构与归属接口（`control_nodes` / `control_node_owner`）。
+- 修改: `BattleFlowController` 接入据点占领判定与回合收益结算，玩家/敌方两侧都可获益。
+- 修改: 敌方目标选择升级为“据点优先”（先反夺玩家据点，再争夺中立据点），提升棋盘博弈目标感。
+- 修改: `IsoTileRenderer` / `BoardView` / `Main` 增加据点类型、归属与收益反馈可视化。
+
 ## v0.1.113 - 2026-04-04
 
 记录时间: 2026-04-04 14:15 SGT

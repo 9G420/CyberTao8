@@ -218,6 +218,12 @@ static func _get_fill_color(tile_key: String, _pulse: float) -> Color:
 			return Color(CyberStyle.NEON_PURPLE.r, CyberStyle.NEON_PURPLE.g, CyberStyle.NEON_PURPLE.b, 0.18 + _pulse * 0.08)
 		"portal":
 			return Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.2 + _pulse * 0.1)
+		"node_energy":
+			return Color(0.35, 0.86, 0.95, 0.18 + _pulse * 0.1)
+		"node_command":
+			return Color(1.0, 0.7, 0.25, 0.2 + _pulse * 0.1)
+		"node_repulse":
+			return Color(0.95, 0.38, 0.38, 0.2 + _pulse * 0.1)
 	return CyberStyle.BOARD_CELL_DARK
 
 ## 获取格子边框色
@@ -243,6 +249,12 @@ static func _get_border_color(tile_key: String, pulse: float) -> Color:
 			return Color(CyberStyle.NEON_PURPLE.r, CyberStyle.NEON_PURPLE.g, CyberStyle.NEON_PURPLE.b, 0.3 + pulse * 0.15)
 		"portal":
 			return Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.4 + pulse * 0.2)
+		"node_energy":
+			return Color(0.5, 0.95, 1.0, 0.4 + pulse * 0.2)
+		"node_command":
+			return Color(1.0, 0.82, 0.4, 0.4 + pulse * 0.2)
+		"node_repulse":
+			return Color(1.0, 0.55, 0.55, 0.4 + pulse * 0.2)
 	return CyberStyle.BOARD_GRID_LINE
 
 ## 绘制格子类型装饰符号
@@ -266,6 +278,12 @@ static func _draw_tile_decoration(canvas: CanvasItem, center: Vector2, tile_key:
 			_deco_event(canvas, center, pulse, zoom)
 		"portal":
 			_deco_portal(canvas, center, pulse, zoom)
+		"node_energy":
+			_deco_control_node(canvas, center, pulse, zoom, "E", Color(0.5, 0.95, 1.0))
+		"node_command":
+			_deco_control_node(canvas, center, pulse, zoom, "C", Color(1.0, 0.84, 0.4))
+		"node_repulse":
+			_deco_control_node(canvas, center, pulse, zoom, "R", Color(1.0, 0.55, 0.55))
 
 # --- 装饰符号 ---
 
@@ -344,6 +362,15 @@ static func _deco_portal(c: CanvasItem, center: Vector2, pulse: float, zoom: flo
 	c.draw_arc(Vector2(center.x, center.y), 10.0 * zoom, 0.0, TAU, 16, Color(col.r, col.g, col.b, col.a * 0.7), 2.0)
 	c.draw_arc(Vector2(center.x, center.y), 4.0 * zoom, 0.0, TAU, 12, col, 2.5)
 
+static func _deco_control_node(c: CanvasItem, center: Vector2, pulse: float, zoom: float, label: String, base_col: Color) -> void:
+	var glow: Color = Color(base_col.r, base_col.g, base_col.b, 0.45 + pulse * 0.25)
+	c.draw_arc(center, 14.0 * zoom, 0.0, TAU, 24, glow, 2.0)
+	c.draw_arc(center, 8.0 * zoom, 0.0, TAU, 20, Color(base_col.r, base_col.g, base_col.b, 0.7 + pulse * 0.2), 2.0)
+	var font: Font = ThemeDB.fallback_font
+	var fs: int = int(16.0 * zoom)
+	var text_w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	canvas_draw_string_static(c, font, Vector2(center.x - text_w * 0.5, center.y + 5.0 * zoom), label, fs, Color(1.0, 1.0, 1.0, 0.9))
+
 ## draw_string 辅助（静态方法中无法用 canvas.draw_string 的 Font 默认参数）
 static func canvas_draw_string_static(c: CanvasItem, font: Font, pos: Vector2, text: String, font_size: int, col: Color) -> void:
 	c.draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
@@ -355,6 +382,9 @@ static func _get_tile_key(gx: int, gy: int, board_mgr: Node) -> String:
 		return "normal_dark" if (gx + gy) % 2 == 0 else "normal_light"
 	if board_mgr.portal_cells.has(cell):
 		return "portal"
+	if board_mgr.control_nodes.has(cell):
+		var ntype: String = String(board_mgr.control_nodes[cell])
+		return "node_" + ntype
 	if board_mgr.encounter_cells.has(cell):
 		return "encounter"
 	if board_mgr.heal_cells.has(cell):

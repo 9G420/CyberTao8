@@ -30,6 +30,8 @@ signal enemy_turn_starting(first_enemy_id: String)
 signal dice_animation_done
 signal move_step_visual(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
 signal move_step_done
+signal control_node_captured(cell: Vector2i, owner: String, node_type: String)
+signal control_node_income(owner: String, cell: Vector2i, node_type: String, crest_type: String, amount: int)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -276,6 +278,8 @@ func _start_enemy_turn() -> void:
 	current_phase = BattlePhase.ENEMY_ROLL
 	emit_signal("phase_changed", _phase_name(current_phase))
 	dice_manager.set_active_side("enemy")
+	_resolve_control_nodes_for_side("enemy")
+	_apply_control_node_income("enemy")
 	dice_manager.roll_turn_dice()
 	# v0.1.65：等待掷骰动画真正结束（由 Main 转发 dice_animation_done 信号）
 	await dice_animation_done
@@ -327,7 +331,7 @@ func _execute_enemy_actions() -> void:
 			continue
 		# 没有相邻目标则朝最近玩家移动
 		if dice_manager.can_pay({"move": 1}):
-			var target_player_cell: Vector2i = battle_ai.find_priority_player_cell(cell)
+			var target_player_cell: Vector2i = battle_ai.find_priority_enemy_destination(cell)
 			if target_player_cell.x >= 0:
 				var move_cell: Vector2i = battle_ai.pick_move_toward(cell, target_player_cell)
 				if move_cell.x >= 0:
@@ -381,6 +385,8 @@ func _advance_to_next_player_round() -> void:
 	buff_manager.tick_turn()
 	round_index += 1
 	dice_manager.set_active_side("player")
+	_resolve_control_nodes_for_side("player")
+	_apply_control_node_income("player")
 	_apply_summoned_command_income()
 	current_phase = BattlePhase.PLAYER_ROLL
 	emit_signal("round_changed", round_index)
@@ -752,6 +758,7 @@ func advance_to_next_floor() -> void:
 	_encounter_cell = Vector2i(-1, -1)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
+	dice_manager.set_active_side("player")
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
 
@@ -760,6 +767,60 @@ func get_current_floor() -> int:
 
 func get_max_floor() -> int:
 	return floor_manager.get_max_floor()
+
+func _resolve_control_nodes_for_side(side: String) -> void:
+	if board_manager == null:
+		return
+	if not board_manager.has_method("get_control_node_owner"):
+		return
+	var changed: bool = false
+	for cell in board_manager.control_nodes.keys():
+		if not unit_manager.units_by_cell.has(cell):
+			continue
+		var uid: String = String(unit_manager.units_by_cell[cell])
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		var owner: String = String(unit.get("owner", ""))
+		if owner != side:
+			continue
+		var prev_owner: String = String(board_manager.get_control_node_owner(cell))
+		if prev_owner == side:
+			continue
+		board_manager.control_node_owner[cell] = side
+		changed = true
+		emit_signal("control_node_captured", cell, side, String(board_manager.control_nodes[cell]))
+	if changed:
+		board_manager.emit_signal("board_changed")
+
+func _apply_control_node_income(side: String) -> void:
+	if board_manager == null:
+		return
+	dice_manager.set_active_side(side)
+	var changed: bool = false
+	for cell in board_manager.control_nodes.keys():
+		var owner: String = String(board_manager.get_control_node_owner(cell))
+		if owner != side:
+			continue
+		var node_type: String = String(board_manager.control_nodes[cell])
+		var crest_type: String = _control_node_income_crest(node_type)
+		if crest_type == "":
+			continue
+		var current: int = int(dice_manager.crest_pool.get(crest_type, 0))
+		var cap: int = int(dice_manager.MAX_CREST_PER_TYPE) if dice_manager.has_method("_add_crest") else 12
+		dice_manager.crest_pool[crest_type] = min(cap, current + 1)
+		changed = true
+		emit_signal("control_node_income", side, cell, node_type, crest_type, 1)
+	if changed:
+		board_manager.emit_signal("board_changed")
+
+func _control_node_income_crest(node_type: String) -> String:
+	match node_type:
+		"energy":
+			return "move"
+		"command":
+			return "summon"
+		"repulse":
+			return "defend"
+	return ""
 
 func _build_summon_profile(target_cell: Vector2i) -> Dictionary:
 	var move_pool: int = int(dice_manager.crest_pool.get("move", 0))
@@ -908,6 +969,7 @@ func _can_trigger_board_interactions(unit_id: String) -> bool:
 ## Restart the battle: clear all state and re-spawn units at initial positions.
 func restart_battle() -> void:
 	dice_manager.reset_for_battle()
+	dice_manager.set_active_side("player")
 	buff_manager.clear_all()
 	unit_manager.clear_all_units()
 	board_manager.clear_board()

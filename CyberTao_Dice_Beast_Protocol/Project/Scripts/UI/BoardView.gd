@@ -404,6 +404,26 @@ func _draw_layer_overlays(pulse: float, font: Font) -> void:
 		var col: Color = CyberStyle.ACCENT_CYAN if owner_id == "player" else CyberStyle.ACCENT_ORANGE
 		var center: Vector2 = _iso_cell_center(cell)
 		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.12 + pulse * 0.06), Color(col.r, col.g, col.b, 0.3 + pulse * 0.15), 8.0, _zoom)
+	for cell in board_manager.control_nodes.keys():
+		var center2: Vector2 = _iso_cell_center(cell)
+		var owner2: String = board_manager.get_control_node_owner(cell)
+		var node_type: String = board_manager.get_control_node_type(cell)
+		var tag_text: String = "NEU"
+		var col2: Color = Color(0.85, 0.85, 0.9, 0.8)
+		if owner2 == "player":
+			tag_text = "P"
+			col2 = Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.95)
+		elif owner2 == "enemy":
+			tag_text = "E"
+			col2 = Color(CyberStyle.ACCENT_ORANGE.r, CyberStyle.ACCENT_ORANGE.g, CyberStyle.ACCENT_ORANGE.b, 0.95)
+		var node_mark: String = "N"
+		if node_type == "energy":
+			node_mark = "EN"
+		elif node_type == "command":
+			node_mark = "CM"
+		elif node_type == "repulse":
+			node_mark = "RP"
+		_draw_iso_label(center2 - Vector2(0, 14), node_mark + ":" + tag_text, col2, font, 12)
 
 ## 在菱形中心绘制居中文字（缩放感知�?
 func _draw_iso_label(center: Vector2, text: String, col: Color, font: Font, font_size: int) -> void:

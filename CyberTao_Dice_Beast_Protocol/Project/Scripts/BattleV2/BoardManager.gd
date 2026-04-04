@@ -15,6 +15,8 @@ var shop_cells: Dictionary = {}  # cell -> int (heal_amount per visit)
 var chest_cells: Dictionary = {}  # cell -> String ("chest")
 var locked_encounters: Dictionary = {}  # cell -> true (boss encounter locked until grunts cleared)
 var portal_cells: Dictionary = {}  # cell -> true (portal to next floor)
+var control_nodes: Dictionary = {}  # cell -> String ("energy" / "command" / "repulse")
+var control_node_owner: Dictionary = {}  # cell -> String ("player" / "enemy" / "")
 
 func build_test_board(size: Vector2i) -> void:
 	board_size = size
@@ -29,6 +31,8 @@ func build_test_board(size: Vector2i) -> void:
 	chest_cells.clear()
 	locked_encounters.clear()
 	portal_cells.clear()
+	control_nodes.clear()
+	control_node_owner.clear()
 	emit_signal("board_changed")
 
 func clear_board() -> void:
@@ -43,6 +47,8 @@ func clear_board() -> void:
 	chest_cells.clear()
 	locked_encounters.clear()
 	portal_cells.clear()
+	control_nodes.clear()
+	control_node_owner.clear()
 	emit_signal("board_changed")
 
 func is_in_bounds(cell: Vector2i) -> bool:
@@ -247,3 +253,23 @@ func add_portal_cell(cell: Vector2i) -> void:
 func clear_portal_cell(cell: Vector2i) -> void:
 	portal_cells.erase(cell)
 	emit_signal("board_changed")
+
+func add_control_node(cell: Vector2i, node_type: String) -> void:
+	if not is_in_bounds(cell):
+		return
+	control_nodes[cell] = node_type
+	if not control_node_owner.has(cell):
+		control_node_owner[cell] = ""
+	emit_signal("board_changed")
+
+func set_control_node_owner(cell: Vector2i, owner_id: String) -> void:
+	if not control_nodes.has(cell):
+		return
+	control_node_owner[cell] = owner_id
+	emit_signal("board_changed")
+
+func get_control_node_owner(cell: Vector2i) -> String:
+	return String(control_node_owner.get(cell, ""))
+
+func get_control_node_type(cell: Vector2i) -> String:
+	return String(control_nodes.get(cell, ""))

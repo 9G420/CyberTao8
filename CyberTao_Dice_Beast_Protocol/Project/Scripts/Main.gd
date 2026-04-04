@@ -171,6 +171,37 @@ func _on_item_picked_up(unit_id: String, item_id: String, effect_text: String, c
 	_audio.play_sfx("pickup")
 	_active_view().queue_redraw()
 
+func _on_control_node_captured(cell: Vector2i, owner: String, node_type: String) -> void:
+	var owner_text: String = "玩家"
+	if owner == "enemy":
+		owner_text = "敌方"
+	var type_text: String = "据点"
+	match node_type:
+		"energy":
+			type_text = "能量节点"
+		"command":
+			type_text = "指挥节点"
+		"repulse":
+			type_text = "驱逐节点"
+	_active_view().play_pickup_feedback(cell, owner_text + "占领 " + type_text)
+	_audio.play_sfx("pickup")
+	_active_view().queue_redraw()
+
+func _on_control_node_income(owner: String, cell: Vector2i, node_type: String, crest_type: String, amount: int) -> void:
+	if owner != "player":
+		return
+	var crest_name: String = crest_type.capitalize()
+	var type_text: String = "节点"
+	match node_type:
+		"energy":
+			type_text = "能量"
+		"command":
+			type_text = "指挥"
+		"repulse":
+			type_text = "驱逐"
+	_active_view().play_pickup_feedback(cell, "%s节点 +%d %s" % [type_text, amount, crest_name])
+	_active_view().queue_redraw()
+
 func _on_enemy_action_announced(unit_id: String, action_type: String, detail: String) -> void:
 	# 敌方行动时相机跟随敌人（v0.1.63）
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
