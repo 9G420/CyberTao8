@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.116 - 2026-04-04
+
+记录时间: 2026-04-04 20:56 SGT
+
+- 新增: `BattleFlowController.gd` 增加敌方意图缓存与广播信号 `enemy_intents_updated`，并提供 `get_enemy_intents()` 供视图层读取。
+- 修改: 敌方意图刷新时机接入玩家行动、回合推进、召唤/移动/攻击后，确保预告线实时反映局势变化。
+- 新增: `BoardView.gd` 增加敌方意图绘制层，显示 `ATK`（红线）与 `MOV`（橙线）目标提示圈。
+- 修改: `Logs/Execution_Command_Center.md` 任务卡由 `A1_enemy_intent_link` 切换为 `A2_path_loop_resonance`。
+- 备注: 已执行 `godot4 --headless --path Project --quit`，通过；仍有历史资源释放 warning，非本轮新增阻塞。
+
 ## v0.1.115 - 2026-04-04
 
 记录时间: 2026-04-04 20:13 SGT

@@ -1,10 +1,21 @@
 ﻿# Mulerun 工作报告
 
-**日期**: 2026-04-04 20:13 SGT
-**版本**: v0.1.115
+**日期**: 2026-04-04 20:56 SGT
+**版本**: v0.1.116
 **分支**: `codex/dice-beast-protocol`
 
 ## 本轮任务
+
+- 完成 `A1_enemy_intent_link`：在棋盘层上线敌方意图连线（攻击/移动）。
+- 同步更新本轮必更日志：`Execution_Command_Center` / `Handoff` / `Work_Report` / `changelog` / `Snapshot_v3`。
+- 准备下一任务卡切换至 `A2_path_loop_resonance`。
+
+## 本轮增量（v0.1.116）
+
+- `BattleFlowController.gd`：新增 `enemy_intents_updated` 信号、意图缓存与刷新接口 `get_enemy_intents()`。
+- `BattleFlowController.gd`：在玩家行动、回合推进、召唤/移动/攻击后自动刷新敌方意图；战斗结束与敌方回合开始时清空意图。
+- `BoardView.gd`：接入敌方意图信号监听与绘制层，显示 `ATK`（红线）/`MOV`（橙线）目标提示。
+- 已执行无头校验：`godot4 --headless --path Project --quit` 通过（仅保留历史资源释放 warning）。
 
 - 建立“每日推进不断档”机制：新增执行中枢日志文件并接入 AI 上岗必读顺序。
 - 修复 2D 视图下点敌方头像后镜头被拉回问题。
@@ -60,6 +71,6 @@
 
 ## 建议下一步
 
-1. 直接执行 `Execution_Command_Center` 的 `A1_enemy_intent_link` 任务卡。
-2. 完成“敌方意图连线 + 可打断反馈”后再推进“路径闭环共鸣”。
-3. 每轮结束继续按本轮节奏同步三份必更日志，保持可接手性。
+1. 直接执行 `Execution_Command_Center` 的 `A2_path_loop_resonance` 任务卡。
+2. 在闭环共鸣接入后，补一轮敌方反制策略（守点/断环优先级）并验证可读性。
+3. 每轮结束继续按本轮节奏同步五份必更日志，保持可接手性。

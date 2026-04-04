@@ -13,6 +13,7 @@ const CELL_SIZE: int = 72
 var board_manager: Node = null
 var unit_manager: Node = null
 var battle_flow: Node = null
+var _enemy_intents: Dictionary = {}
 
 var camera_cell: Vector2i = Vector2i(0, 0)
 var iso_origin: Vector2 = Vector2(640.0, 392.0)
@@ -127,6 +128,17 @@ func bind_battle_flow(next_battle_flow: Node) -> void:
 	battle_flow = next_battle_flow
 	if battle_flow and battle_flow.phase_changed and not battle_flow.phase_changed.is_connected(_on_phase_changed):
 		battle_flow.phase_changed.connect(_on_phase_changed)
+	if battle_flow and battle_flow.has_signal("enemy_intents_updated") and not battle_flow.enemy_intents_updated.is_connected(_on_enemy_intents_updated):
+		battle_flow.enemy_intents_updated.connect(_on_enemy_intents_updated)
+	if battle_flow and battle_flow.has_method("get_enemy_intents"):
+		_enemy_intents = battle_flow.get_enemy_intents()
+	else:
+		_enemy_intents.clear()
+	queue_redraw()
+
+func _on_enemy_intents_updated(intents: Dictionary) -> void:
+	_enemy_intents = intents.duplicate(true)
+	queue_redraw()
 
 func _on_phase_changed(_phase_name: String) -> void:
 	if selected_unit_id != "":
@@ -367,6 +379,7 @@ func _draw() -> void:
 	_draw_layer_overlays(pulse, font)
 	_draw_layer_hover(pulse)
 	_draw_layer_highlights(pulse)
+	_draw_layer_enemy_intents(pulse, font)
 	_draw_layer_units(pulse, font)
 	_draw_attack_flash()
 	_draw_edge_vignette()
@@ -465,6 +478,42 @@ func _draw_layer_highlights(pulse: float) -> void:
 		var center: Vector2 = _iso_cell_center(cell)
 		var col: Color = CyberStyle.ACCENT_MAGENTA
 		IsoTileRenderer.draw_diamond_highlight(self, center, Color(col.r, col.g, col.b, 0.1 + pulse * 0.08), Color(col.r, col.g, col.b, 0.5 + pulse * 0.3), 0.0, _zoom)
+
+func _draw_layer_enemy_intents(pulse: float, font: Font) -> void:
+	if _enemy_intents.is_empty():
+		return
+	for uid in _enemy_intents.keys():
+		var intent: Dictionary = _enemy_intents.get(uid, {})
+		if intent.is_empty():
+			continue
+		var action: String = String(intent.get("action", "wait"))
+		if action == "wait":
+			continue
+		var from_var: Variant = intent.get("from_cell", Vector2i(-1, -1))
+		var to_var: Variant = intent.get("to_cell", Vector2i(-1, -1))
+		if not (from_var is Vector2i) or not (to_var is Vector2i):
+			continue
+		var from_cell: Vector2i = from_var as Vector2i
+		var to_cell: Vector2i = to_var as Vector2i
+		if from_cell.x < 0 or to_cell.x < 0:
+			continue
+		var line_col: Color = Color(CyberStyle.ACCENT_ORANGE.r, CyberStyle.ACCENT_ORANGE.g, CyberStyle.ACCENT_ORANGE.b, 0.85)
+		var ring_col: Color = Color(CyberStyle.ACCENT_ORANGE.r, CyberStyle.ACCENT_ORANGE.g, CyberStyle.ACCENT_ORANGE.b, 0.95)
+		var tag: String = "MOV"
+		if action == "attack":
+			line_col = Color(CyberStyle.NEON_RED.r, CyberStyle.NEON_RED.g, CyberStyle.NEON_RED.b, 0.88)
+			ring_col = Color(CyberStyle.NEON_RED.r, CyberStyle.NEON_RED.g, CyberStyle.NEON_RED.b, 0.95)
+			tag = "ATK"
+		var from_center: Vector2 = _iso_cell_center(from_cell) + Vector2(0.0, -22.0 * _zoom)
+		var to_center: Vector2 = _iso_cell_center(to_cell) + Vector2(0.0, -22.0 * _zoom)
+		var line_w: float = max(2.0, 2.0 * _zoom)
+		draw_line(from_center, to_center, line_col, line_w)
+		var radius: float = max(7.0, 7.0 * _zoom + pulse * 1.4)
+		draw_circle(to_center, radius, Color(ring_col.r, ring_col.g, ring_col.b, 0.24))
+		draw_arc(to_center, radius, 0.0, TAU, 24, ring_col, max(1.0, 1.4 * _zoom), true)
+		var fs: int = int(12.0 * _zoom)
+		var text_w: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(font, to_center + Vector2(-text_w * 0.5, -10.0 * _zoom), tag, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, Color(1.0, 0.98, 0.92, 0.95))
 
 # Layer 4: 单位层（�?depth 排序保证遮挡正确�?
 func _draw_layer_units(pulse: float, font: Font) -> void:

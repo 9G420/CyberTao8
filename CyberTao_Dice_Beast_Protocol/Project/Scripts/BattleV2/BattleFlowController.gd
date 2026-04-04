@@ -32,6 +32,7 @@ signal move_step_visual(unit_id: String, from_cell: Vector2i, to_cell: Vector2i)
 signal move_step_done
 signal control_node_captured(cell: Vector2i, owner: String, node_type: String)
 signal control_node_income(owner: String, cell: Vector2i, node_type: String, crest_type: String, amount: int)
+signal enemy_intents_updated(intents: Dictionary)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -71,6 +72,7 @@ const SUMMON_FIELD_LIMIT: int = 2   # 场上伙伴上限
 var _encounter_unit_id: String = ""
 var _encounter_id: String = ""
 var _encounter_cell: Vector2i = Vector2i(-1, -1)
+var enemy_intents: Dictionary = {}
 
 var dice_manager: DiceManager
 var board_manager: BoardManager
@@ -131,6 +133,7 @@ func _bootstrap() -> void:
 	dice_manager.set_active_side("player")
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
+	_refresh_enemy_intents()
 	emit_signal("setup_completed")
 	emit_signal("phase_changed", _phase_name(current_phase))
 
@@ -149,6 +152,7 @@ func start_player_roll() -> void:
 
 func enter_player_action() -> void:
 	current_phase = BattlePhase.PLAYER_ACTION
+	_refresh_enemy_intents()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func start_enemy_roll() -> void:
@@ -163,10 +167,12 @@ func enter_enemy_action() -> void:
 
 func mark_victory() -> void:
 	current_phase = BattlePhase.VICTORY
+	_clear_enemy_intents()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func mark_defeat() -> void:
 	current_phase = BattlePhase.DEFEAT
+	_clear_enemy_intents()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func spawn_demo_path() -> void:
@@ -237,6 +243,7 @@ func end_player_turn() -> void:
 		return
 	crest_handler.clear_temp_def()
 	dice_manager.reset_for_turn()
+	_clear_enemy_intents()
 	_start_enemy_turn()
 
 ## 使用护持(DEFEND) crest：选中单位本回合 DEF+1（累加），回合结束清零
@@ -389,6 +396,7 @@ func _advance_to_next_player_round() -> void:
 	_apply_control_node_income("player")
 	_apply_summoned_command_income()
 	current_phase = BattlePhase.PLAYER_ROLL
+	_refresh_enemy_intents()
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
 
@@ -459,6 +467,7 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> void:
 		_check_encounter(unit_id, target_cell)
 	if _can_trigger_board_interactions(unit_id):
 		_check_portal(unit_id, target_cell)
+	_refresh_enemy_intents()
 
 func get_attackable_cells_for(unit_id: String) -> Array[Vector2i]:
 	var unit: Dictionary = unit_manager.get_unit(unit_id)
@@ -499,6 +508,7 @@ func try_attack_unit(attacker_id: String, target_cell: Vector2i) -> bool:
 	var killed: bool = unit_manager.apply_damage(defender_id, damage)
 	emit_signal("attack_completed", attacker_id, defender_id, damage, killed)
 	_check_battle_outcome()
+	_refresh_enemy_intents()
 	return true
 
 func _check_battle_outcome() -> void:
@@ -741,6 +751,7 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 	_apply_summon_arrival_effect(profile, target_cell)
 	unit_manager.spawn_unit(summon_id, summon_data, target_cell)
 	emit_signal("summon_completed", summon_id, extended_paths, target_cell)
+	_refresh_enemy_intents()
 	return true
 
 # ─── 多层地图（v0.1.76：委托 FloorManager） ───
@@ -759,6 +770,7 @@ func advance_to_next_floor() -> void:
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	dice_manager.set_active_side("player")
+	_refresh_enemy_intents()
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
 
@@ -966,6 +978,63 @@ func _can_trigger_board_interactions(unit_id: String) -> bool:
 	var tags: Array = unit.get("tags", [])
 	return not tags.has("summoned")
 
+func get_enemy_intents() -> Dictionary:
+	return enemy_intents.duplicate(true)
+
+func _clear_enemy_intents() -> void:
+	enemy_intents.clear()
+	emit_signal("enemy_intents_updated", get_enemy_intents())
+
+func _refresh_enemy_intents() -> void:
+	var next_intents: Dictionary = {}
+	if battle_ai == null or unit_manager == null:
+		enemy_intents = next_intents
+		emit_signal("enemy_intents_updated", get_enemy_intents())
+		return
+	if is_battle_over():
+		enemy_intents = next_intents
+		emit_signal("enemy_intents_updated", get_enemy_intents())
+		return
+	var enemy_units: Array[String] = battle_ai.get_enemy_units()
+	for uid in enemy_units:
+		var unit: Dictionary = unit_manager.get_unit(uid)
+		if unit.is_empty():
+			continue
+		var from_cell: Vector2i = unit.get("cell", Vector2i(-1, -1))
+		if from_cell.x < 0:
+			continue
+		var action: String = "wait"
+		var to_cell: Vector2i = from_cell
+		var detail: String = "待机"
+		var target_unit_id: String = ""
+		var adjacent_players: Array[Vector2i] = battle_ai.get_adjacent_player_cells(from_cell)
+		if adjacent_players.size() > 0:
+			var target_cell: Vector2i = battle_ai.pick_best_adjacent_target_cell(from_cell)
+			if target_cell.x < 0:
+				target_cell = adjacent_players[0]
+			to_cell = target_cell
+			action = "attack"
+			detail = "攻击预告"
+			target_unit_id = String(unit_manager.units_by_cell.get(target_cell, ""))
+		else:
+			var dst_cell: Vector2i = battle_ai.find_priority_enemy_destination(from_cell)
+			if dst_cell.x >= 0:
+				var move_cell: Vector2i = battle_ai.pick_move_toward(from_cell, dst_cell)
+				if move_cell.x >= 0:
+					action = "move"
+					to_cell = move_cell
+					detail = "移动预告"
+		next_intents[uid] = {
+			"unit_id": uid,
+			"action": action,
+			"from_cell": from_cell,
+			"to_cell": to_cell,
+			"target_unit_id": target_unit_id,
+			"detail": detail,
+		}
+	enemy_intents = next_intents
+	emit_signal("enemy_intents_updated", get_enemy_intents())
+
 ## Restart the battle: clear all state and re-spawn units at initial positions.
 func restart_battle() -> void:
 	dice_manager.reset_for_battle()
@@ -984,5 +1053,6 @@ func restart_battle() -> void:
 	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, floor_manager.current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
+	_refresh_enemy_intents()
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))

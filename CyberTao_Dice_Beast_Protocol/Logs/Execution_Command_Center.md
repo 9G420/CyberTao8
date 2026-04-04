@@ -1,7 +1,7 @@
 # CyberTao 执行指挥中心（Execution Command Center）
 
-**更新时间**: 2026-04-04 20:13 SGT  
-**当前版本**: v0.1.115  
+**更新时间**: 2026-04-04 20:56 SGT  
+**当前版本**: v0.1.116  
 **目标**: 让任意新对话窗口都能在 1 分钟内接手，不再“每次重讲一遍”。
 
 ---
@@ -83,12 +83,12 @@
 
 ## 6. 下一轮建议直接执行的任务卡
 
-**任务卡 ID**: `A1_enemy_intent_link`  
-**一句话**: 在棋盘上为敌方单位绘制“下一步意图线”，并在目标变更时即时刷新。  
+**任务卡 ID**: `A2_path_loop_resonance`  
+**一句话**: 实装“路径闭环共鸣”最小规则，让玩家通过闭环走位获得可感知增益。 
 **建议改动文件**:
 
 - `Project/Scripts/BattleV2/BattleFlowController.gd`
-- `Project/Scripts/BattleV2/BattleAI.gd`
+- `Project/Scripts/BattleV2/BoardManager.gd`
 - `Project/Scripts/UI/BoardView.gd`
 
 **完成定义**:
