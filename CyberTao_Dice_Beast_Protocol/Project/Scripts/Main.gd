@@ -92,11 +92,11 @@ func _on_move_requested(unit_id: String, target_cell: Vector2i) -> void:
 	_audio.play_sfx("click")
 	_last_operated_unit_id = unit_id
 	# 逐格动画+相机跟随由 move_step_visual 信号链驱动
-	_battle_flow.try_move_unit(unit_id, target_cell)
+	await _battle_flow.execute_single_player_command("move", unit_id, target_cell)
 
 func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 	_last_operated_unit_id = unit_id
-	var success: bool = _battle_flow.try_attack_unit(unit_id, target_cell)
+	var success: bool = await _battle_flow.execute_single_player_command("attack", unit_id, target_cell)
 	var view = _active_view()
 	if success:
 		view.play_attack_feedback(target_cell, _last_attack_damage, _last_attack_killed)
@@ -108,7 +108,7 @@ func _on_attack_requested(unit_id: String, target_cell: Vector2i) -> void:
 
 func _on_summon_requested(unit_id: String, target_cell: Vector2i) -> void:
 	_last_operated_unit_id = unit_id
-	var success: bool = _battle_flow.try_summon(unit_id, target_cell)
+	var success: bool = await _battle_flow.execute_single_player_command("summon", unit_id, target_cell)
 	if success:
 		_audio.play_sfx("summon")
 	var view = _active_view()

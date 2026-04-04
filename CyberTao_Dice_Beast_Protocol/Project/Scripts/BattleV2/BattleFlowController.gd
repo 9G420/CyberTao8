@@ -33,6 +33,8 @@ signal move_step_done
 signal control_node_captured(cell: Vector2i, owner: String, node_type: String)
 signal control_node_income(owner: String, cell: Vector2i, node_type: String, crest_type: String, amount: int)
 signal enemy_intents_updated(intents: Dictionary)
+signal player_command_chain_updated(commands: Array)
+signal player_command_chain_executed(result: Dictionary)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -47,6 +49,9 @@ const BoardGenerator = preload("res://Scripts/BattleV2/BoardGenerator.gd")
 const CrestActionHandler = preload("res://Scripts/BattleV2/CrestActionHandler.gd")
 const CellEffectHandler = preload("res://Scripts/BattleV2/CellEffectHandler.gd")
 const _FloorManager = preload("res://Scripts/BattleV2/FloorManager.gd")
+const CommandExecutorScript = preload("res://Scripts/Core/CommandExecutor.gd")
+const CommandChainScript = preload("res://Scripts/Core/CommandChain.gd")
+const CombatCommandScript = preload("res://Scripts/Core/Command.gd")
 
 enum BattlePhase {
 	BOOT,
@@ -83,6 +88,8 @@ var battle_ai: BattleAI
 var crest_handler: CrestActionHandler
 var cell_effect_handler: CellEffectHandler
 var floor_manager: _FloorManager
+var command_executor: Node
+var player_command_chain: Resource
 
 func _ready() -> void:
 	_bootstrap()
@@ -97,6 +104,8 @@ func _bootstrap() -> void:
 	crest_handler = CrestActionHandler.new()
 	cell_effect_handler = CellEffectHandler.new()
 	floor_manager = _FloorManager.new()
+	command_executor = CommandExecutorScript.new()
+	player_command_chain = CommandChainScript.new()
 
 	add_child(dice_manager)
 	add_child(board_manager)
@@ -107,6 +116,7 @@ func _bootstrap() -> void:
 	add_child(crest_handler)
 	add_child(cell_effect_handler)
 	add_child(floor_manager)
+	add_child(command_executor)
 
 	action_resolver.board_manager = board_manager
 	action_resolver.unit_manager = unit_manager
@@ -126,6 +136,7 @@ func _bootstrap() -> void:
 	floor_manager.board_manager = board_manager
 	floor_manager.unit_manager = unit_manager
 	floor_manager.buff_manager = buff_manager
+	command_executor.battle_flow = self
 
 	board_manager.build_test_board(BOARD_SIZE)
 	_spawn_player_units()
@@ -148,10 +159,12 @@ func start_player_roll() -> void:
 	dice_manager.set_active_side("player")
 	dice_manager.roll_turn_dice()
 	current_phase = BattlePhase.PLAYER_ACTION
+	reset_player_command_chain()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func enter_player_action() -> void:
 	current_phase = BattlePhase.PLAYER_ACTION
+	reset_player_command_chain()
 	_refresh_enemy_intents()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
@@ -167,11 +180,13 @@ func enter_enemy_action() -> void:
 
 func mark_victory() -> void:
 	current_phase = BattlePhase.VICTORY
+	reset_player_command_chain()
 	_clear_enemy_intents()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
 func mark_defeat() -> void:
 	current_phase = BattlePhase.DEFEAT
+	reset_player_command_chain()
 	_clear_enemy_intents()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
@@ -243,6 +258,7 @@ func end_player_turn() -> void:
 		return
 	crest_handler.clear_temp_def()
 	dice_manager.reset_for_turn()
+	reset_player_command_chain()
 	_clear_enemy_intents()
 	_start_enemy_turn()
 
@@ -274,6 +290,45 @@ func try_use_trick_crest() -> bool:
 	return bool(r["ok"])
 
 ## 启动敌方回合：通知相机 → 掷骰 -> 延迟 -> 执行敌方行动
+func reset_player_command_chain() -> void:
+	if player_command_chain == null:
+		player_command_chain = CommandChainScript.new()
+	player_command_chain.clear_chain()
+	emit_signal("player_command_chain_updated", get_player_command_chain())
+
+func get_player_command_chain() -> Array:
+	if player_command_chain == null:
+		return []
+	return player_command_chain.commands.duplicate()
+
+func enqueue_player_command(command_type: String, unit_id: String, target_cell: Vector2i = Vector2i(-1, -1), value: int = 1) -> bool:
+	if is_battle_over() or current_phase != BattlePhase.PLAYER_ACTION:
+		return false
+	if player_command_chain == null:
+		player_command_chain = CommandChainScript.new()
+	var command: Resource = CombatCommandScript.new().setup(command_type, unit_id, target_cell, value)
+	player_command_chain.add_command(command)
+	emit_signal("player_command_chain_updated", get_player_command_chain())
+	return true
+
+func execute_player_command_chain() -> Dictionary:
+	if is_battle_over() or current_phase != BattlePhase.PLAYER_ACTION:
+		return {"ok": false, "reason": "phase_blocked"}
+	if player_command_chain == null or player_command_chain.is_empty():
+		return {"ok": false, "reason": "empty_chain"}
+	var result: Dictionary = await command_executor.execute_chain(player_command_chain)
+	emit_signal("player_command_chain_executed", result)
+	reset_player_command_chain()
+	return result
+
+func execute_single_player_command(command_type: String, unit_id: String, target_cell: Vector2i = Vector2i(-1, -1), value: int = 1) -> bool:
+	reset_player_command_chain()
+	var enqueued: bool = enqueue_player_command(command_type, unit_id, target_cell, value)
+	if not enqueued:
+		return false
+	var result: Dictionary = await execute_player_command_chain()
+	return bool(result.get("ok", false))
+
 func _start_enemy_turn() -> void:
 	var enemy_units: Array[String] = battle_ai.get_enemy_units()
 	if enemy_units.is_empty():
@@ -390,6 +445,7 @@ func _execute_enemy_actions() -> void:
 func _advance_to_next_player_round() -> void:
 	dice_manager.reset_for_turn()
 	buff_manager.tick_turn()
+	reset_player_command_chain()
 	round_index += 1
 	dice_manager.set_active_side("player")
 	_resolve_control_nodes_for_side("player")
@@ -770,6 +826,7 @@ func advance_to_next_floor() -> void:
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	dice_manager.set_active_side("player")
+	reset_player_command_chain()
 	_refresh_enemy_intents()
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
@@ -1053,6 +1110,7 @@ func restart_battle() -> void:
 	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, floor_manager.current_floor)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
+	reset_player_command_chain()
 	_refresh_enemy_intents()
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))

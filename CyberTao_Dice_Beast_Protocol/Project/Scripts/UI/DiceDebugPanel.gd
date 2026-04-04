@@ -306,7 +306,7 @@ func _on_spawn_path_pressed() -> void:
 	var summon_cells: Array[Vector2i] = battle_flow.get_summon_cells_for(_selected_unit_id_cache)
 	if summon_cells.is_empty():
 		return
-	battle_flow.try_summon(_selected_unit_id_cache, summon_cells[0])
+	await battle_flow.execute_single_player_command("summon", _selected_unit_id_cache, summon_cells[0])
 
 func _on_test_card_battle_pressed() -> void:
 	test_card_battle_requested.emit()
@@ -316,15 +316,15 @@ func _on_deck_view_pressed() -> void:
 
 func _on_defend_crest_pressed() -> void:
 	if battle_flow and _selected_unit_id_cache != "":
-		battle_flow.try_use_defend_crest(_selected_unit_id_cache)
+		await battle_flow.execute_single_player_command("defend", _selected_unit_id_cache)
 
 func _on_skill_crest_pressed() -> void:
 	if battle_flow and _selected_unit_id_cache != "":
-		battle_flow.try_use_skill_crest(_selected_unit_id_cache)
+		await battle_flow.execute_single_player_command("skill", _selected_unit_id_cache)
 
 func _on_trick_crest_pressed() -> void:
 	if battle_flow:
-		battle_flow.try_use_trick_crest()
+		await battle_flow.execute_single_player_command("trick", "")
 
 # --- 信号回调 ---
 

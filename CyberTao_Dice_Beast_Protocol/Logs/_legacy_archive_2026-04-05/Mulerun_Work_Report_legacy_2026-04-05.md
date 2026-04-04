@@ -1,0 +1,126 @@
+﻿# Mulerun 工作报告
+
+**日期**: 2026-04-04 20:56 SGT
+**版本**: v0.1.116
+**分支**: `codex/dice-beast-protocol`
+
+## 本轮任务
+
+- 完成 `A1_enemy_intent_link`：在棋盘层上线敌方意图连线（攻击/移动）。
+- 同步更新本轮必更日志：`Execution_Command_Center` / `Handoff` / `Work_Report` / `changelog` / `Snapshot_v3`。
+- 准备下一任务卡切换至 `A2_path_loop_resonance`。
+
+## 本轮增量（v0.1.116）
+
+- `BattleFlowController.gd`：新增 `enemy_intents_updated` 信号、意图缓存与刷新接口 `get_enemy_intents()`。
+- `BattleFlowController.gd`：在玩家行动、回合推进、召唤/移动/攻击后自动刷新敌方意图；战斗结束与敌方回合开始时清空意图。
+- `BoardView.gd`：接入敌方意图信号监听与绘制层，显示 `ATK`（红线）/`MOV`（橙线）目标提示。
+- 已执行无头校验：`godot4 --headless --path Project --quit` 通过（仅保留历史资源释放 warning）。
+
+- 建立“每日推进不断档”机制：新增执行中枢日志文件并接入 AI 上岗必读顺序。
+- 修复 2D 视图下点敌方头像后镜头被拉回问题。
+- 新增“点击棋盘外区域回正居中”交互。
+- 血条从连续直线改为按生命值离散分格显示（棋盘单位与头像区一致）。
+- 同步更新本轮必更日志：`Handoff` / `Work_Report` / `changelog`。
+
+## 根因目标
+
+当前推进问题不是“缺功能”，而是“每次新对话都要重新对齐上下文”，以及“关键战斗反馈不稳定（镜头与血条可读性）”。
+
+本轮目标是同时解决：
+
+- 流程层：任何新对话都能直接接手下一任务。
+- 体验层：镜头行为稳定、血量反馈直观可读。
+
+## 修改文件
+
+| 文件 | 修改内容 |
+|------|----------|
+| `Logs/Execution_Command_Center.md` | 新增执行指挥中心（阶段、优先任务、验收模板、禁止事项、下一任务卡） |
+| `Logs/AI_Employee_Guide_v3.md` | 接入执行中枢到强制阅读顺序，并新增“新对话开场执行播报”规则 |
+| `Project/Scripts/Main.gd` | 点敌方头像时清空我方选中，避免镜头被自动跟随拉回 |
+| `Project/Scripts/UI/BoardView.gd` | 点击棋盘外触发镜头回正居中并清空选中 |
+| `Project/Scripts/UI/UnitRenderer.gd` | 棋盘单位血条改为按 `max_hp` 分格渲染 |
+| `Project/Scripts/UI/UnitPortraitHUD.gd` | 顶部头像血条改为按 `max_hp` 分格渲染 |
+| `Project/Scripts/App/MainViewCoordinator.gd` | 2D HUD 布局微调，减少遮挡 |
+| `Project/Scripts/UI/IsoTileRenderer.gd` | 棋盘台座与投影表现优化（外沿侧壁/透视缩放修正） |
+| `Logs/Handoff_Package_latest.md` | 同步版本与本轮结果 |
+| `Logs/changelog_v0.1.md` | 追加 v0.1.115 变更条目 |
+
+## 实现内容
+
+- 新增执行中枢后，下一次会话可按固定入口直接开工，不再重复整理背景。
+- 镜头逻辑修复后，点敌人头像会稳定聚焦敌方，不再瞬间回到我方单位。
+- 棋盘外点击可“一键回正”，方便快速重置视角。
+- 血条改为离散格后，`8 HP = 8 格`，受伤会按格数减少，反馈更清楚。
+
+## 接口变更
+
+- 无对外 API 破坏性变更。
+- 交互规则变更：`BoardView` 在左键点击棋盘外时会执行 `_recenter_to_board_center()` 并 `_deselect()`。
+
+## 测试确认
+
+- 已执行：`godot4 --headless --path Project --quit`。
+- 结果：编译通过；仅保留历史退出警告（ObjectDB/资源释放），非本轮新增阻塞问题。
+
+## 剩余问题
+
+- 2D 棋盘 HUD 仍有进一步统一风格空间（顶部信息条与右侧操作面板仍可继续收口）。
+- 敌方意图可视化（红线）尚未开始实现，仍是下一阶段首要可玩性任务。
+
+## 建议下一步
+
+1. 直接执行 `Execution_Command_Center` 的 `A2_path_loop_resonance` 任务卡。
+2. 在闭环共鸣接入后，补一轮敌方反制策略（守点/断环优先级）并验证可读性。
+3. 每轮结束继续按本轮节奏同步五份必更日志，保持可接手性。
+## 覆盖报告（v0.1.117-dev）
+
+**日期**: 2026-04-05 00:31 SGT  
+**版本**: v0.1.117-dev  
+**状态**: 机制重构方案A已启动（Bridge-1 完成）
+
+### 本轮任务
+- 把用户给出的重构思路收束为“方案A渐进重构”并落地到代码桥接层。
+- 新增命令链核心脚本与执行器，保持旧玩法可运行。
+- 同步更新接手日志体系，确保新对话可直接续推进。
+
+### 本轮代码增量
+- 新增:
+  - `Project/Scripts/Core/Command.gd`
+  - `Project/Scripts/Core/CommandChain.gd`
+  - `Project/Scripts/Core/CommandExecutor.gd`
+- 修改:
+  - `Project/Scripts/BattleV2/BattleFlowController.gd`
+  - `Project/Scripts/Main.gd`
+  - `Project/Scripts/UI/DiceDebugPanel.gd`
+
+### 关键结果
+- 玩家关键输入已接入命令入口 `execute_single_player_command(...)`。
+- 旧的移动/攻击/召唤/crest 规则仍由 `BattleFlowController` 执行，不破坏当前可玩闭环。
+- Headless 编译已通过：`godot4 --headless --path Project --quit`（仅历史资源释放 warning）。
+
+### 下一步（唯一主任务）
+1. 执行 `A2_path_loop_resonance`：实现最小闭环共鸣规则与2D可视反馈。
+> 优先读取：请先看文末“覆盖报告（v0.1.117-dev）”，旧条目仅作历史留档。
+# Work Report Override (Refactor)
+
+**日期**: 2026-04-05 00:42 SGT  
+**版本口径**: v0.1.117-dev  
+**结论**: 日志体系已切换到重构方案A，旧任务描述不再作为执行依据。
+
+## 本轮目标
+- 清理日志中的旧方向，统一到“方案A渐进重构”。
+- 固定当前唯一主任务：`A2_path_loop_resonance`。
+- 让新对话窗口可无歧义接手。
+
+## 本轮同步文件
+- `Logs/Execution_Command_Center.md`
+- `Logs/Mechanic_Refactor_Plan_A.md`
+- `Logs/Handoff_Package_latest.md`
+- `Logs/Mulerun_Work_Report.md`
+- `Logs/changelog_v0.1.md`
+- `Logs/CyberTao_Migration_Snapshot_zh_v3.md`
+- `Logs/AI_Employee_Guide_v3.md`
+
+---

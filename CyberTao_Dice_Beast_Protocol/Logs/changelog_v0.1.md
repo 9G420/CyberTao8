@@ -1,5 +1,34 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.117-log-clean - 2026-04-05
+
+记录时间: 2026-04-05 00:42 SGT
+
+- 修改: 按 `CyberTao_Full_Implementation_Blueprint_v1.2.md` 与 `重构方案.md` 清理日志口径。
+- 修改: 重建核心日志为精简重构版（Execution / Refactor Plan / Handoff / Work Report / Snapshot / AI Guide）。
+- 修改: 将旧方向日志迁移到 `Logs/_legacy_archive_2026-04-05/`，避免新会话误读。
+- 备注: 本条为日志治理更新，不改玩法逻辑。
+
+## v0.1.117-docs - 2026-04-05
+
+记录时间: 2026-04-05 00:42 SGT
+
+- 修改: 清理并统一日志执行口径，重构主线固定为“方案A渐进重构”。
+- 修改: `Execution_Command_Center` 增加重构覆盖段，明确当前唯一任务为 `A2_path_loop_resonance`。
+- 修改: `Mechanic_Refactor_Plan_A`、`Handoff`、`Work_Report`、`Snapshot_v3`、`AI_Employee_Guide` 增加重构优先读取与冲突处理规则。
+- 备注: 本条为日志治理更新，不改变战斗数值与玩法逻辑。
+
+## v0.1.117-dev - 2026-04-05
+
+记录时间: 2026-04-05 00:31 SGT
+
+- 新增: `Project/Scripts/Core/Command.gd`、`CommandChain.gd`、`CommandExecutor.gd`，建立重构方案A的命令链桥接基础层。
+- 修改: `BattleFlowController.gd` 接入命令链入口（enqueue/execute/reset）与命令链状态信号，玩家行为可通过命令入口统一调度。
+- 修改: `Main.gd` 与 `DiceDebugPanel.gd` 的移动/攻击/召唤/crest 操作改走 `execute_single_player_command(...)`。
+- 新增: `Logs/Mechanic_Refactor_Plan_A.md`，固定“渐进重构”执行路线、禁止事项、验收标准和后续任务序列。
+- 修改: 同步 `Execution_Command_Center` / `Handoff` / `Work_Report` / `Snapshot_v3` 接手口径，确保新对话可直接续推。
+- 备注: `godot4 --headless --path Project --quit` 通过；仍有历史资源释放 warning，非本轮新增阻塞。
+
 ## v0.1.116 - 2026-04-04
 
 记录时间: 2026-04-04 20:56 SGT
