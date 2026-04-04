@@ -694,7 +694,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 				_deselect()
 				return
 			var clicked_unit: Dictionary = unit_manager.get_unit(clicked_id)
-			if String(clicked_unit.get("owner", "")) == "player":
+			if _is_selectable_player_unit(clicked_id, clicked_unit):
 				_select_unit(clicked_id)
 				return
 		_deselect()
@@ -703,7 +703,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 	if unit_manager and unit_manager.units_by_cell.has(cell):
 		var clicked_id: String = String(unit_manager.units_by_cell[cell])
 		var clicked_unit: Dictionary = unit_manager.get_unit(clicked_id)
-		if String(clicked_unit.get("owner", "")) == "player":
+		if _is_selectable_player_unit(clicked_id, clicked_unit):
 			_select_unit(clicked_id)
 
 func _select_unit(unit_id: String) -> void:
@@ -743,6 +743,16 @@ func _filter_summon_cells(raw_summon_cells: Array[Vector2i]) -> Array[Vector2i]:
 		if not in_move:
 			filtered.append(sc)
 	return filtered
+
+func _is_selectable_player_unit(unit_id: String, unit: Dictionary) -> bool:
+	if unit_manager and unit_manager.has_method("is_player_hero_unit"):
+		return bool(unit_manager.is_player_hero_unit(unit_id))
+	if unit.is_empty():
+		return false
+	if String(unit.get("owner", "")) != "player":
+		return false
+	var tags: Array = unit.get("tags", [])
+	return not tags.has("summoned")
 
 # ============================
 #  内部回调

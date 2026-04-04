@@ -29,6 +29,8 @@ func check_terrain_trap(unit_id: String, cell: Vector2i) -> Dictionary:
 func check_item_pickup(unit_id: String, cell: Vector2i) -> Dictionary:
 	if not board_manager.item_cells.has(cell):
 		return {"picked": false}
+	if not _is_player_hero(unit_id):
+		return {"picked": false}
 	var item_id: String = String(board_manager.item_cells[cell])
 	board_manager.item_cells.erase(cell)
 	var effect_text: String = _apply_item_effect(item_id, unit_id)
@@ -39,6 +41,8 @@ func check_item_pickup(unit_id: String, cell: Vector2i) -> Dictionary:
 ## 返回 {"healed": true, "heal_amount": int, "actual_heal": int} 或 {"healed": false}
 func check_heal_cell(unit_id: String, cell: Vector2i) -> Dictionary:
 	if not board_manager.heal_cells.has(cell):
+		return {"healed": false}
+	if not _is_player_hero(unit_id):
 		return {"healed": false}
 	var heal_amount: int = int(board_manager.heal_cells[cell])
 	var unit: Dictionary = unit_manager.get_unit(unit_id)
@@ -58,6 +62,8 @@ func check_heal_cell(unit_id: String, cell: Vector2i) -> Dictionary:
 ## 返回 {"triggered": true, "event_id": str, "effect_text": str, "killed": bool} 或 {"triggered": false}
 func check_event_cell(unit_id: String, cell: Vector2i) -> Dictionary:
 	if not board_manager.event_cells.has(cell):
+		return {"triggered": false}
+	if not _is_player_hero(unit_id):
 		return {"triggered": false}
 	var event_id: String = String(board_manager.event_cells[cell])
 	board_manager.clear_event_cell(cell)
@@ -96,17 +102,14 @@ func check_event_cell(unit_id: String, cell: Vector2i) -> Dictionary:
 func has_valid_shop_cell(unit_id: String, cell: Vector2i) -> bool:
 	if not board_manager.shop_cells.has(cell):
 		return false
-	var unit: Dictionary = unit_manager.get_unit(unit_id)
-	if unit.is_empty():
-		return false
-	if String(unit.get("owner", "")) != "player":
-		return false
-	return true
+	return _is_player_hero(unit_id)
 
 ## 检查宝箱格：随机奖励（一次性，踩后消失）
 ## 返回 {"opened": true, "effect_text": str} 或 {"opened": false}
 func check_chest_cell(unit_id: String, cell: Vector2i) -> Dictionary:
 	if not board_manager.chest_cells.has(cell):
+		return {"opened": false}
+	if not _is_player_hero(unit_id):
 		return {"opened": false}
 	var unit: Dictionary = unit_manager.get_unit(unit_id)
 	if unit.is_empty():
@@ -186,3 +189,16 @@ func _apply_item_effect(item_id: String, unit_id: String) -> String:
 				gained_type = String(crest_type)
 			return gained_type.to_upper() + "+1"
 	return ""
+
+func _is_player_hero(unit_id: String) -> bool:
+	if unit_manager == null:
+		return false
+	if unit_manager.has_method("is_player_hero_unit"):
+		return bool(unit_manager.is_player_hero_unit(unit_id))
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return false
+	if String(unit.get("owner", "")) != "player":
+		return false
+	var tags: Array = unit.get("tags", [])
+	return not tags.has("summoned")

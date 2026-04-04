@@ -4,8 +4,8 @@
 
 # CyberTao: Dice Beast Protocol 项目迁移快照（中文 v3）
 
-**更新时间**: 2026-04-03
-**当前版本**: v0.1.107
+**更新时间**: 2026-04-04 13:15 SGT
+**当前版本**: v0.1.110
 **GitHub 仓库**: `https://github.com/9G420/CyberTao8`
 **主要分支**: `codex/dice-beast-protocol`
 **主工作目录**: `CyberTao_Dice_Beast_Protocol/Project/`
@@ -60,7 +60,7 @@
 
 ## 2. 当前一句话状态
 
-v0.1.107 已完成 v0.1.106 功能状态回补和日志同步；当前项目处于“可玩闭环稳定、双英雄开局、OpenAI 生图入口已接入、2D/3D 双视图并行表现”的阶段。
+v0.1.110 已补齐第一章章节简报入口，收口第一章命名语境，并完成主角/召唤物规则分层；当前项目处于“可玩闭环稳定 + 章节化入口成形 + 双英雄可玩”的阶段。
 
 ---
 
@@ -145,6 +145,7 @@ v0.1.107 已完成 v0.1.106 功能状态回补和日志同步；当前项目处�
 | `Project/Scenes/Main.tscn` | 场景入口 | 1 个主场景 |
 | `Project/Scripts/Main.gd` | 入口协调层，负责流程切换、结算、音频与主信号转发 | 472 行 |
 | `Project/Scripts/App/MainViewCoordinator.gd` | 主界面视图构建与信号接线协调层 | 192 行 |
+| `Project/Scripts/App/ChapterContent.gd` | 第一章章节文案与流程提示中心 | 新增 |
 | `Project/Scripts/BattleV2/BattleFlowController.gd` | 棋盘层主控 | 727 行 |
 | `Project/Scripts/BattleV2/CardBattleController.gd` | 卡牌战斗主控 | 459 行 |
 | `Project/Scripts/BattleV2/CardBattleData.gd` | 卡牌与遭遇数据中心 | 309 行 |
@@ -152,6 +153,7 @@ v0.1.107 已完成 v0.1.106 功能状态回补和日志同步；当前项目处�
 | `Project/Scripts/BattleV2/BoardManager.gd` | 棋盘状态存储 | 249 行 |
 | `Project/Scripts/BattleV2/FloorManager.gd` | 楼层推进、双英雄出生与跨层状态 | 145 行 |
 | `Project/Scripts/UI/BoardView.gd` | 2D 棋盘交互与表现 | 574 行 |
+| `Project/Scripts/UI/MissionBriefOverlay.gd` | 开局任务简报覆盖层 | 新增 |
 | `Project/Scripts/UI3D/BoardView3D.gd` | 3D 棋盘交互与表现 | 773 行 |
 | `Project/Scripts/UI/ShopPanel.gd` | 商店 UI 与购买结算 | 520 行 |
 | `Project/Scripts/System/OpenAIImageService.gd` | OpenAI 生图请求、配置与文件保存 | 210 行 |

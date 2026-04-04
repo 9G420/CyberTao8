@@ -10,6 +10,7 @@ const DeckViewPanelScript = preload("res://Scripts/UI/DeckViewPanel.gd")
 const ImageGenerationPanelScript = preload("res://Scripts/UI/ImageGenerationPanel.gd")
 const CyberBackgroundScript = preload("res://Scripts/UI/CyberBackground.gd")
 const TransitionOverlayScript = preload("res://Scripts/UI/TransitionOverlay.gd")
+const MissionBriefOverlayScript = preload("res://Scripts/UI/MissionBriefOverlay.gd")
 const UnitPortraitHUDScript = preload("res://Scripts/UI/UnitPortraitHUD.gd")
 const ShopPanelScript = preload("res://Scripts/UI/ShopPanel.gd")
 const BoardView3DScript = preload("res://Scripts/UI3D/BoardView3D.gd")
@@ -24,10 +25,13 @@ var card_battle_panel: CardBattlePanel = null
 var card_reward_panel: CardRewardPanel = null
 var deck_view_panel: DeckViewPanel = null
 var image_generation_panel = null
+var chapter_label: Label = null
+var objective_label: Label = null
 var result_label: Label = null
 var restart_btn: Button = null
 var dice_anim: DiceRollAnimation = null
 var transition: TransitionOverlay = null
+var mission_brief_overlay = null
 var portrait_hud: UnitPortraitHUD = null
 var shop_panel: ShopPanel = null
 var view_switch_fx: ColorRect = null
@@ -67,6 +71,22 @@ func build_views(owner: Control, display_settings: DisplaySettings, audio: Audio
 	image_btn.pressed.connect(_owner_callable(owner, "_on_image_generation_pressed"))
 	CyberStyle.style_button(image_btn, "orange")
 	owner.add_child(image_btn)
+
+	chapter_label = Label.new()
+	chapter_label.position = Vector2(188, 10)
+	chapter_label.size = Vector2(560, 24)
+	chapter_label.add_theme_font_size_override("font_size", 18)
+	chapter_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
+	chapter_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	owner.add_child(chapter_label)
+
+	objective_label = Label.new()
+	objective_label.position = Vector2(188, 34)
+	objective_label.size = Vector2(620, 20)
+	objective_label.add_theme_font_size_override("font_size", 12)
+	objective_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
+	objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	owner.add_child(objective_label)
 
 	settings_panel = SettingsPanelScript.new()
 	settings_panel.position = Vector2(420, 100)
@@ -129,6 +149,9 @@ func build_views(owner: Control, display_settings: DisplaySettings, audio: Audio
 
 	transition = TransitionOverlayScript.new()
 	owner.add_child(transition)
+
+	mission_brief_overlay = MissionBriefOverlayScript.new()
+	owner.add_child(mission_brief_overlay)
 
 func wire_views(owner: Node, battle_flow: BattleFlowController, card_battle_ctrl: CardBattleController) -> void:
 	board_view.bind_managers(battle_flow.board_manager, battle_flow.unit_manager)

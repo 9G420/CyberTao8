@@ -48,7 +48,10 @@ func rebuild() -> void:
 	for uid in _unit_manager.units_by_id.keys():
 		var unit: Dictionary = _unit_manager.units_by_id[uid]
 		if String(unit.get("owner", "")) == "player":
-			player_ids.append(String(uid))
+			var unit_id: String = String(uid)
+			if _unit_manager.has_method("is_player_hero_unit") and not _unit_manager.is_player_hero_unit(unit_id):
+				continue
+			player_ids.append(unit_id)
 		else:
 			enemy_ids.append(String(uid))
 	# 玩家单位从左排列

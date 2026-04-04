@@ -125,6 +125,10 @@ static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dic
 		{"id": "enemy_grunt_2", "max_hp": 4, "atk": 3, "def": 0, "display_name": "哨兵乙"},
 		{"id": "enemy_grunt_3", "max_hp": 6, "atk": 2, "def": 1, "display_name": "哨兵丙"},
 	]
+	if enemy_templates.size() >= 3:
+		enemy_templates[0]["display_name"] = "巡检哨甲"
+		enemy_templates[1]["display_name"] = "巡检哨乙"
+		enemy_templates[2]["display_name"] = "巡检哨丙"
 	for tmpl in enemy_templates:
 		var cell: Vector2i = _pick_enemy_cell(board_size, used_cells)
 		if cell.x < 0:

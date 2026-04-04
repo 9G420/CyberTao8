@@ -429,19 +429,19 @@ func try_move_unit(unit_id: String, target_cell: Vector2i) -> void:
 		await move_step_done
 	emit_signal("move_completed", unit_id, old_cell, target_cell)
 	_check_terrain_trap(unit_id, target_cell)
-	if not unit_manager.get_unit(unit_id).is_empty():
+	if _can_trigger_board_interactions(unit_id):
 		_check_item_pickup(unit_id, target_cell)
-	if not unit_manager.get_unit(unit_id).is_empty():
+	if _can_trigger_board_interactions(unit_id):
 		_check_heal_cell(unit_id, target_cell)
-	if not unit_manager.get_unit(unit_id).is_empty():
+	if _can_trigger_board_interactions(unit_id):
 		_check_event_cell(unit_id, target_cell)
-	if not unit_manager.get_unit(unit_id).is_empty():
+	if _can_trigger_board_interactions(unit_id):
 		_check_shop_cell(unit_id, target_cell)
-	if not unit_manager.get_unit(unit_id).is_empty():
+	if _can_trigger_board_interactions(unit_id):
 		_check_chest_cell(unit_id, target_cell)
-	if not unit_manager.get_unit(unit_id).is_empty():
+	if _can_trigger_board_interactions(unit_id):
 		_check_encounter(unit_id, target_cell)
-	if not unit_manager.get_unit(unit_id).is_empty():
+	if _can_trigger_board_interactions(unit_id):
 		_check_portal(unit_id, target_cell)
 
 func get_attackable_cells_for(unit_id: String) -> Array[Vector2i]:
@@ -541,6 +541,8 @@ func _calc_damage_with_terrain(attacker: Dictionary, defender: Dictionary) -> in
 # ─── 遭遇系统 ───
 
 func _check_encounter(unit_id: String, cell: Vector2i) -> void:
+	if not _can_trigger_board_interactions(unit_id):
+		return
 	if not board_manager.encounter_cells.has(cell):
 		return
 	# 锁定的遭遇格（Boss 未解锁）不可触发
@@ -623,6 +625,8 @@ func _spawn_portal_near(cell: Vector2i) -> void:
 
 ## 检查玩家踩上传送门（v0.1.76：委托 FloorManager）
 func _check_portal(unit_id: String, cell: Vector2i) -> void:
+	if not _can_trigger_board_interactions(unit_id):
+		return
 	var result: Dictionary = floor_manager.check_portal(unit_id, cell)
 	if result.is_empty():
 		return
@@ -718,6 +722,7 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 		"max_hp": 4, "atk": 2, "def": 0,
 		"move_range": 2, "attack_range": 1,
 		"owner": "player", "tags": ["summoned", "fox"],
+		"display_name": "协议灵狐",
 	}
 	unit_manager.spawn_unit(summon_id, summon_data, target_cell)
 	emit_signal("summon_completed", summon_id, extended_paths, target_cell)
@@ -772,6 +777,19 @@ func _phase_name(phase: BattlePhase) -> String:
 		BattlePhase.DEFEAT:
 			return "DEFEAT"
 	return "UNKNOWN"
+
+func _can_trigger_board_interactions(unit_id: String) -> bool:
+	if unit_manager == null:
+		return false
+	if unit_manager.has_method("is_player_hero_unit"):
+		return bool(unit_manager.is_player_hero_unit(unit_id))
+	var unit: Dictionary = unit_manager.get_unit(unit_id)
+	if unit.is_empty():
+		return false
+	if String(unit.get("owner", "")) != "player":
+		return false
+	var tags: Array = unit.get("tags", [])
+	return not tags.has("summoned")
 
 ## Restart the battle: clear all state and re-spawn units at initial positions.
 func restart_battle() -> void:

@@ -211,12 +211,13 @@ func _on_encounter_triggered(unit_id: String, encounter_id: String, cell: Vector
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)
 	var p_hp: int = int(unit.get("hp", 1))
 	var p_max_hp: int = int(unit.get("max_hp", 1))
+	var player_name: String = String(unit.get("display_name", "主角"))
 	# 宝可梦式过渡：百叶窗合拢 + 闪烁敌方名称
 	await _transition.transition_to_battle(enemy_display, is_boss)
 	# 百叶窗合拢后：显示全屏卡牌战斗面板 + 启动战斗
 	_card_battle_panel.visible = true
 	_portrait_hud.visible = false
-	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp, _battle_flow.get_current_floor())
+	_card_battle_ctrl.start_battle(encounter_id, p_hp, p_max_hp, _battle_flow.get_current_floor(), player_name)
 	# 切换为战斗 BGM
 	if is_boss:
 		_audio.play_bgm("bgm_boss")
@@ -361,7 +362,7 @@ func _on_restart_pressed() -> void:
 func _update_camera_to_player() -> void:
 	if _battle_flow == null or _battle_flow.unit_manager == null:
 		return
-	var player_ids: Array[String] = _battle_flow.unit_manager.get_player_units()
+	var player_ids: Array[String] = _battle_flow.unit_manager.get_player_hero_units()
 	if player_ids.is_empty():
 		return
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(player_ids[0])
@@ -404,7 +405,7 @@ func _on_image_generation_pressed() -> void:
 
 func _on_test_card_battle_requested() -> void:
 	# 调试快捷键：直接用第一个玩家单位的 HP 启动卡牌战斗（encounter_01）
-	var player_ids: Array[String] = _battle_flow.unit_manager.get_player_units()
+	var player_ids: Array[String] = _battle_flow.unit_manager.get_player_hero_units()
 	if player_ids.is_empty():
 		return
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(player_ids[0])
@@ -412,11 +413,12 @@ func _on_test_card_battle_requested() -> void:
 		return
 	var p_hp: int = int(unit.get("hp", 1))
 	var p_max_hp: int = int(unit.get("max_hp", 1))
+	var player_name: String = String(unit.get("display_name", "主角"))
 	# 调试也走宝可梦式过渡
 	await _transition.transition_to_battle(ChapterContent.get_encounter_display_name("encounter_01"), false)
 	_card_battle_panel.visible = true
 	_portrait_hud.visible = false
-	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp, _battle_flow.get_current_floor())
+	_card_battle_ctrl.start_battle("encounter_01", p_hp, p_max_hp, _battle_flow.get_current_floor(), player_name)
 	await _transition.reveal()
 
 func _on_deck_view_requested() -> void:
@@ -436,7 +438,7 @@ func _on_portrait_clicked(unit_id: String) -> void:
 	_reset_drag_offset()
 	view.set_camera_target(cell)
 	# 如果是玩家单位，选中它
-	if String(unit.get("owner", "")) == "player":
+	if _battle_flow.unit_manager.is_player_hero_unit(unit_id):
 		view.selected_unit_id = unit_id
 		view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 		view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)

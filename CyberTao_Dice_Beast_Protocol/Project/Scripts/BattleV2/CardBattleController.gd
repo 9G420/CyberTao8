@@ -8,7 +8,7 @@ const CardBattleData = preload("res://Scripts/BattleV2/CardBattleData.gd")
 ## 持久牌组 + 战斗胜利选牌构筑
 ## 新增：毒素/抽牌/反击/连击 4种卡牌 + buff/multi_attack 2种敌方行为 + 2个新遭遇
 
-signal battle_started(player_hp: int, enemy_hp: int, enemy_name: String)
+signal battle_started(player_hp: int, enemy_hp: int, enemy_name: String, player_name: String)
 signal hand_changed(hand: Array, energy: int, max_energy: int)
 signal card_played(card_index: int, card_name: String, effect_text: String)
 signal enemy_acted(action_text: String)
@@ -31,6 +31,7 @@ var enemy_hp: int = 0
 var enemy_max_hp: int = 0
 var enemy_atk: int = 2
 var enemy_name: String = ""
+var player_name: String = "刀盾犬"
 var encounter_id: String = ""
 var battle_turn: int = 0
 var def_bonus: int = 0
@@ -84,10 +85,11 @@ static func get_encounter_enemy_data(enc_id: String, current_floor: int = 1) -> 
 
 # ======== 战斗流程 ========
 
-func start_battle(enc_id: String, p_hp: int, p_max_hp: int, current_floor: int = 1) -> void:
+func start_battle(enc_id: String, p_hp: int, p_max_hp: int, current_floor: int = 1, p_name: String = "刀盾犬") -> void:
 	encounter_id = enc_id
 	var enemy_data: Dictionary = get_encounter_enemy_data(enc_id, current_floor)
 	enemy_name = String(enemy_data["name"])
+	player_name = p_name
 	enemy_hp = int(enemy_data["hp"])
 	enemy_max_hp = enemy_hp
 	enemy_atk = int(enemy_data["atk"])
@@ -117,7 +119,7 @@ func start_battle(enc_id: String, p_hp: int, p_max_hp: int, current_floor: int =
 	discard_pile = []
 	hand = []
 	state = BattleState.PLAYER_TURN
-	emit_signal("battle_started", player_hp, enemy_hp, enemy_name)
+	emit_signal("battle_started", player_hp, enemy_hp, enemy_name, player_name)
 	_draw_hand()
 	_update_enemy_intent()
 

@@ -1,14 +1,14 @@
 ﻿# CyberTao: Dice Beast Protocol - 交接包
 
-**生成时间**: 2026-04-03
-**当前版本**: v0.1.109
+**生成时间**: 2026-04-04 13:15 SGT
+**当前版本**: v0.1.110
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 1. 此刻的精确状态（一句话）
 
-v0.1.109 已修复棋盘/主视图的高亮格子清理逻辑，同时 `AI Guide` 与 `Art Strategy` 的当前基线继续保持接入；项目仍处于“可玩闭环稳定 + 双英雄开局 + OpenAI 生图入口已接入”的阶段。
+v0.1.110 已补齐第一章任务简报入口、收口第一章命名语境，并修复主角/召唤物规则边界；项目从“可玩原型”进一步向“章节化可玩切片”推进。
 
 ---
 
@@ -23,6 +23,7 @@ v0.1.109 已修复棋盘/主视图的高亮格子清理逻辑，同时 `AI Guide
 | v0.1.107 | 同步 `Handoff / Work Report / Snapshot / changelog`，并修复 headless 下新类型解析风险 | 完成 |
 | v0.1.108 | 同步 `AI_Employee_Guide_v3.md` 与 `Art_Beautification_Strategy_zh.md`，补齐文档更新规则 | 完成 |
 | v0.1.109 | 主视图/棋盘重置路径改为 `.clear()`，防止高亮数组赋值 crash，并把这次修复写进 changelog | 完成 |
+| v0.1.110 | 新增第一章 `ChapterContent`/`MissionBriefOverlay`，修复召唤物误触发主流程交互并统一第一章遭遇/Boss命名 | 完成 |
 
 ---
 
@@ -31,11 +32,13 @@ v0.1.109 已修复棋盘/主视图的高亮格子清理逻辑，同时 `AI Guide
 - 入口：`Project/Scenes/Main.tscn`
 - 主控入口：`Project/Scripts/Main.gd`
 - 主界面协调层：`Project/Scripts/App/MainViewCoordinator.gd`
+- 章节文案中心：`Project/Scripts/App/ChapterContent.gd`
 - 棋盘外层：`Project/Scripts/BattleV2/BattleFlowController.gd`
 - 卡牌内层：`Project/Scripts/BattleV2/CardBattleController.gd`
 - 卡牌数据：`Project/Scripts/BattleV2/CardBattleData.gd`
 - 生图服务：`Project/Scripts/System/OpenAIImageService.gd`
 - 生图面板：`Project/Scripts/UI/ImageGenerationPanel.gd`
+- 章节简报面板：`Project/Scripts/UI/MissionBriefOverlay.gd`
 - 商店 UI：`Project/Scripts/UI/ShopPanel.gd`
 - 结构快照：`Logs/CyberTao_Migration_Snapshot_zh_v3.md`
 
@@ -48,8 +51,10 @@ v0.1.109 已修复棋盘/主视图的高亮格子清理逻辑，同时 `AI Guide
 - `Main.gd` 已把大部分界面构建与信号接线抽到 `MainViewCoordinator.gd`，入口协调层规模从旧快照里的 700+ 行回落到 472 行。
 - `ShopPanel.gd`、`CardRewardPanel.gd`、`DeckViewPanel.gd` 已统一到新的卡牌 tile / row 展示方案。
 - 隔离用户目录下的最小 headless 启动已通过，不再出现 `ImageGenerationPanel` / `OpenAIImageService` 类型解析错误。
-- `Main.gd`、`BoardView.gd` 与 `BoardView3D.gd` 现在在所有重置/取消选择路径里对 `highlight_cells`、`attack_highlight_cells` 和 `summon_highlight_cells` 统一调用 `.clear()`，避免在这些字段声明为 `Array[Vector2i]` 时赋空数组触发 `_on_card_battle_ended` 的运行时崩溃。
-- `Logs/changelog_v0.1.md` 已追加 v0.1.109 的修复条目，涵盖上述高亮逻辑修复与整体本轮同步，保持主日志与 “AI Guide/Art Strategy” 行为基线一致。
+- `MainViewCoordinator.gd` 已接入 `MissionBriefOverlay`，`Main.gd` 开局能稳定显示章节简报，不再空降棋盘。
+- `UnitManager.gd` 新增 `get_player_hero_units()` / `is_player_hero_unit()`；`BattleFlowController.gd`、`CellEffectHandler.gd`、`BoardView.gd`、`BoardView3D.gd`、`UnitPortraitHUD.gd`、`Main.gd` 全链路按此区分主角与召唤物。
+- 召唤物不再触发事件/遭遇/商店/宝箱/传送门，也不再进入主角头像栏和核心选择流程。
+- `CardBattleData.gd` / `ChapterContent.gd` 已将第一章遭遇与 Boss 命名统一到“灰链封锁区 / 天枢治域”语气，避免终局设定前置。
 
 ---
 
@@ -57,9 +62,9 @@ v0.1.109 已修复棋盘/主视图的高亮格子清理逻辑，同时 `AI Guide
 
 | 问题 | 严重程度 | 是否阻塞 | 说明 |
 |------|----------|----------|------|
-| `Main.gd` 仍承担较多协调职责 | 中 | 否 | 虽已拆出 `MainViewCoordinator`，但入口层仍负责流程切换、音频、结果结算与多路信号转发 |
+| `Main.gd` 仍承担较多协调职责 | 中 | 否 | 虽已拆出 `MainViewCoordinator` 并接入章节简报层，但入口层仍负责流程切换、音频、结果结算与多路信号转发 |
 | 2D / 3D 表现一致性仍在追赶 | 中 | 否 | 3D 反馈已继续增强，但可读性和 2D 仍未完全拉齐 |
-| 第三个玩家单位 `crow_caster` 仍未接入主流程 | 中 | 否 | 当前可玩双英雄已接通，但第三单位仍停留在资源层 |
+| 第三个玩家单位 `crow_caster` 仍未接入主流程 | 中 | 否 | 当前可玩双英雄已接通，第三单位仍停留在资源层 |
 | 生图功能仍缺少真实 API 链路回归 | 中 | 否 | 启动和界面已接通，但实际依赖 API Key、网络与系统证书环境 |
 | 本机 headless 仍有系统警告 | 低 | 否 | 当前最小启动仍会出现 `Failed to read the root certificate store` 和退出时 1 处资源未释放警告 |
 
@@ -67,7 +72,7 @@ v0.1.109 已修复棋盘/主视图的高亮格子清理逻辑，同时 `AI Guide
 
 ## 6. 下一步建议
 
-1. 继续拆分 `Main.gd` 中的纯中转、纯表现触发和结算逻辑。
-2. 用真实 API Key 对 OpenAI 生图链路做一次端到端回归，而不只停留在启动成功。
-3. 决定 `crow_caster` 是否进入主循环，还是继续保留为资源预备位。
-4. 单独排查 headless 下的根证书读取与退出资源释放警告。
+1. 把第一章敌方 AI 从“最近点靠近”升级为“卡路/堵路/围压”策略，强化封锁区体感。
+2. 继续拆分 `Main.gd` 的纯中转与表现触发逻辑，减轻入口层职责。
+3. 用真实 API Key 对 OpenAI 生图链路做一次端到端回归，而不只停留在启动成功。
+4. 决定 `crow_caster` 是否进入主循环，还是继续保留为资源预备位。

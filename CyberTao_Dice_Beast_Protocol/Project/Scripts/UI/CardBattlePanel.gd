@@ -85,10 +85,11 @@ func bind_controller(controller: CardBattleController) -> void:
 
 # --- 控制器信号回调 ---
 
-func _on_battle_started(player_hp: int, enemy_hp: int, enemy_name: String) -> void:
+func _on_battle_started(player_hp: int, enemy_hp: int, enemy_name: String, player_name: String) -> void:
 	_current_encounter_id = _controller.encounter_id if _controller else ""
 	_hp_before_player = player_hp
 	_hp_before_enemy = enemy_hp
+	_player_name_label.text = player_name
 	_log_label.text = "遭遇 " + enemy_name + "！抽牌并选择出牌。"
 	_end_turn_button.disabled = false
 	_flee_button.disabled = false
@@ -554,7 +555,7 @@ func _build_ui() -> void:
 
 	# === 玩家区域（左下） ===
 	_player_name_label = Label.new()
-	_player_name_label.text = "刀盾犬"
+	_player_name_label.text = "主角"
 	_player_name_label.position = Vector2(60, 440)
 	_player_name_label.size = Vector2(200, 24)
 	_player_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

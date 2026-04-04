@@ -80,6 +80,28 @@ func get_player_units() -> Array[String]:
 			result.append(String(uid))
 	return result
 
+func get_player_hero_units() -> Array[String]:
+	var result: Array[String] = []
+	for uid in units_by_id.keys():
+		var unit_id: String = String(uid)
+		if is_player_hero_unit(unit_id):
+			result.append(unit_id)
+	return result
+
+func is_player_hero_unit(unit_id: String) -> bool:
+	var unit: Dictionary = get_unit(unit_id)
+	if unit.is_empty():
+		return false
+	if String(unit.get("owner", "")) != "player":
+		return false
+	return not is_summoned_unit(unit)
+
+func is_summoned_unit(unit: Dictionary) -> bool:
+	if unit.is_empty():
+		return false
+	var tags: Array = unit.get("tags", [])
+	return tags.has("summoned")
+
 func clear_all_units() -> void:
 	units_by_id.clear()
 	units_by_cell.clear()

@@ -1,5 +1,26 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.110 - 2026-04-04
+
+记录时间: 2026-04-04 13:15 SGT
+
+### 修复
+- `BattleFlowController.gd` / `CellEffectHandler.gd` / `BoardView.gd` / `BoardView3D.gd` / `UnitPortraitHUD.gd` / `Main.gd`：主角与召唤物规则边界完成拆分，召唤物不再触发事件、遭遇、商店、宝箱与传送门，也不再混入主角头像与核心选择链路。
+- `CardBattleController.gd` / `CardBattlePanel.gd` / `Main.gd`：卡牌战斗玩家名改为按实际触发遭遇的主角动态显示，修复“玩家名写死”导致的身份混乱。
+
+### 修改
+- `CardBattleData.gd` / `BoardGenerator.gd`：第一章遭遇与 Boss 命名收口到“灰链封锁区 / 天枢治域”语气，降低原型测试感并避免终局设定前置。
+- `MainViewCoordinator.gd`：补齐 `chapter_label` / `objective_label` 视图属性，修复 headless 启动时报错。
+
+### 新增
+- `ChapterContent.gd`：新增章节内容中心，统一开场简报、章节标题、楼层目标、遭遇显示名与流程反馈文案。
+- `MissionBriefOverlay.gd`：新增开局任务简报覆盖层，形成“开场简报 -> 棋盘推进 -> 遭遇切换”的章节入口链路。
+- `UnitManager.gd`：新增 `get_player_hero_units()`、`is_player_hero_unit()`、`is_summoned_unit()`，用于主角/召唤物全链路分层。
+
+### 备注
+- 本轮新增私有创意推进文件 `Logs/Private_Chapter1_Flow_local.md` 已保持本地排除，不进入仓库。
+- headless 启动已通过，仍有 Godot 退出时资源未释放警告（历史残留，未阻塞本轮交付）。
+
 ## v0.1.109 - 2026-04-03
 
 ### 修复

@@ -198,49 +198,49 @@ const CARD_LIBRARY := {
 
 const ENCOUNTER_LIBRARY := {
 	"encounter_01": {
-		"name": "\u5f02\u5e38\u54e8\u5175",
+		"name": "\u7070\u94fe\u5de1\u68c0\u54e8",
 		"hp": 8,
 		"atk": 2,
 		"pattern": ["attack", "attack", "defend_attack", "heavy_attack"],
 	},
 	"encounter_02": {
-		"name": "\u8d5b\u535a\u6e38\u9b42",
+		"name": "\u8def\u6743\u6e05\u626b\u8005",
 		"hp": 6,
 		"atk": 3,
 		"pattern": ["attack", "heavy_attack", "attack"],
 	},
 	"encounter_03": {
-		"name": "\u6697\u7f51\u722c\u866b",
+		"name": "\u914d\u989d\u722c\u866b",
 		"hp": 12,
 		"atk": 1,
 		"pattern": ["defend_attack", "defend_attack", "heavy_attack", "attack"],
 	},
 	"encounter_04": {
-		"name": "\u8109\u51b2\u730e\u624b",
+		"name": "\u622a\u6d41\u8ffd\u730e\u624b",
 		"hp": 6,
 		"atk": 3,
 		"pattern": ["attack", "heavy_attack", "attack"],
 	},
 	"encounter_05": {
-		"name": "\u6570\u636e\u5e7d\u7075",
+		"name": "\u5931\u5e8f\u8bb0\u5f55\u5458",
 		"hp": 9,
 		"atk": 2,
 		"pattern": ["attack", "defend_attack", "heavy_attack", "heavy_attack", "attack"],
 	},
 	"encounter_06": {
-		"name": "\u91cf\u5b50\u5206\u88c2\u4f53",
+		"name": "\u914d\u989d\u5206\u88c2\u4f53",
 		"hp": 7,
 		"atk": 2,
 		"pattern": ["attack", "buff", "multi_attack", "attack", "heavy_attack"],
 	},
 	"encounter_07": {
-		"name": "\u8d5b\u535a\u5deb\u533b",
+		"name": "\u5c01\u9501\u7ef4\u62a4\u5e08",
 		"hp": 9,
 		"atk": 2,
 		"pattern": ["buff", "defend_attack", "heal", "heavy_attack", "attack"],
 	},
 	"encounter_boss_01": {
-		"name": "\u96f6\u53f7\u534f\u8bae",
+		"name": "\u533a\u52a1\u76d1\u7763\u5b98",
 		"hp": 20,
 		"atk": 3,
 		"is_boss": true,
