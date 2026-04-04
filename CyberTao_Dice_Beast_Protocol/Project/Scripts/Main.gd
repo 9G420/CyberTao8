@@ -2,7 +2,6 @@ extends Control
 
 const MainViewCoordinatorScript = preload("res://Scripts/App/MainViewCoordinator.gd")
 const ChapterContent = preload("res://Scripts/App/ChapterContent.gd")
-const OpenAIImageServiceScript = preload("res://Scripts/System/OpenAIImageService.gd")
 const BoardViewScript = preload("res://Scripts/UI/BoardView.gd")
 const BoardView3DScript = preload("res://Scripts/UI3D/BoardView3D.gd")
 
@@ -21,7 +20,6 @@ var _settings_panel: SettingsPanel
 var _card_battle_panel: CardBattlePanel
 var _card_reward_panel: CardRewardPanel
 var _deck_view_panel: DeckViewPanel
-var _image_generation_panel = null
 var _chapter_label: Label
 var _objective_label: Label
 var _result_label: Label
@@ -30,7 +28,6 @@ var _dice_anim: DiceRollAnimation
 var _transition: TransitionOverlay
 var _mission_brief_overlay = null
 var _audio: AudioManager
-var _image_service = null
 var _portrait_hud: UnitPortraitHUD
 var _shop_panel: ShopPanel
 var _view_switch_fx: ColorRect = null
@@ -45,8 +42,6 @@ func _ready() -> void:
 	add_child(_display_settings)
 	_audio = AudioManager.new()
 	add_child(_audio)
-	_image_service = OpenAIImageServiceScript.new()
-	add_child(_image_service)
 	_battle_flow = BattleFlowController.new()
 	add_child(_battle_flow)
 	_card_battle_ctrl = CardBattleController.new()
@@ -64,7 +59,7 @@ func _ready() -> void:
 	call_deferred("_show_opening_briefing")
 
 func _build_debug_view() -> void:
-	_view_coordinator.build_views(self, _display_settings, _audio, _image_service)
+	_view_coordinator.build_views(self, _display_settings, _audio)
 	_sync_view_refs()
 
 func _wire_debug_views() -> void:
@@ -80,7 +75,6 @@ func _sync_view_refs() -> void:
 	_card_battle_panel = _view_coordinator.card_battle_panel
 	_card_reward_panel = _view_coordinator.card_reward_panel
 	_deck_view_panel = _view_coordinator.deck_view_panel
-	_image_generation_panel = _view_coordinator.image_generation_panel
 	_chapter_label = _view_coordinator.chapter_label
 	_objective_label = _view_coordinator.objective_label
 	_result_label = _view_coordinator.result_label
@@ -397,11 +391,6 @@ func _on_enemy_turn_starting(first_enemy_id: String) -> void:
 func _on_settings_pressed() -> void:
 	_audio.play_sfx("click")
 	_settings_panel.open()
-
-func _on_image_generation_pressed() -> void:
-	_audio.play_sfx("click")
-	if _image_generation_panel:
-		_image_generation_panel.open()
 
 func _on_test_card_battle_requested() -> void:
 	# 调试快捷键：直接用第一个玩家单位的 HP 启动卡牌战斗（encounter_01）

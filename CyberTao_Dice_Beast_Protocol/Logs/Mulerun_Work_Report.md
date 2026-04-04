@@ -1,10 +1,16 @@
 ﻿# Mulerun 工作报告
 
-**日期**: 2026-04-04 13:15 SGT
-**版本**: v0.1.110
+**日期**: 2026-04-04 13:51 SGT
+**版本**: v0.1.111
 **分支**: `codex/dice-beast-protocol`
 
 ## 本轮任务
+
+追加更新（v0.1.111）：
+
+- 彻底剔除 OpenAI 生图功能：移除设置旁生图按钮、移除 `Main.gd` 与 `MainViewCoordinator.gd` 中所有生图调用链、并从仓库删除 `OpenAIImageService.gd` 与 `ImageGenerationPanel.gd`。
+- 优化顶部单位头像选择 UI：重做 `UnitPortraitHUD.gd` 的布局、选中/悬停反馈、血量可读性与整体视觉质感。
+- 补齐当前基础骰面体验：同步 `DiceManager.gd` 与 6 个 `face_*.tres`，让每个骰面都具备明确用途，不再出现空功能面。
 
 执行私有创意文档任务 1，收口第一章公开实现路径，并修复当前“主角/召唤物规则混乱”导致的棋盘游玩体验问题；同时补齐从开场简报到遭遇战斗的章节入口层。
 

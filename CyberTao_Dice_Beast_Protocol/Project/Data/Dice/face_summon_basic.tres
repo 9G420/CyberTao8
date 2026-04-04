@@ -8,4 +8,4 @@ face_id = "face_summon_basic"
 face_type = "summon"
 crest_value = 1
 grants_path_shape = "line_2"
-grants_effect_id = ""
+grants_effect_id = "grant_move_bonus"

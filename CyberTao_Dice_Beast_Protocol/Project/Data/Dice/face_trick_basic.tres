@@ -8,4 +8,4 @@ face_id = "face_trick_basic"
 face_type = "trick"
 crest_value = 1
 grants_path_shape = ""
-grants_effect_id = ""
+grants_effect_id = "grant_random_crest"

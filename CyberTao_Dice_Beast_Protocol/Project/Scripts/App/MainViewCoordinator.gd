@@ -7,7 +7,6 @@ const SettingsPanelScript = preload("res://Scripts/UI/SettingsPanel.gd")
 const CardBattlePanelScript = preload("res://Scripts/UI/CardBattlePanel.gd")
 const CardRewardPanelScript = preload("res://Scripts/UI/CardRewardPanel.gd")
 const DeckViewPanelScript = preload("res://Scripts/UI/DeckViewPanel.gd")
-const ImageGenerationPanelScript = preload("res://Scripts/UI/ImageGenerationPanel.gd")
 const CyberBackgroundScript = preload("res://Scripts/UI/CyberBackground.gd")
 const TransitionOverlayScript = preload("res://Scripts/UI/TransitionOverlay.gd")
 const MissionBriefOverlayScript = preload("res://Scripts/UI/MissionBriefOverlay.gd")
@@ -24,7 +23,6 @@ var settings_panel: SettingsPanel = null
 var card_battle_panel: CardBattlePanel = null
 var card_reward_panel: CardRewardPanel = null
 var deck_view_panel: DeckViewPanel = null
-var image_generation_panel = null
 var chapter_label: Label = null
 var objective_label: Label = null
 var result_label: Label = null
@@ -36,7 +34,7 @@ var portrait_hud: UnitPortraitHUD = null
 var shop_panel: ShopPanel = null
 var view_switch_fx: ColorRect = null
 
-func build_views(owner: Control, display_settings: DisplaySettings, audio: AudioManager, image_service) -> void:
+func build_views(owner: Control, display_settings: DisplaySettings, audio: AudioManager) -> void:
 	_call_owner(owner, "_setup_custom_cursor")
 
 	var cyber_bg := CyberBackgroundScript.new()
@@ -63,17 +61,8 @@ func build_views(owner: Control, display_settings: DisplaySettings, audio: Audio
 	CyberStyle.style_button(settings_btn, "cyan")
 	owner.add_child(settings_btn)
 
-	var image_btn := Button.new()
-	image_btn.text = "生图"
-	image_btn.position = Vector2(88, 8)
-	image_btn.size = Vector2(72, 28)
-	image_btn.add_theme_font_size_override("font_size", 12)
-	image_btn.pressed.connect(_owner_callable(owner, "_on_image_generation_pressed"))
-	CyberStyle.style_button(image_btn, "orange")
-	owner.add_child(image_btn)
-
 	chapter_label = Label.new()
-	chapter_label.position = Vector2(188, 10)
+	chapter_label.position = Vector2(96, 10)
 	chapter_label.size = Vector2(560, 24)
 	chapter_label.add_theme_font_size_override("font_size", 18)
 	chapter_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
@@ -81,7 +70,7 @@ func build_views(owner: Control, display_settings: DisplaySettings, audio: Audio
 	owner.add_child(chapter_label)
 
 	objective_label = Label.new()
-	objective_label.position = Vector2(188, 34)
+	objective_label.position = Vector2(96, 34)
 	objective_label.size = Vector2(620, 20)
 	objective_label.add_theme_font_size_override("font_size", 12)
 	objective_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
@@ -93,11 +82,6 @@ func build_views(owner: Control, display_settings: DisplaySettings, audio: Audio
 	owner.add_child(settings_panel)
 	settings_panel.bind_display_settings(display_settings)
 	settings_panel.bind_audio_manager(audio)
-
-	image_generation_panel = ImageGenerationPanelScript.new()
-	image_generation_panel.position = Vector2(210, 78)
-	owner.add_child(image_generation_panel)
-	image_generation_panel.bind_service(image_service)
 
 	card_battle_panel = CardBattlePanelScript.new()
 	card_battle_panel.position = Vector2.ZERO

@@ -1,14 +1,14 @@
 ﻿# CyberTao: Dice Beast Protocol - 交接包
 
-**生成时间**: 2026-04-04 13:15 SGT
-**当前版本**: v0.1.110
+**生成时间**: 2026-04-04 13:51 SGT
+**当前版本**: v0.1.111
 **分支**: `codex/dice-beast-protocol`
 
 ---
 
 ## 1. 此刻的精确状态（一句话）
 
-v0.1.110 已补齐第一章任务简报入口、收口第一章命名语境，并修复主角/召唤物规则边界；项目从“可玩原型”进一步向“章节化可玩切片”推进。
+v0.1.111 已移除主界面 OpenAI 生图能力（按钮、调用链与脚本文件），并完成顶部单位头像区 UI 美化与骰面机制补齐。
 
 ---
 
@@ -24,6 +24,7 @@ v0.1.110 已补齐第一章任务简报入口、收口第一章命名语境，�
 | v0.1.108 | 同步 `AI_Employee_Guide_v3.md` 与 `Art_Beautification_Strategy_zh.md`，补齐文档更新规则 | 完成 |
 | v0.1.109 | 主视图/棋盘重置路径改为 `.clear()`，防止高亮数组赋值 crash，并把这次修复写进 changelog | 完成 |
 | v0.1.110 | 新增第一章 `ChapterContent`/`MissionBriefOverlay`，修复召唤物误触发主流程交互并统一第一章遭遇/Boss命名 | 完成 |
+| v0.1.111 | 删除 OpenAI 生图入口与两份相关脚本，重做顶部单位头像 HUD 视觉，并补齐 6 个骰面基础功能 | 完成 |
 
 ---
 
@@ -36,8 +37,8 @@ v0.1.110 已补齐第一章任务简报入口、收口第一章命名语境，�
 - 棋盘外层：`Project/Scripts/BattleV2/BattleFlowController.gd`
 - 卡牌内层：`Project/Scripts/BattleV2/CardBattleController.gd`
 - 卡牌数据：`Project/Scripts/BattleV2/CardBattleData.gd`
-- 生图服务：`Project/Scripts/System/OpenAIImageService.gd`
-- 生图面板：`Project/Scripts/UI/ImageGenerationPanel.gd`
+- 生图服务：已从主流程与仓库中移除
+- 生图面板：已从主流程与仓库中移除
 - 章节简报面板：`Project/Scripts/UI/MissionBriefOverlay.gd`
 - 商店 UI：`Project/Scripts/UI/ShopPanel.gd`
 - 结构快照：`Logs/CyberTao_Migration_Snapshot_zh_v3.md`
