@@ -8,4 +8,4 @@ face_id = "face_move_basic"
 face_type = "move"
 crest_value = 1
 grants_path_shape = ""
-grants_effect_id = "grant_trick_bonus"
+grants_effect_id = "grant_move_bonus"

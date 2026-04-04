@@ -1,5 +1,14 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.112 - 2026-04-04
+
+记录时间: 2026-04-04 14:06 SGT
+
+- 修改: `DiceManager` 升级为玩家/敌方双 crest 资源池，双方回合资源分离且支持跨回合保留。
+- 新增: 单次掷骰“同面连锁奖励”（同类型面 x2/x3 额外 +1 同类 crest），强化 DM 式爆发回合。
+- 修改: `BattleAI` + `BattleFlowController` 目标选择升级，敌方优先攻击主角与残血单位，不再随机撞脸。
+- 修正: `face_move_basic/face_defend_basic/face_skill_basic/face_summon_basic` 奖励效果与面语义对齐。
+
 ## v0.1.111 - 2026-04-04
 
 记录时间: 2026-04-04 13:51 SGT

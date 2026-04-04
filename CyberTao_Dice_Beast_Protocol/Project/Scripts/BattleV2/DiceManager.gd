@@ -15,10 +15,32 @@ enum CrestType {
 const TURN_DICE_COUNT: int = 3
 const DICE_FACE_DIR: String = "res://Data/Dice"
 const DEFAULT_FACES: Array[String] = ["summon", "move", "attack", "defend", "skill", "trick"]
+const MAX_CREST_PER_TYPE: int = 12
+const VALID_SIDES: Array[String] = ["player", "enemy"]
 
 var last_roll_results: Array[String] = []
 var last_roll_effects: Array[String] = []
-var crest_pool: Dictionary = {
+var crest_pool: Dictionary = {}
+var active_side: String = "player"
+var _crest_pools: Dictionary = {
+	"player": {
+		"summon": 0,
+		"move": 0,
+		"attack": 0,
+		"defend": 0,
+		"skill": 0,
+		"trick": 0,
+	},
+	"enemy": {
+		"summon": 0,
+		"move": 0,
+		"attack": 0,
+		"defend": 0,
+		"skill": 0,
+		"trick": 0,
+	},
+}
+var _default_pool_template: Dictionary = {
 	"summon": 0,
 	"move": 0,
 	"attack": 0,
@@ -29,7 +51,14 @@ var crest_pool: Dictionary = {
 var _faces_by_type: Dictionary = {}
 
 func _ready() -> void:
+	_refresh_active_pool()
 	_load_face_data()
+
+func set_active_side(side: String) -> void:
+	if not VALID_SIDES.has(side):
+		return
+	active_side = side
+	_refresh_active_pool()
 
 func roll_turn_dice() -> Array[String]:
 	if _faces_by_type.is_empty():
@@ -50,6 +79,7 @@ func roll_turn_dice() -> Array[String]:
 		if face_type == "attack":
 			roll_context["attack_faces"] = int(roll_context.get("attack_faces", 0)) + 1
 		_apply_roll_face_effect(face_type, face_data, roll_context)
+	_apply_chain_bonuses()
 	# Guarantee at least 1 MOVE per roll for prototype playability
 	if int(crest_pool.get("move", 0)) <= 0:
 		crest_pool["move"] = 1
@@ -75,14 +105,13 @@ func pay(costs: Dictionary) -> bool:
 func reset_for_battle() -> void:
 	last_roll_results.clear()
 	last_roll_effects.clear()
-	for key in crest_pool.keys():
-		crest_pool[key] = 0
+	for side in VALID_SIDES:
+		_crest_pools[side] = _default_pool_template.duplicate(true)
+	_refresh_active_pool()
 
 func reset_for_turn() -> void:
 	last_roll_results.clear()
 	last_roll_effects.clear()
-	for key in crest_pool.keys():
-		crest_pool[key] = 0
 
 func _load_face_data() -> void:
 	_faces_by_type.clear()
@@ -131,6 +160,9 @@ func _apply_roll_face_effect(face_type: String, face_data: DiceFaceData, roll_co
 		"grant_move_bonus":
 			_add_crest("move", 1)
 			last_roll_effects.append(face_type + "->+1 move")
+		"grant_summon_bonus":
+			_add_crest("summon", 1)
+			last_roll_effects.append(face_type + "->+1 summon")
 		"grant_trick_bonus":
 			_add_crest("trick", 1)
 			last_roll_effects.append(face_type + "->+1 trick")
@@ -155,4 +187,21 @@ func _apply_roll_face_effect(face_type: String, face_data: DiceFaceData, roll_co
 
 func _add_crest(crest_type: String, amount: int) -> void:
 	var next_val: int = int(crest_pool.get(crest_type, 0)) + amount
-	crest_pool[crest_type] = max(0, next_val)
+	crest_pool[crest_type] = clamp(next_val, 0, MAX_CREST_PER_TYPE)
+
+func _refresh_active_pool() -> void:
+	if not _crest_pools.has(active_side):
+		_crest_pools[active_side] = _default_pool_template.duplicate(true)
+	crest_pool = _crest_pools[active_side]
+
+func _apply_chain_bonuses() -> void:
+	var counts: Dictionary = {}
+	for face_type in last_roll_results:
+		var key: String = String(face_type)
+		counts[key] = int(counts.get(key, 0)) + 1
+	for key in counts.keys():
+		var cnt: int = int(counts[key])
+		if cnt >= 2:
+			var face_type: String = String(key)
+			_add_crest(face_type, 1)
+			last_roll_effects.append("chain " + face_type + " x" + str(cnt) + " -> +" + face_type)

@@ -8,4 +8,4 @@ face_id = "face_skill_basic"
 face_type = "skill"
 crest_value = 1
 grants_path_shape = ""
-grants_effect_id = "grant_defend_bonus"
+grants_effect_id = "grant_skill_bonus"

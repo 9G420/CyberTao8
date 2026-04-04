@@ -126,6 +126,7 @@ func _bootstrap() -> void:
 	board_manager.build_test_board(BOARD_SIZE)
 	_spawn_player_units()
 	BoardGenerator.generate_board(board_manager, unit_manager, BOARD_SIZE, floor_manager.current_floor)
+	dice_manager.set_active_side("player")
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
 	emit_signal("setup_completed")
@@ -139,6 +140,7 @@ func start_player_roll() -> void:
 		return
 	if is_battle_over():
 		return
+	dice_manager.set_active_side("player")
 	dice_manager.roll_turn_dice()
 	current_phase = BattlePhase.PLAYER_ACTION
 	emit_signal("phase_changed", _phase_name(current_phase))
@@ -149,6 +151,7 @@ func enter_player_action() -> void:
 
 func start_enemy_roll() -> void:
 	current_phase = BattlePhase.ENEMY_ROLL
+	dice_manager.set_active_side("enemy")
 	dice_manager.roll_turn_dice()
 	emit_signal("phase_changed", _phase_name(current_phase))
 
@@ -272,6 +275,7 @@ func _start_enemy_turn() -> void:
 	await get_tree().create_timer(0.5).timeout
 	current_phase = BattlePhase.ENEMY_ROLL
 	emit_signal("phase_changed", _phase_name(current_phase))
+	dice_manager.set_active_side("enemy")
 	dice_manager.roll_turn_dice()
 	# v0.1.65：等待掷骰动画真正结束（由 Main 转发 dice_animation_done 信号）
 	await dice_animation_done
@@ -305,7 +309,9 @@ func _execute_enemy_actions() -> void:
 		var adjacent_players: Array[Vector2i] = battle_ai.get_adjacent_player_cells(cell)
 		if adjacent_players.size() > 0 and dice_manager.can_pay({"attack": 1}):
 			dice_manager.pay({"attack": 1})
-			var target_cell: Vector2i = adjacent_players[0]
+			var target_cell: Vector2i = battle_ai.pick_best_adjacent_target_cell(cell)
+			if target_cell.x < 0:
+				target_cell = adjacent_players[0]
 			var defender_id: String = String(unit_manager.units_by_cell[target_cell])
 			var defender_name: String = _get_unit_display_name(defender_id)
 			emit_signal("enemy_action_announced", uid, "attack", unit_name + " → 攻击 " + defender_name)
@@ -321,7 +327,7 @@ func _execute_enemy_actions() -> void:
 			continue
 		# 没有相邻目标则朝最近玩家移动
 		if dice_manager.can_pay({"move": 1}):
-			var target_player_cell: Vector2i = battle_ai.find_nearest_player_cell(cell)
+			var target_player_cell: Vector2i = battle_ai.find_priority_player_cell(cell)
 			if target_player_cell.x >= 0:
 				var move_cell: Vector2i = battle_ai.pick_move_toward(cell, target_player_cell)
 				if move_cell.x >= 0:
@@ -346,7 +352,9 @@ func _execute_enemy_actions() -> void:
 					var new_adjacent: Array[Vector2i] = battle_ai.get_adjacent_player_cells(move_cell)
 					if new_adjacent.size() > 0 and dice_manager.can_pay({"attack": 1}):
 						dice_manager.pay({"attack": 1})
-						var atk_target_cell: Vector2i = new_adjacent[0]
+						var atk_target_cell: Vector2i = battle_ai.pick_best_adjacent_target_cell(move_cell)
+						if atk_target_cell.x < 0:
+							atk_target_cell = new_adjacent[0]
 						var def_id: String = String(unit_manager.units_by_cell[atk_target_cell])
 						var def_name: String = _get_unit_display_name(def_id)
 						var refreshed_unit: Dictionary = unit_manager.get_unit(uid)
@@ -372,6 +380,7 @@ func _advance_to_next_player_round() -> void:
 	dice_manager.reset_for_turn()
 	buff_manager.tick_turn()
 	round_index += 1
+	dice_manager.set_active_side("player")
 	current_phase = BattlePhase.PLAYER_ROLL
 	emit_signal("round_changed", round_index)
 	emit_signal("phase_changed", _phase_name(current_phase))
