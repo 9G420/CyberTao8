@@ -15,9 +15,9 @@ var unit_manager: Node = null
 var battle_flow: Node = null
 
 var camera_cell: Vector2i = Vector2i(0, 0)
-var iso_origin: Vector2 = Vector2(640.0, 360.0)
-var _iso_origin_target: Vector2 = Vector2(640.0, 360.0)
-const SCREEN_CENTER: Vector2 = Vector2(640.0, 360.0)
+var iso_origin: Vector2 = Vector2(640.0, 392.0)
+var _iso_origin_target: Vector2 = Vector2(640.0, 392.0)
+const SCREEN_CENTER: Vector2 = Vector2(640.0, 392.0)
 const CAMERA_LERP_SPEED: float = 4.5	# 平滑跟随速度（v0.1.65：降低以获得更柔和的过渡�?
 
 # 缩放（v0.1.63�?
@@ -195,6 +195,8 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var cell: Vector2i = _pixel_to_cell(mb.position)
 	if not _is_valid_cell(cell):
+		_recenter_to_board_center()
+		_deselect()
 		return
 	_handle_cell_click(cell)
 	accept_event()
@@ -206,6 +208,14 @@ func _is_valid_cell(cell: Vector2i) -> bool:
 	if board_manager != null:
 		return board_manager.is_in_bounds(cell)
 	return cell.x >= 0 and cell.y >= 0 and cell.x < 12 and cell.y < 12
+
+func _recenter_to_board_center() -> void:
+	_drag_active = false
+	_drag_offset = Vector2.ZERO
+	var center_cell: Vector2i = Vector2i(6, 6)
+	if board_manager != null and board_manager.board_size != Vector2i.ZERO:
+		center_cell = Vector2i(board_manager.board_size.x / 2, board_manager.board_size.y / 2)
+	set_camera_target(center_cell)
 
 ## 缩放（以鼠标位置为中心）
 func _apply_zoom(delta: float, mouse_pos: Vector2) -> void:
@@ -485,6 +495,131 @@ func _draw_attack_flash() -> void:
 		return
 	var center: Vector2 = _iso_cell_center(_flash_cell)
 	IsoTileRenderer.draw_diamond_highlight(self, center, Color(1.0, 1.0, 1.0, _flash_alpha), Color(0, 0, 0, 0), 4.0, _zoom)
+
+func _draw_tactical_hud(font: Font, pulse: float) -> void:
+	var top_strip: Rect2 = Rect2(0, 0, 1280, 88)
+	var bottom_strip: Rect2 = Rect2(0, 628, 1280, 92)
+	draw_rect(top_strip, Color(0.01, 0.03, 0.06, 0.66), true)
+	draw_rect(bottom_strip, Color(0.01, 0.03, 0.06, 0.72), true)
+	draw_line(Vector2(0, 88), Vector2(1280, 88), Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.42), 1.0)
+	draw_line(Vector2(0, 628), Vector2(1280, 628), Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, 0.42), 1.0)
+
+	var panel_alpha: float = 0.14 + pulse * 0.06
+	var panel_border_alpha: float = 0.55 + pulse * 0.2
+	var panel_fill: Color = Color(CyberStyle.BG_PANEL.r, CyberStyle.BG_PANEL.g, CyberStyle.BG_PANEL.b, panel_alpha)
+	var panel_border: Color = Color(CyberStyle.ACCENT_CYAN.r, CyberStyle.ACCENT_CYAN.g, CyberStyle.ACCENT_CYAN.b, panel_border_alpha)
+	var text_main: Color = Color(0.9, 0.96, 1.0, 0.95)
+	var text_sub: Color = Color(0.62, 0.82, 0.95, 0.92)
+
+	var cmd_rect: Rect2 = Rect2(24, 16, 360, 58)
+	_draw_hud_panel(cmd_rect, panel_fill, panel_border)
+	_draw_string_line(font, cmd_rect.position + Vector2(14, 23), "部署战斗单位", 24, text_main)
+	_draw_string_line(font, cmd_rect.position + Vector2(14, 46), "目标：占领据点并压制敌方核心", 14, text_sub)
+
+	var phase_rect: Rect2 = Rect2(910, 14, 344, 64)
+	_draw_hud_panel(phase_rect, panel_fill, panel_border)
+	var phase_text: String = _get_phase_text()
+	var floor_text: String = "层数 " + str(int(battle_flow.get_current_floor()) if battle_flow and battle_flow.has_method("get_current_floor") else 1)
+	var round_text: String = "回合 " + str(int(battle_flow.round_index) if battle_flow else 1)
+	_draw_string_line(font, phase_rect.position + Vector2(14, 22), phase_text + "  |  " + floor_text + " / " + round_text, 17, text_main)
+	_draw_string_line(font, phase_rect.position + Vector2(14, 46), "当前目标：控制更多据点并清空敌方单位", 14, text_sub)
+
+	var node_rect: Rect2 = Rect2(910, 82, 344, 38)
+	_draw_hud_panel(node_rect, Color(panel_fill.r, panel_fill.g, panel_fill.b, panel_fill.a * 0.88), panel_border)
+	_draw_string_line(font, node_rect.position + Vector2(14, 25), _get_control_node_state(), 14, Color(0.88, 0.94, 1.0, 0.9))
+
+	var unit_rect: Rect2 = Rect2(26, 642, 510, 62)
+	_draw_hud_panel(unit_rect, panel_fill, panel_border)
+	_draw_string_line(font, unit_rect.position + Vector2(14, 24), _get_selected_unit_stat_line(), 15, text_main)
+	_draw_string_line(font, unit_rect.position + Vector2(14, 48), _get_crest_line(), 14, text_sub)
+
+	var tips_rect: Rect2 = Rect2(910, 642, 344, 62)
+	_draw_hud_panel(tips_rect, panel_fill, panel_border)
+	_draw_string_line(font, tips_rect.position + Vector2(14, 24), "战场提示：先占资源点，再压前线。", 14, text_main)
+	_draw_string_line(font, tips_rect.position + Vector2(14, 48), "召唤物用于控点/护卫，不要单走送掉。", 14, text_sub)
+
+func _draw_hud_panel(rect: Rect2, fill_col: Color, border_col: Color) -> void:
+	draw_rect(rect, fill_col, true)
+	draw_rect(rect, border_col, false, 1.0)
+
+func _draw_string_line(font: Font, pos: Vector2, text: String, size: int, col: Color) -> void:
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, size, col)
+
+func _get_phase_text() -> String:
+	if battle_flow == null:
+		return "阶段：准备"
+	var phase_name: String = "UNKNOWN"
+	if battle_flow.has_method("_phase_name"):
+		phase_name = String(battle_flow._phase_name(battle_flow.current_phase))
+	match phase_name:
+		"PLAYER_ROLL":
+			return "阶段：玩家掷骰"
+		"PLAYER_ACTION":
+			return "阶段：玩家行动"
+		"ENCOUNTER":
+			return "阶段：遭遇战"
+		"ENEMY_ROLL":
+			return "阶段：敌方掷骰"
+		"ENEMY_ACTION":
+			return "阶段：敌方行动"
+		"FLOOR_CLEAR":
+			return "阶段：本层完成"
+		"VICTORY":
+			return "阶段：战斗胜利"
+		"DEFEAT":
+			return "阶段：战斗失败"
+	return "阶段：战场处理中"
+
+func _get_control_node_state() -> String:
+	if board_manager == null or not board_manager.has_method("get_control_node_owner"):
+		return "据点占领：暂无数据"
+	var player_count: int = 0
+	var enemy_count: int = 0
+	var neutral_count: int = 0
+	for cell in board_manager.control_nodes.keys():
+		var owner: String = String(board_manager.get_control_node_owner(cell))
+		if owner == "player":
+			player_count += 1
+		elif owner == "enemy":
+			enemy_count += 1
+		else:
+			neutral_count += 1
+	return "据点占领  我方 " + str(player_count) + "  敌方 " + str(enemy_count) + "  中立 " + str(neutral_count)
+
+func _get_selected_unit_stat_line() -> String:
+	if selected_unit_id == "" or unit_manager == null:
+		return "未选中单位：点击我方主角单位查看行动详情"
+	var unit: Dictionary = unit_manager.get_unit(selected_unit_id)
+	if unit.is_empty():
+		return "未选中单位：点击我方主角单位查看行动详情"
+	var name: String = String(unit.get("display_name", selected_unit_id))
+	var hp: int = int(unit.get("hp", 0))
+	var max_hp: int = int(unit.get("max_hp", 1))
+	var atk: int = int(unit.get("atk", 0))
+	var defv: int = int(unit.get("def", 0))
+	var move_range: int = int(unit.get("move_range", 1))
+	var attack_range: int = int(unit.get("attack_range", 1))
+	var tags: Array = unit.get("tags", [])
+	var role: String = "主角"
+	if tags.has("summoned"):
+		role = "召唤物"
+	return "%s[%s]  HP %d/%d  ATK %d  DEF %d  移动 %d  攻击距 %d" % [name, role, hp, max_hp, atk, defv, move_range, attack_range]
+
+func _get_crest_line() -> String:
+	if battle_flow == null:
+		return "资源：读取中"
+	var dm: Object = battle_flow.dice_manager
+	if dm == null:
+		return "资源：读取中"
+	var pool: Dictionary = dm.crest_pool
+	return "资源  显:%d  步:%d  杀:%d  护:%d  术:%d  巧:%d" % [
+		int(pool.get("summon", 0)),
+		int(pool.get("move", 0)),
+		int(pool.get("attack", 0)),
+		int(pool.get("defend", 0)),
+		int(pool.get("skill", 0)),
+		int(pool.get("trick", 0))
+	]
 
 # ===========================================================
 #  反馈动画（Phase 2.2 增强：屏幕微�?粒子+弹跳飘字�?

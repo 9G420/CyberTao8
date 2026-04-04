@@ -21,6 +21,50 @@ const CHEST_COUNT_MIN: int = 2
 const CHEST_COUNT_MAX: int = 3
 const ENEMY_COUNT: int = 3
 const CONTROL_NODE_COUNT: int = 4
+const BOARD_TEMPLATES: Array[Dictionary] = [
+	{
+		"id": "midline_cross",
+		"control_nodes": [Vector2i(5, 5), Vector2i(7, 5), Vector2i(5, 7), Vector2i(7, 7)],
+		"high_ground": [Vector2i(4, 4), Vector2i(8, 4), Vector2i(4, 8), Vector2i(8, 8), Vector2i(6, 6)],
+		"trap": [Vector2i(3, 5), Vector2i(9, 5), Vector2i(3, 7), Vector2i(9, 7), Vector2i(6, 4)],
+		"encounter": [Vector2i(4, 2), Vector2i(7, 2), Vector2i(9, 4), Vector2i(9, 8), Vector2i(4, 9), Vector2i(7, 9)],
+		"item": [Vector2i(2, 6), Vector2i(10, 6), Vector2i(6, 3)],
+		"heal": [Vector2i(1, 4), Vector2i(10, 8), Vector2i(6, 10)],
+		"event": [Vector2i(2, 3), Vector2i(10, 3), Vector2i(2, 8), Vector2i(10, 8)],
+		"shop": [Vector2i(1, 2), Vector2i(10, 9)],
+		"chest": [Vector2i(3, 10), Vector2i(9, 1), Vector2i(8, 10)],
+		"boss": [Vector2i(10, 1), Vector2i(9, 2)],
+		"enemy_spawn": [Vector2i(8, 1), Vector2i(10, 3), Vector2i(9, 4), Vector2i(7, 2), Vector2i(6, 1)],
+	},
+	{
+		"id": "left_right_pressure",
+		"control_nodes": [Vector2i(3, 5), Vector2i(8, 5), Vector2i(3, 8), Vector2i(8, 8)],
+		"high_ground": [Vector2i(2, 4), Vector2i(2, 9), Vector2i(9, 4), Vector2i(9, 9), Vector2i(6, 6)],
+		"trap": [Vector2i(5, 4), Vector2i(6, 4), Vector2i(5, 9), Vector2i(6, 9), Vector2i(7, 6)],
+		"encounter": [Vector2i(2, 2), Vector2i(8, 2), Vector2i(10, 5), Vector2i(10, 8), Vector2i(3, 10), Vector2i(7, 10)],
+		"item": [Vector2i(1, 6), Vector2i(10, 6), Vector2i(6, 3)],
+		"heal": [Vector2i(2, 7), Vector2i(9, 7), Vector2i(6, 10)],
+		"event": [Vector2i(1, 3), Vector2i(10, 3), Vector2i(4, 6), Vector2i(7, 6)],
+		"shop": [Vector2i(1, 1), Vector2i(10, 10)],
+		"chest": [Vector2i(3, 1), Vector2i(9, 10), Vector2i(5, 2)],
+		"boss": [Vector2i(9, 1), Vector2i(10, 2)],
+		"enemy_spawn": [Vector2i(7, 1), Vector2i(8, 2), Vector2i(10, 4), Vector2i(9, 3), Vector2i(6, 2)],
+	},
+	{
+		"id": "diagonal_arena",
+		"control_nodes": [Vector2i(4, 4), Vector2i(7, 5), Vector2i(5, 8), Vector2i(8, 8)],
+		"high_ground": [Vector2i(3, 3), Vector2i(5, 4), Vector2i(7, 7), Vector2i(9, 8), Vector2i(6, 6)],
+		"trap": [Vector2i(2, 5), Vector2i(4, 6), Vector2i(7, 3), Vector2i(9, 5), Vector2i(8, 9)],
+		"encounter": [Vector2i(2, 2), Vector2i(6, 2), Vector2i(10, 3), Vector2i(8, 10), Vector2i(4, 10), Vector2i(9, 7)],
+		"item": [Vector2i(3, 7), Vector2i(8, 4), Vector2i(10, 6)],
+		"heal": [Vector2i(1, 5), Vector2i(9, 9), Vector2i(6, 10)],
+		"event": [Vector2i(2, 8), Vector2i(4, 2), Vector2i(10, 5), Vector2i(7, 9)],
+		"shop": [Vector2i(1, 2), Vector2i(10, 9)],
+		"chest": [Vector2i(5, 1), Vector2i(9, 2), Vector2i(3, 10)],
+		"boss": [Vector2i(10, 1), Vector2i(8, 1)],
+		"enemy_spawn": [Vector2i(8, 1), Vector2i(10, 2), Vector2i(9, 4), Vector2i(7, 2), Vector2i(6, 1)],
+	},
+]
 
 # 可用遭遇 ID 池
 const ENCOUNTER_IDS: Array[String] = [
@@ -46,74 +90,81 @@ const PLAYER_ZONE_ROWS_START: int = 9  # row 9~11（12格棋盘）
 ## 玩家单位由 BFC 单独生成（需要加载 .tres 资源）
 ## current_floor：当前层数（1起），影响敌方单位数值缩放
 static func generate_board(board_mgr: Node, unit_mgr: Node, board_size: Vector2i, current_floor: int = 1) -> void:
+	var template: Dictionary = _pick_board_template(board_size)
 	var used_cells: Dictionary = {}  # cell -> true，防止重叠
 	# 标记玩家单位初始位置为已占用
 	_mark_player_spawn_cells(used_cells)
 	# 1. 地形：高台
 	var high_count: int = _rand_range(HIGH_GROUND_COUNT_MIN, HIGH_GROUND_COUNT_MAX)
-	var high_cells: Array[Vector2i] = _pick_random_cells(board_size, high_count, used_cells, false)
+	var high_cells: Array[Vector2i] = _pick_seeded_cells(board_size, high_count, used_cells, false, _template_cells(template, "high_ground"))
 	for cell in high_cells:
 		board_mgr.add_terrain_cell(cell, "high_ground")
 		used_cells[cell] = true
 	# 2. 地形：陷阱（不在玩家出生区）
 	var trap_count: int = _rand_range(TRAP_COUNT_MIN, TRAP_COUNT_MAX)
-	var trap_cells: Array[Vector2i] = _pick_random_cells(board_size, trap_count, used_cells, true)
+	var trap_cells: Array[Vector2i] = _pick_seeded_cells(board_size, trap_count, used_cells, true, _template_cells(template, "trap"))
 	for cell in trap_cells:
 		board_mgr.add_terrain_cell(cell, "trap")
 		used_cells[cell] = true
 	# 2.5 控制据点（中路争夺核心）
-	var node_cells: Array[Vector2i] = _pick_control_node_cells(board_size, used_cells, CONTROL_NODE_COUNT)
+	var node_cells: Array[Vector2i] = _pick_seeded_cells(board_size, CONTROL_NODE_COUNT, used_cells, true, _template_cells(template, "control_nodes"))
+	if node_cells.size() < CONTROL_NODE_COUNT:
+		var fallback_nodes: Array[Vector2i] = _pick_control_node_cells(board_size, used_cells, CONTROL_NODE_COUNT - node_cells.size())
+		for c in fallback_nodes:
+			node_cells.append(c)
 	var node_types: Array[String] = ["energy", "command", "repulse", "energy"]
 	for i in range(node_cells.size()):
 		var node_type: String = node_types[i % node_types.size()]
 		board_mgr.add_control_node(node_cells[i], node_type)
 		used_cells[node_cells[i]] = true
 	# 3. 道具
-	var item_cells: Array[Vector2i] = _pick_random_cells(board_size, ITEM_COUNT, used_cells, false)
+	var item_cells: Array[Vector2i] = _pick_seeded_cells(board_size, ITEM_COUNT, used_cells, false, _template_cells(template, "item"))
 	for i in range(item_cells.size()):
 		var item_id: String = ITEM_IDS[i % ITEM_IDS.size()]
 		board_mgr.add_item_cell(item_cells[i], item_id)
 		used_cells[item_cells[i]] = true
 	# 4. 遭遇格（不在玩家出生区，分散放置）
 	var enc_count: int = _rand_range(ENCOUNTER_COUNT_MIN, ENCOUNTER_COUNT_MAX)
-	var enc_cells: Array[Vector2i] = _pick_random_cells(board_size, enc_count, used_cells, true)
+	var enc_cells: Array[Vector2i] = _pick_seeded_cells(board_size, enc_count, used_cells, true, _template_cells(template, "encounter"))
 	var shuffled_enc_ids: Array[String] = _shuffle_strings(ENCOUNTER_IDS.duplicate())
 	for i in range(enc_cells.size()):
 		var enc_id: String = shuffled_enc_ids[i % shuffled_enc_ids.size()]
 		board_mgr.add_encounter_cell(enc_cells[i], enc_id)
 		used_cells[enc_cells[i]] = true
 	# 4b. Boss 遭遇格（1 个，放置在远离玩家出生区的上半区域）
-	var boss_cells: Array[Vector2i] = _pick_boss_cell(board_size, used_cells)
+	var boss_cells: Array[Vector2i] = _pick_seeded_cells(board_size, 1, used_cells, true, _template_cells(template, "boss"))
+	if boss_cells.is_empty():
+		boss_cells = _pick_boss_cell(board_size, used_cells)
 	if boss_cells.size() > 0:
 		var boss_id: String = BOSS_ENCOUNTER_IDS[randi() % BOSS_ENCOUNTER_IDS.size()]
 		board_mgr.add_encounter_cell(boss_cells[0], boss_id)
 		board_mgr.lock_encounter(boss_cells[0])
 		used_cells[boss_cells[0]] = true
 	# 5. 恢复格
-	var heal_cells: Array[Vector2i] = _pick_random_cells(board_size, HEAL_COUNT, used_cells, false)
+	var heal_cells: Array[Vector2i] = _pick_seeded_cells(board_size, HEAL_COUNT, used_cells, false, _template_cells(template, "heal"))
 	for cell in heal_cells:
 		var heal_amount: int = 2 + (randi() % 2)  # 2 或 3
 		board_mgr.add_heal_cell(cell, heal_amount)
 		used_cells[cell] = true
 	# 6. 事件格（不在玩家出生区）
 	var event_count: int = _rand_range(EVENT_COUNT_MIN, EVENT_COUNT_MAX)
-	var event_cells: Array[Vector2i] = _pick_random_cells(board_size, event_count, used_cells, true)
+	var event_cells: Array[Vector2i] = _pick_seeded_cells(board_size, event_count, used_cells, true, _template_cells(template, "event"))
 	for cell in event_cells:
 		board_mgr.add_event_cell(cell, "random_event")
 		used_cells[cell] = true
 	# 7. 商店格（不在玩家出生区，持久，回复 3 HP，消耗 1 move crest）
-	var shop_cells: Array[Vector2i] = _pick_random_cells(board_size, SHOP_COUNT, used_cells, true)
+	var shop_cells: Array[Vector2i] = _pick_seeded_cells(board_size, SHOP_COUNT, used_cells, true, _template_cells(template, "shop"))
 	for cell in shop_cells:
 		board_mgr.add_shop_cell(cell, 3)
 		used_cells[cell] = true
 	# 8. 宝箱格（不在玩家出生区，一次性随机奖励）
 	var chest_count: int = _rand_range(CHEST_COUNT_MIN, CHEST_COUNT_MAX)
-	var chest_cell_list: Array[Vector2i] = _pick_random_cells(board_size, chest_count, used_cells, true)
+	var chest_cell_list: Array[Vector2i] = _pick_seeded_cells(board_size, chest_count, used_cells, true, _template_cells(template, "chest"))
 	for cell in chest_cell_list:
 		board_mgr.add_chest_cell(cell, "chest")
 		used_cells[cell] = true
 	# 9. 敌方单位（上半区域，row 0~4）
-	_spawn_enemies(unit_mgr, board_size, used_cells, current_floor)
+	_spawn_enemies(unit_mgr, board_size, used_cells, current_floor, _template_cells(template, "enemy_spawn"))
 
 ## 层间难度缩放：返回 {hp_mult, atk_add} 基于当前层数
 ## 第1层=基准，第2层 HP+30%/ATK+1，第3层 HP+60%/ATK+2
@@ -126,7 +177,7 @@ static func _floor_scaling(current_floor: int) -> Dictionary:
 
 ## 生成敌方单位（随机位置，上半区域）
 ## current_floor 用于数值缩放
-static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dictionary, current_floor: int = 1) -> void:
+static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dictionary, current_floor: int = 1, enemy_seed_cells: Array[Vector2i] = []) -> void:
 	var scaling: Dictionary = _floor_scaling(current_floor)
 	var enemy_templates: Array[Dictionary] = [
 		{"id": "enemy_grunt_1", "max_hp": 5, "atk": 2, "def": 0, "display_name": "哨兵甲"},
@@ -138,7 +189,7 @@ static func _spawn_enemies(unit_mgr: Node, board_size: Vector2i, used_cells: Dic
 		enemy_templates[1]["display_name"] = "巡检哨乙"
 		enemy_templates[2]["display_name"] = "巡检哨丙"
 	for tmpl in enemy_templates:
-		var cell: Vector2i = _pick_enemy_cell(board_size, used_cells)
+		var cell: Vector2i = _pick_enemy_cell(board_size, used_cells, enemy_seed_cells)
 		if cell.x < 0:
 			continue
 		var scaled_hp: int = int(ceil(float(int(tmpl["max_hp"])) * float(scaling["hp_mult"])))
@@ -178,7 +229,17 @@ static func _pick_boss_cell(board_size: Vector2i, used_cells: Dictionary) -> Arr
 	return [picked]
 
 ## 在上半区域（row 0 ~ board_size.y/2）随机选一个空闲格
-static func _pick_enemy_cell(board_size: Vector2i, used_cells: Dictionary) -> Vector2i:
+static func _pick_enemy_cell(board_size: Vector2i, used_cells: Dictionary, enemy_seed_cells: Array[Vector2i] = []) -> Vector2i:
+	if enemy_seed_cells.size() > 0:
+		var seeded: Array[Vector2i] = []
+		for c in enemy_seed_cells:
+			if c.x < 0 or c.y < 0 or c.x >= board_size.x or c.y >= board_size.y:
+				continue
+			if used_cells.has(c):
+				continue
+			seeded.append(c)
+		if seeded.size() > 0:
+			return seeded[randi() % seeded.size()]
 	var candidates: Array[Vector2i] = []
 	var max_row: int = board_size.y / 2
 	for y in range(0, max_row):
@@ -269,4 +330,46 @@ static func _pick_control_node_cells(board_size: Vector2i, used_cells: Dictionar
 	var pick: int = min(count, candidates.size())
 	for i in range(pick):
 		result.append(candidates[i])
+	return result
+
+static func _pick_board_template(board_size: Vector2i) -> Dictionary:
+	if board_size != Vector2i(12, 12):
+		return {}
+	return BOARD_TEMPLATES[randi() % BOARD_TEMPLATES.size()]
+
+static func _template_cells(template: Dictionary, key: String) -> Array[Vector2i]:
+	if template.is_empty() or not template.has(key):
+		return []
+	var raw: Array = template[key]
+	var out: Array[Vector2i] = []
+	for v in raw:
+		if v is Vector2i:
+			out.append(v)
+	return out
+
+static func _pick_seeded_cells(board_size: Vector2i, count: int, used_cells: Dictionary, avoid_player_zone: bool, seeds: Array[Vector2i]) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	var seeded_candidates: Array[Vector2i] = []
+	for c in seeds:
+		if c.x < 0 or c.y < 0 or c.x >= board_size.x or c.y >= board_size.y:
+			continue
+		if used_cells.has(c):
+			continue
+		if avoid_player_zone and _is_player_zone(c):
+			continue
+		seeded_candidates.append(c)
+	for i in range(seeded_candidates.size() - 1, 0, -1):
+		var j: int = randi() % (i + 1)
+		var tmp: Vector2i = seeded_candidates[i]
+		seeded_candidates[i] = seeded_candidates[j]
+		seeded_candidates[j] = tmp
+	var take: int = min(count, seeded_candidates.size())
+	for i in range(take):
+		var chosen: Vector2i = seeded_candidates[i]
+		result.append(chosen)
+		used_cells[chosen] = true
+	if result.size() < count:
+		var fallback: Array[Vector2i] = _pick_random_cells(board_size, count - result.size(), used_cells, avoid_player_zone)
+		for c2 in fallback:
+			result.append(c2)
 	return result

@@ -5,15 +5,17 @@ class_name UnitPortraitHUD
 ## 横排显示各方单位头像 + HP 条 + 名称，点击切换镜头
 ## 玩家单位左侧，敌方单位右侧
 
-const HUD_H: float = 86.0
+const HUD_H: float = 76.0
 const PORTRAIT_W: float = 80.0
 const PORTRAIT_H: float = 68.0
 const PORTRAIT_GAP: float = 10.0
 const BAR_Y: float = 56.0
 const BAR_H: float = 6.0
-const PLAYER_START_X: float = 96.0
-const ENEMY_END_X: float = 1276.0
-const TOP_Y: float = 10.0
+const PLAYER_START_X: float = 806.0
+const ENEMY_END_X: float = 1272.0
+const TOP_Y: float = 6.0
+const HUD_X: float = 780.0
+const HUD_W: float = 500.0
 
 var _unit_manager: Node = null
 var _portraits: Array = []  # Array of { id, rect, owner }
@@ -94,12 +96,12 @@ func _gui_input(event: InputEvent) -> void:
 func _draw() -> void:
 	if _unit_manager == null or _portraits.is_empty():
 		return
-	draw_rect(Rect2(0, 0, 1280, HUD_H), Color(0.01, 0.015, 0.035, 0.78))
-	draw_rect(Rect2(0, 0, 1280, 28), Color(0.03, 0.11, 0.16, 0.34))
-	draw_line(Vector2(0, HUD_H - 1), Vector2(1280, HUD_H - 1), Color(0.08, 0.66, 0.86, 0.45), 1.0)
+	draw_rect(Rect2(HUD_X, 0, HUD_W, HUD_H), Color(0.01, 0.015, 0.035, 0.8))
+	draw_rect(Rect2(HUD_X, 0, HUD_W, 24), Color(0.03, 0.11, 0.16, 0.34))
+	draw_line(Vector2(HUD_X, HUD_H - 1), Vector2(HUD_X + HUD_W, HUD_H - 1), Color(0.08, 0.66, 0.86, 0.45), 1.0)
 	var font: Font = get_theme_default_font()
-	draw_string(font, Vector2(102, 22), "ALLY", HORIZONTAL_ALIGNMENT_LEFT, 120, 12, Color(0.6, 0.92, 1.0, 0.8))
-	draw_string(font, Vector2(1158, 22), "ENEMY", HORIZONTAL_ALIGNMENT_LEFT, 120, 12, Color(1.0, 0.6, 0.6, 0.82))
+	draw_string(font, Vector2(HUD_X + 24, 18), "ALLY", HORIZONTAL_ALIGNMENT_LEFT, 120, 12, Color(0.6, 0.92, 1.0, 0.8))
+	draw_string(font, Vector2(HUD_X + HUD_W - 112, 18), "ENEMY", HORIZONTAL_ALIGNMENT_LEFT, 120, 12, Color(1.0, 0.6, 0.6, 0.82))
 	for p in _portraits:
 		var uid: String = p["id"]
 		var rect: Rect2 = p["rect"]
@@ -130,19 +132,10 @@ func _draw() -> void:
 			UnitRenderer._draw_enemy_char(self, char_center, char_scale, display_name, 0.5)
 		var hp: int = int(unit.get("hp", 1))
 		var max_hp: int = int(unit.get("max_hp", 1))
-		var hp_ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
 		var bar_x: float = rect.position.x + 6.0
 		var bar_w: float = PORTRAIT_W - 12.0
 		var bar_y: float = rect.position.y + BAR_Y
-		draw_rect(Rect2(bar_x, bar_y, bar_w, BAR_H), Color(0.06, 0.07, 0.11, 0.95))
-		var hp_col: Color
-		if hp_ratio > 0.6:
-			hp_col = CyberStyle.HP_PLAYER if is_player else Color(0.9, 0.25, 0.2)
-		elif hp_ratio > 0.3:
-			hp_col = Color(0.95, 0.75, 0.15)
-		else:
-			hp_col = Color(1.0, 0.2, 0.15)
-		draw_rect(Rect2(bar_x, bar_y, bar_w * hp_ratio, BAR_H), hp_col)
+		_draw_segmented_hp_bar(Rect2(bar_x, bar_y, bar_w, BAR_H), hp, max_hp, is_player)
 		var display_name: String = String(unit.get("display_name", "?"))
 		if display_name.length() > 6:
 			display_name = display_name.substr(0, 6)
@@ -150,3 +143,24 @@ func _draw() -> void:
 		draw_string(font, Vector2(rect.position.x + 5, rect.position.y + 14), display_name, HORIZONTAL_ALIGNMENT_LEFT, PORTRAIT_W - 10, 11, name_col)
 		var hp_text: String = "%d/%d" % [hp, max_hp]
 		draw_string(font, Vector2(rect.position.x + 5, rect.position.y + PORTRAIT_H - 2), hp_text, HORIZONTAL_ALIGNMENT_LEFT, PORTRAIT_W - 10, 10, Color(0.85, 0.9, 1.0, 0.88))
+
+func _draw_segmented_hp_bar(rect: Rect2, hp: int, max_hp: int, is_player: bool) -> void:
+	var total_segments: int = max(1, max_hp)
+	var filled_segments: int = clampi(hp, 0, total_segments)
+	var gap: float = 1.0 if total_segments <= 12 else 0.0
+	var seg_w: float = (rect.size.x - gap * float(total_segments - 1)) / float(total_segments)
+	var hp_ratio: float = float(filled_segments) / float(total_segments)
+	var hp_col: Color
+	if hp_ratio > 0.6:
+		hp_col = CyberStyle.HP_PLAYER if is_player else Color(0.9, 0.25, 0.2)
+	elif hp_ratio > 0.3:
+		hp_col = Color(0.95, 0.75, 0.15)
+	else:
+		hp_col = Color(1.0, 0.2, 0.15)
+	for i in range(total_segments):
+		var x: float = rect.position.x + float(i) * (seg_w + gap)
+		var seg_rect: Rect2 = Rect2(x, rect.position.y, seg_w, rect.size.y)
+		draw_rect(seg_rect, Color(0.06, 0.07, 0.11, 0.95))
+		if i < filled_segments:
+			draw_rect(seg_rect, hp_col)
+		draw_rect(seg_rect, Color(0.85, 0.9, 1.0, 0.22), false, 1.0)

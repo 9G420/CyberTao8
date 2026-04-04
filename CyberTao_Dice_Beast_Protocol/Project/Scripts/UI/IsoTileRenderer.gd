@@ -16,30 +16,30 @@ const AMBIENT_PAD: int = 6		# 棋盘外延伸渲染的环境格子圈数
 
 ## 计算使指定格子处于屏幕中心的 iso_origin
 static func calc_origin_for_cell(cell: Vector2i, screen_center: Vector2) -> Vector2:
-	var ox: float = screen_center.x - float(cell.x - cell.y) * float(TILE_W) * 0.5
-	var oy: float = screen_center.y - float(cell.x + cell.y) * float(TILE_H_HALF)
+	var ox: float = screen_center.x - float(cell.x - cell.y) * float(TILE_W) * 0.5 * 0.88
+	var oy: float = screen_center.y - float(cell.x + cell.y) * float(TILE_H_HALF) * 1.08
 	return Vector2(ox, oy)
 
 ## 格坐标 → 屏幕坐标（菱形中心点），支持缩放
 static func grid_to_screen_zoom(gx: int, gy: int, origin: Vector2, zoom: float) -> Vector2:
-	var sx: float = origin.x + float(gx - gy) * float(TILE_W) * 0.5 * zoom
-	var sy: float = origin.y + float(gx + gy) * float(TILE_H_HALF) * zoom
+	var sx: float = origin.x + float(gx - gy) * float(TILE_W) * 0.5 * 0.88 * zoom
+	var sy: float = origin.y + float(gx + gy) * float(TILE_H_HALF) * 1.08 * zoom
 	return Vector2(sx, sy)
 
 ## 屏幕坐标 → 格坐标（支持缩放）
 static func screen_to_grid_zoom(screen_pos: Vector2, origin: Vector2, zoom: float) -> Vector2i:
 	var dx: float = screen_pos.x - origin.x
 	var dy: float = screen_pos.y - origin.y
-	var tw: float = float(TILE_W) * zoom
-	var th: float = float(TILE_H_HALF) * zoom
+	var tw: float = float(TILE_W) * 0.88 * zoom
+	var th: float = float(TILE_H_HALF) * 1.08 * zoom
 	var fgx: float = (dx / tw * 2.0 + dy / th) * 0.5
 	var fgy: float = (dy / th - dx / tw * 2.0) * 0.5
 	return Vector2i(int(round(fgx)), int(round(fgy)))
 
 ## 菱形顶面四顶点（支持缩放）
 static func diamond_points_zoom(center: Vector2, shrink: float, zoom: float) -> PackedVector2Array:
-	var hw: float = (float(TILE_W) * 0.5 - shrink) * zoom
-	var hh: float = (float(TILE_H_HALF) - shrink * 0.5) * zoom
+	var hw: float = (float(TILE_W) * 0.5 * 0.88 - shrink) * zoom
+	var hh: float = (float(TILE_H_HALF) * 1.08 - shrink * 0.5) * zoom
 	return PackedVector2Array([
 		Vector2(center.x, center.y - hh),
 		Vector2(center.x + hw, center.y),
@@ -49,30 +49,30 @@ static func diamond_points_zoom(center: Vector2, shrink: float, zoom: float) -> 
 
 ## calc_origin_for_cell with zoom support
 static func calc_origin_for_cell_zoom(cell: Vector2i, screen_center: Vector2, zoom: float) -> Vector2:
-	var ox: float = screen_center.x - float(cell.x - cell.y) * float(TILE_W) * 0.5 * zoom
-	var oy: float = screen_center.y - float(cell.x + cell.y) * float(TILE_H_HALF) * zoom
+	var ox: float = screen_center.x - float(cell.x - cell.y) * float(TILE_W) * 0.5 * 0.88 * zoom
+	var oy: float = screen_center.y - float(cell.x + cell.y) * float(TILE_H_HALF) * 1.08 * zoom
 	return Vector2(ox, oy)
 
 # --- 坐标转换 ---
 
 ## 格坐标 → 屏幕坐标（菱形中心点）
 static func grid_to_screen(gx: int, gy: int, origin: Vector2) -> Vector2:
-	var sx: float = origin.x + float(gx - gy) * float(TILE_W) * 0.5
-	var sy: float = origin.y + float(gx + gy) * float(TILE_H_HALF)
+	var sx: float = origin.x + float(gx - gy) * float(TILE_W) * 0.5 * 0.88
+	var sy: float = origin.y + float(gx + gy) * float(TILE_H_HALF) * 1.08
 	return Vector2(sx, sy)
 
 ## 屏幕坐标 → 格坐标（最近格子，四舍五入）
 static func screen_to_grid(screen_pos: Vector2, origin: Vector2) -> Vector2i:
 	var dx: float = screen_pos.x - origin.x
 	var dy: float = screen_pos.y - origin.y
-	var fgx: float = (dx / float(TILE_W) * 2.0 + dy / float(TILE_H_HALF)) * 0.5
-	var fgy: float = (dy / float(TILE_H_HALF) - dx / float(TILE_W) * 2.0) * 0.5
+	var fgx: float = (dx / (float(TILE_W) * 0.88) * 2.0 + dy / (float(TILE_H_HALF) * 1.08)) * 0.5
+	var fgy: float = (dy / (float(TILE_H_HALF) * 1.08) - dx / (float(TILE_W) * 0.88) * 2.0) * 0.5
 	return Vector2i(int(round(fgx)), int(round(fgy)))
 
 ## 菱形顶面四顶点（用于高亮/叠层绘制）
 static func diamond_points(center: Vector2, shrink: float = 0.0) -> PackedVector2Array:
-	var hw: float = float(TILE_W) * 0.5 - shrink
-	var hh: float = float(TILE_H_HALF) - shrink * 0.5
+	var hw: float = float(TILE_W) * 0.5 * 0.88 - shrink
+	var hh: float = float(TILE_H_HALF) * 1.08 - shrink * 0.5
 	return PackedVector2Array([
 		Vector2(center.x, center.y - hh),		# 上
 		Vector2(center.x + hw, center.y),		# 右
@@ -111,6 +111,16 @@ static func _draw_board_platform_bg(canvas: CanvasItem, origin: Vector2, gs: Vec
 	var ring: PackedVector2Array = PackedVector2Array([p0, p1, p2, p3])
 	var base_col: Color = Color(0.16, 0.18, 0.22, 0.95)
 	canvas.draw_colored_polygon(ring, base_col)
+	var board_a: Vector2 = grid_to_screen_zoom(0, 0, origin, zoom)
+	var board_b: Vector2 = grid_to_screen_zoom(gs.x, 0, origin, zoom)
+	var board_c: Vector2 = grid_to_screen_zoom(gs.x, gs.y, origin, zoom)
+	var board_d: Vector2 = grid_to_screen_zoom(0, gs.y, origin, zoom)
+	var depth_vec: Vector2 = Vector2(0.0, 56.0 * zoom)
+	var east_side: PackedVector2Array = PackedVector2Array([board_b, board_c, board_c + depth_vec, board_b + depth_vec])
+	var south_side: PackedVector2Array = PackedVector2Array([board_d, board_c, board_c + depth_vec, board_d + depth_vec])
+	canvas.draw_colored_polygon(east_side, Color(0.20, 0.24, 0.30, 0.86))
+	canvas.draw_colored_polygon(south_side, Color(0.16, 0.19, 0.24, 0.88))
+	canvas.draw_polyline(PackedVector2Array([board_b + depth_vec, board_c + depth_vec, board_d + depth_vec]), Color(0.55, 0.66, 0.78, 0.42), 2.0)
 	# 固定边框台座（双层）
 	var frame_outer: Color = Color(0.22, 0.42, 0.56, 0.46)
 	var frame_inner: Color = Color(0.45, 0.85, 1.0, 0.34 + pulse * 0.12)

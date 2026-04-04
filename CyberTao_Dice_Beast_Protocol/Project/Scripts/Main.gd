@@ -463,6 +463,12 @@ func _on_portrait_clicked(unit_id: String) -> void:
 		view.highlight_cells = _battle_flow.get_reachable_cells_for(unit_id)
 		view.attack_highlight_cells = _battle_flow.get_attackable_cells_for(unit_id)
 		view.summon_highlight_cells = view._filter_summon_cells(_battle_flow.get_summon_cells_for(unit_id))
+	else:
+		# 点击敌方头像时，清空我方选中，避免镜头被自动跟随拉回
+		view.selected_unit_id = ""
+		view.highlight_cells.clear()
+		view.attack_highlight_cells.clear()
+		view.summon_highlight_cells.clear()
 	_portrait_hud.set_selected(unit_id)
 	view.queue_redraw()
 

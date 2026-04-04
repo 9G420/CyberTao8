@@ -1,5 +1,16 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.115 - 2026-04-04
+
+记录时间: 2026-04-04 20:13 SGT
+
+- 新增: `Logs/Execution_Command_Center.md`，建立“阶段/优先任务/验收标准/禁止事项”的执行中枢，作为新对话接手单一真相源。
+- 修改: `Logs/AI_Employee_Guide_v3.md` 强制接入执行中枢阅读顺序，并新增“新对话开场执行播报”规则。
+- 修复: `Main.gd` 点击敌方头像后镜头回拉问题（敌方头像点击时清空我方选中，避免自动跟随抢焦点）。
+- 新增: `BoardView.gd` 点击棋盘外区域时自动回正并居中到棋盘中心，同时取消当前选中。
+- 修改: `UnitRenderer.gd` 与 `UnitPortraitHUD.gd` 血条改为离散分格显示（`max_hp = N` 显示 N 格，掉血按格减少）。
+- 修改: `MainViewCoordinator.gd` / `IsoTileRenderer.gd` / `BoardView.gd` 进行 2D 棋盘界面与台座表现收口，降低堆叠与视角歪斜感。
+
 ## v0.1.114 - 2026-04-04
 
 记录时间: 2026-04-04 14:47 SGT

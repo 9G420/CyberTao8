@@ -16,7 +16,6 @@ static func draw_full_unit(c: CanvasItem, cell: Vector2i, cs: int, unit: Diction
 	var display_name: String = String(unit.get("display_name", ""))
 	var hp: int = int(unit.get("hp", 1))
 	var max_hp: int = int(unit.get("max_hp", 1))
-	var hp_ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
 
 	var cx: float = float(cell.x * cs) + float(cs) * 0.5
 	var cy: float = float(cell.y * cs) + float(cs) * 0.5 + idle_y
@@ -28,7 +27,7 @@ static func draw_full_unit(c: CanvasItem, cell: Vector2i, cs: int, unit: Diction
 		_draw_enemy_char(c, Vector2(cx, cy), s, display_name, pulse)
 
 	# HP 条
-	_draw_hp_bar(c, Vector2(cell.x * cs + 8, cell.y * cs + cs - 12), cs - 16, hp_ratio, is_player)
+	_draw_hp_bar(c, Vector2(cell.x * cs + 8, cell.y * cs + cs - 12), cs - 16, hp, max_hp, is_player)
 
 	# 选中脉冲环
 	if is_selected:
@@ -414,20 +413,26 @@ static func _draw_mini_boss(c: CanvasItem, center: Vector2, s: float, col: Color
 
 # --- HP 条：薄条 + 绿→黄→红渐变 ---
 
-static func _draw_hp_bar(c: CanvasItem, pos: Vector2, width: float, ratio: float, is_player: bool) -> void:
+static func _draw_hp_bar(c: CanvasItem, pos: Vector2, width: float, hp: int, max_hp: int, is_player: bool) -> void:
 	var bar_h: float = 4.0
-	c.draw_rect(Rect2(pos, Vector2(width, bar_h)), Color(0.15, 0.15, 0.2, 0.8), true)
-	if ratio > 0.0:
-		var fill_w: float = width * clampf(ratio, 0.0, 1.0)
-		var fill_col: Color
-		if ratio > 0.6:
-			fill_col = CyberStyle.HP_PLAYER if is_player else CyberStyle.HP_ENEMY
-		elif ratio > 0.3:
-			fill_col = CyberStyle.TEXT_TITLE
-		else:
-			fill_col = CyberStyle.HP_PLAYER_LOW if is_player else CyberStyle.HP_ENEMY_LOW
-		c.draw_rect(Rect2(pos, Vector2(fill_w, bar_h)), fill_col, true)
-	c.draw_rect(Rect2(pos, Vector2(width, bar_h)), Color(0.5, 0.55, 0.6, 0.3), false, 1.0)
+	var total_segments: int = max(1, max_hp)
+	var filled_segments: int = clampi(hp, 0, total_segments)
+	var gap: float = 1.0 if total_segments <= 12 else 0.0
+	var seg_w: float = (width - gap * float(total_segments - 1)) / float(total_segments)
+	var hp_ratio: float = float(filled_segments) / float(total_segments)
+	var fill_col: Color
+	if hp_ratio > 0.6:
+		fill_col = CyberStyle.HP_PLAYER if is_player else CyberStyle.HP_ENEMY
+	elif hp_ratio > 0.3:
+		fill_col = CyberStyle.TEXT_TITLE
+	else:
+		fill_col = CyberStyle.HP_PLAYER_LOW if is_player else CyberStyle.HP_ENEMY_LOW
+	for i in range(total_segments):
+		var x: float = pos.x + float(i) * (seg_w + gap)
+		c.draw_rect(Rect2(Vector2(x, pos.y), Vector2(seg_w, bar_h)), Color(0.12, 0.12, 0.18, 0.82), true)
+		if i < filled_segments:
+			c.draw_rect(Rect2(Vector2(x, pos.y), Vector2(seg_w, bar_h)), fill_col, true)
+		c.draw_rect(Rect2(Vector2(x, pos.y), Vector2(seg_w, bar_h)), Color(0.5, 0.55, 0.6, 0.35), false, 1.0)
 
 # --- 选中脉冲金色边框 ---
 
@@ -482,7 +487,6 @@ static func draw_full_unit_iso(c: CanvasItem, center: Vector2, unit: Dictionary,
 	var display_name: String = String(unit.get("display_name", ""))
 	var hp: int = int(unit.get("hp", 1))
 	var max_hp: int = int(unit.get("max_hp", 1))
-	var hp_ratio: float = float(hp) / float(max_hp) if max_hp > 0 else 1.0
 	var cx: float = center.x
 	var cy: float = center.y - 20.0 + idle_y
 	var tex: Texture2D = _get_iso_unit_tex(unit)
@@ -500,7 +504,7 @@ static func draw_full_unit_iso(c: CanvasItem, center: Vector2, unit: Dictionary,
 			_draw_player_char(c, Vector2(cx, cy), s, display_name, pulse)
 		else:
 			_draw_enemy_char(c, Vector2(cx, cy), s, display_name, pulse)
-	_draw_hp_bar(c, Vector2(center.x - 36.0, center.y + 16.0), 72.0, hp_ratio, is_player)
+	_draw_hp_bar(c, Vector2(center.x - 36.0, center.y + 16.0), 72.0, hp, max_hp, is_player)
 	if is_selected:
 		var col: Color = CyberStyle.NEON_GOLD
 		var a: float = 0.5 + pulse * 0.4

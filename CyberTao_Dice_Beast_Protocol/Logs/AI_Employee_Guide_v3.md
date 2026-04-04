@@ -1,13 +1,13 @@
 ﻿# CyberTao: Dice Beast Protocol - AI 员工上岗指令 v3
 
-**发布时间**: 2026-04-04 14:47 SGT
+**发布时间**: 2026-04-04 20:13 SGT
 **适用项目**: CyberTao: Dice Beast Protocol（骰兽协议）
 **适用分支**: `codex/dice-beast-protocol`
-**当前版本**: v0.1.114
+**当前版本**: v0.1.115
 **引擎**: Godot 4.6.1 | GDScript | renderer: `gl_compatibility`
 **视口**: 1280x720 | stretch mode: `canvas_items`
 
-> 当前接手与执行请优先以 `Logs/Handoff_Package_latest.md`、`Logs/Mulerun_Work_Report.md`、`Logs/changelog_v0.1.md` 为准。
+> 当前接手与执行请优先以 `Logs/Execution_Command_Center.md`、`Logs/Handoff_Package_latest.md`、`Logs/Mulerun_Work_Report.md`、`Logs/changelog_v0.1.md` 为准。
 > `Logs/CyberTao_Migration_Snapshot_zh_v3.md` 现在是当前架构快照，可用于理解整体结构，但不替代最近一轮工作报告。
 
 ---
@@ -31,10 +31,11 @@
 ### 1.1 强制阅读顺序
 
 1. 本文件：行为边界、交付要求、接手规则。
-2. `Logs/Handoff_Package_latest.md`：最新交接包，优先级高于 Snapshot。
-3. `Logs/Mulerun_Work_Report.md`：上一轮精确状态与剩余问题。
-4. `Logs/changelog_v0.1.md`：最近 5 个版本，确认短期变更轨迹。
-5. `Logs/CyberTao_Migration_Snapshot_zh_v3.md`：当前架构快照和模块索引。
+2. `Logs/Execution_Command_Center.md`：执行指挥中心，定义“下一步具体任务”。
+3. `Logs/Handoff_Package_latest.md`：最新交接包，优先级高于 Snapshot。
+4. `Logs/Mulerun_Work_Report.md`：上一轮精确状态与剩余问题。
+5. `Logs/changelog_v0.1.md`：最近 5 个版本，确认短期变更轨迹。
+6. `Logs/CyberTao_Migration_Snapshot_zh_v3.md`：当前架构快照和模块索引。
 
 ### 1.2 如果用户要求“执行交接流程”
 
@@ -60,6 +61,15 @@
 
 如果用户只是直接下任务，不要求执行交接流程，则不必强行等待确认；先用上面的阅读顺序建立上下文，再执行任务。
 
+### 1.3 新对话开场执行播报（强制）
+
+每次新对话第一条执行性回复，必须包含：
+
+1. 当前阶段（来自 `Execution_Command_Center`）。
+2. 本轮唯一主任务（`Execution_Command_Center` 第 2 节第 1 项）。
+3. 本轮验收标准（简要）。
+4. 本轮禁止事项（至少 1 条）。
+
 ---
 
 ## 2. 项目一句话
@@ -73,7 +83,7 @@
 
 ---
 
-## 3. 当前真实状态（v0.1.114）
+## 3. 当前真实状态（v0.1.115）
 
 - 棋盘走位层稳定：`BattleFlowController`、`BoardGenerator`、`FloorManager`、`ShopPanel`、`CellEffectHandler` 全部接通，当前主流程会生成 `blade_shield_dog` 与 `hacker_fox` 两个玩家单位。
 - 卡牌战斗层稳定：`CardBattleController` 已支持起始牌组、奖励牌池、升级、Boss、能量成长、战斗结算回写，卡牌与遭遇数据已抽到 `CardBattleData.gd`。
@@ -86,7 +96,7 @@
 - 召唤体系深化：召唤单位已从单模板升级为侦察/突击/护卫三职业，接入登场收益、回合收益、嘲讽与主角邻接减伤光环。
 - 表现层已具备基本氛围：像素化单位纹理、卡牌界面、商店/奖励/牌组统一构筑展示、顶部头像 HUD、音效与外部 BGM 回退。
 - 当前棋盘已新增中路控制据点（能量/指挥/驱逐三类），支持占领归属、回合资源收益与敌方据点优先寻路。
-- 当前接手主路径与日志基线已同步到 v0.1.114。
+- 当前接手主路径与日志基线已同步到 v0.1.115（新增 `Execution_Command_Center` 作为推进单一真相源）。
 
 ---
 

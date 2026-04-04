@@ -49,7 +49,7 @@ func build_views(owner: Control, display_settings: DisplaySettings, audio: Audio
 	owner.add_child(portrait_hud)
 
 	dice_panel = DiceDebugPanelScript.new()
-	dice_panel.position = Vector2(1012, 512)
+	dice_panel.position = Vector2(994, 500)
 	owner.add_child(dice_panel)
 
 	var settings_btn := Button.new()
@@ -62,17 +62,17 @@ func build_views(owner: Control, display_settings: DisplaySettings, audio: Audio
 	owner.add_child(settings_btn)
 
 	chapter_label = Label.new()
-	chapter_label.position = Vector2(96, 10)
-	chapter_label.size = Vector2(560, 24)
-	chapter_label.add_theme_font_size_override("font_size", 18)
+	chapter_label.position = Vector2(96, 8)
+	chapter_label.size = Vector2(660, 24)
+	chapter_label.add_theme_font_size_override("font_size", 20)
 	chapter_label.add_theme_color_override("font_color", CyberStyle.TEXT_PRIMARY)
 	chapter_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	owner.add_child(chapter_label)
 
 	objective_label = Label.new()
 	objective_label.position = Vector2(96, 34)
-	objective_label.size = Vector2(620, 20)
-	objective_label.add_theme_font_size_override("font_size", 12)
+	objective_label.size = Vector2(680, 20)
+	objective_label.add_theme_font_size_override("font_size", 13)
 	objective_label.add_theme_color_override("font_color", CyberStyle.TEXT_SECONDARY)
 	objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	owner.add_child(objective_label)
