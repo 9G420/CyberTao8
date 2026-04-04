@@ -31,3 +31,15 @@
 3. `Logs/Handoff_Package_latest.md`
 4. `Logs/Mulerun_Work_Report.md`
 5. `Logs/changelog_v0.1.md`（最近两条）
+
+---
+
+## 2026-04-05 00:57 SGT Hot Update
+- Current phase: Phase A / Bridge stabilization
+- Today main task: `A2_path_loop_resonance` (minimum playable version) completed
+- Acceptance result:
+  - Added player path loop detection in `BoardManager`
+  - Added one-time-per-round path resonance trigger in `BattleFlowController`
+  - Added 2D feedback hook in `Main` via `MainViewCoordinator`
+  - `godot4 --headless --path Project --quit` passed (with historical resource-leak warnings)
+- Next main task: `A3_enemy_counterplay`

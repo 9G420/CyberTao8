@@ -202,6 +202,16 @@ func _on_control_node_income(owner: String, cell: Vector2i, node_type: String, c
 	_active_view().play_pickup_feedback(cell, "%s节点 +%d %s" % [type_text, amount, crest_name])
 	_active_view().queue_redraw()
 
+func _on_path_loop_resonance_triggered(cells: Array[Vector2i], bonus_type: String, amount: int) -> void:
+	if cells.is_empty():
+		return
+	var label: String = "路径共鸣触发：回路内友军ATK+1(1回合)，机巧+%d" % amount
+	if bonus_type != "atk_up_trick":
+		label = "路径共鸣触发：%s +%d" % [bonus_type, amount]
+	_active_view().play_pickup_feedback(cells[0], label)
+	_audio.play_sfx("pickup")
+	_active_view().queue_redraw()
+
 func _on_enemy_action_announced(unit_id: String, action_type: String, detail: String) -> void:
 	# 敌方行动时相机跟随敌人（v0.1.63）
 	var unit: Dictionary = _battle_flow.unit_manager.get_unit(unit_id)

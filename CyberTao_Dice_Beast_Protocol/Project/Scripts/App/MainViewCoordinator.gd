@@ -168,6 +168,7 @@ func wire_views(owner: Node, battle_flow: BattleFlowController, card_battle_ctrl
 	battle_flow.hero_warped.connect(_owner_callable(owner, "_on_hero_warped"))
 	battle_flow.control_node_captured.connect(_owner_callable(owner, "_on_control_node_captured"))
 	battle_flow.control_node_income.connect(_owner_callable(owner, "_on_control_node_income"))
+	battle_flow.path_loop_resonance_triggered.connect(_owner_callable(owner, "_on_path_loop_resonance_triggered"))
 	battle_flow.enemy_turn_starting.connect(_owner_callable(owner, "_on_enemy_turn_starting"))
 	dice_anim.animation_finished.connect(_owner_callable(owner, "_on_dice_anim_finished_forward"))
 	battle_flow.move_completed.connect(_owner_callable(owner, "_on_move_completed_camera"))

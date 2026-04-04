@@ -35,6 +35,7 @@ signal control_node_income(owner: String, cell: Vector2i, node_type: String, cre
 signal enemy_intents_updated(intents: Dictionary)
 signal player_command_chain_updated(commands: Array)
 signal player_command_chain_executed(result: Dictionary)
+signal path_loop_resonance_triggered(cells: Array[Vector2i], bonus_type: String, amount: int)
 
 const DiceManager = preload("res://Scripts/BattleV2/DiceManager.gd")
 const BoardManager = preload("res://Scripts/BattleV2/BoardManager.gd")
@@ -67,11 +68,13 @@ enum BattlePhase {
 }
 
 const BOARD_SIZE: Vector2i = Vector2i(12, 12)	# v0.1.62 扩展棋盘
+const PATH_LOOP_TRICK_BONUS: int = 1
 
 var current_phase: BattlePhase = BattlePhase.BOOT
 var round_index: int = 0
 var _summon_counter: int = 0
 var _summon_this_floor: int = 0      # 本层已部署次数
+var _path_loop_resonance_triggered_this_round: bool = false
 const SUMMON_FLOOR_LIMIT: int = 3   # 每层部署上限
 const SUMMON_FIELD_LIMIT: int = 2   # 场上伙伴上限
 var _encounter_unit_id: String = ""
@@ -446,6 +449,7 @@ func _advance_to_next_player_round() -> void:
 	dice_manager.reset_for_turn()
 	buff_manager.tick_turn()
 	reset_player_command_chain()
+	_path_loop_resonance_triggered_this_round = false
 	round_index += 1
 	dice_manager.set_active_side("player")
 	_resolve_control_nodes_for_side("player")
@@ -806,6 +810,7 @@ func try_summon(origin_unit_id: String, target_cell: Vector2i) -> bool:
 	var summon_data: Dictionary = profile.get("unit_data", {})
 	_apply_summon_arrival_effect(profile, target_cell)
 	unit_manager.spawn_unit(summon_id, summon_data, target_cell)
+	_check_path_loop_resonance()
 	emit_signal("summon_completed", summon_id, extended_paths, target_cell)
 	_refresh_enemy_intents()
 	return true
@@ -825,6 +830,7 @@ func advance_to_next_floor() -> void:
 	_encounter_cell = Vector2i(-1, -1)
 	current_phase = BattlePhase.PLAYER_ROLL
 	round_index = 1
+	_path_loop_resonance_triggered_this_round = false
 	dice_manager.set_active_side("player")
 	reset_player_command_chain()
 	_refresh_enemy_intents()
@@ -976,6 +982,34 @@ func _apply_summoned_command_income() -> void:
 			dice_manager.crest_pool["defend"] = int(dice_manager.crest_pool.get("defend", 0)) + 1
 			got_defend = true
 
+func _check_path_loop_resonance() -> void:
+	if _path_loop_resonance_triggered_this_round:
+		return
+	if current_phase != BattlePhase.PLAYER_ACTION:
+		return
+	var loop_cells: Array[Vector2i] = board_manager.get_owner_cycle_component("player")
+	if loop_cells.is_empty():
+		return
+	_path_loop_resonance_triggered_this_round = true
+	var loop_lookup: Dictionary = {}
+	for cell in loop_cells:
+		loop_lookup[cell] = true
+	for uid in unit_manager.units_by_id.keys():
+		var unit: Dictionary = unit_manager.get_unit(String(uid))
+		if unit.is_empty():
+			continue
+		if String(unit.get("owner", "")) != "player":
+			continue
+		if int(unit.get("hp", 0)) <= 0:
+			continue
+		var cell: Vector2i = unit.get("cell", Vector2i(-1, -1))
+		if loop_lookup.has(cell):
+			buff_manager.apply_buff(String(uid), "atk_up", 1, 1)
+	var current_trick: int = int(dice_manager.crest_pool.get("trick", 0))
+	var cap: int = int(dice_manager.MAX_CREST_PER_TYPE)
+	dice_manager.crest_pool["trick"] = min(cap, current_trick + PATH_LOOP_TRICK_BONUS)
+	emit_signal("path_loop_resonance_triggered", loop_cells, "atk_up_trick", PATH_LOOP_TRICK_BONUS)
+
 func _has_guardian_aura(defender_id: String, defender_cell: Vector2i) -> bool:
 	if defender_id == "" or defender_cell.x < 0:
 		return false
@@ -1102,6 +1136,7 @@ func restart_battle() -> void:
 	board_manager.build_test_board(BOARD_SIZE)
 	_summon_counter = 0
 	_summon_this_floor = 0
+	_path_loop_resonance_triggered_this_round = false
 	_encounter_unit_id = ""
 	_encounter_id = ""
 	_encounter_cell = Vector2i(-1, -1)

@@ -16,3 +16,21 @@
 
 ## 风险备注
 - 仅清理日志口径，不改变战斗数值与玩法逻辑。
+
+---
+
+## 2026-04-05 00:57 SGT Addendum
+### This round objective
+- Land `A2_path_loop_resonance` as a minimal stable mechanic.
+
+### Implemented
+- Added loop-component detection for owner path graph.
+- Added loop resonance reward pipeline:
+  - one trigger per player round
+  - loop-contained friendly units get 1-round `atk_up`
+  - player gets `trick +1` (with crest cap)
+- Added gameplay feedback signal wiring to main UI.
+
+### Validation
+- `godot4 --headless --path Project --quit` passed.
+- Residual warning remains: Godot historical resource-leak warning on exit (known existing issue).

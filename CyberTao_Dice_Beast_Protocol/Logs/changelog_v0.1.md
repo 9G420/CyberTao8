@@ -1,5 +1,15 @@
 # CyberTao: Dice Beast Protocol Changelog
 
+## v0.1.118-dev - 2026-04-05
+
+记录时间: 2026-04-05 00:57 SGT
+
+- 新增: `BoardManager.gd` 增加 `get_owner_cycle_component(owner_id)`，用于检测路径连通块是否形成闭环。
+- 新增: `BattleFlowController.gd` 增加 `path_loop_resonance_triggered` 信号与 `_check_path_loop_resonance()` 结算逻辑（每玩家回合最多触发一次）。
+- 修改: 当玩家召唤导致路径成环时，环内友军获得 `atk_up +1 (1回合)`，并给予玩家 `trick +1`（受上限保护）。
+- 修改: `MainViewCoordinator.gd` / `Main.gd` 接入共鸣反馈显示，2D棋盘可见“路径共鸣触发”提示。
+- 备注: `godot4 --headless --path Project --quit` 通过；仍有历史资源释放 warning，非本次新增阻塞。
+
 ## v0.1.117-log-clean - 2026-04-05
 
 记录时间: 2026-04-05 00:42 SGT

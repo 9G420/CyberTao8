@@ -254,6 +254,43 @@ func clear_portal_cell(cell: Vector2i) -> void:
 	portal_cells.erase(cell)
 	emit_signal("board_changed")
 
+## Return one connected component of owner's path that forms a loop.
+## If no loop exists, returns an empty array.
+func get_owner_cycle_component(owner_id: String) -> Array[Vector2i]:
+	var owner_cells: Dictionary = {}
+	for cell in path_cells.keys():
+		if String(path_cells[cell]) == owner_id:
+			owner_cells[cell] = true
+	if owner_cells.is_empty():
+		return []
+
+	var visited: Dictionary = {}
+	for start_cell in owner_cells.keys():
+		if visited.has(start_cell):
+			continue
+		var component: Array[Vector2i] = []
+		var frontier: Array[Vector2i] = [start_cell]
+		visited[start_cell] = true
+		while frontier.size() > 0:
+			var current: Vector2i = frontier.pop_back()
+			component.append(current)
+			for nb in get_neighbors(current):
+				if not owner_cells.has(nb):
+					continue
+				if visited.has(nb):
+					continue
+				visited[nb] = true
+				frontier.append(nb)
+		var edge_count_x2: int = 0
+		for c in component:
+			for nb in get_neighbors(c):
+				if owner_cells.has(nb):
+					edge_count_x2 += 1
+		var edge_count: int = edge_count_x2 / 2
+		if edge_count >= component.size():
+			return component
+	return []
+
 func add_control_node(cell: Vector2i, node_type: String) -> void:
 	if not is_in_bounds(cell):
 		return

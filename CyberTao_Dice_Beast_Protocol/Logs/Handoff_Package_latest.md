@@ -21,3 +21,20 @@
 3. 本文件
 4. `Logs/Mulerun_Work_Report.md`
 5. `Logs/changelog_v0.1.md`
+
+---
+
+## 2026-04-05 00:57 SGT Increment
+- Completed: `A2_path_loop_resonance` baseline integration.
+- Code touchpoints:
+  - `Project/Scripts/BattleV2/BoardManager.gd`
+  - `Project/Scripts/BattleV2/BattleFlowController.gd`
+  - `Project/Scripts/App/MainViewCoordinator.gd`
+  - `Project/Scripts/Main.gd`
+- Behavior:
+  - When player path forms a loop, trigger once per player round.
+  - Units on loop cells gain `atk_up +1` for 1 round.
+  - Player gains `trick +1` (capped).
+  - UI shows board feedback text on trigger.
+- Verification:
+  - `godot4 --headless --path Project --quit` passed.
